@@ -1,0 +1,221 @@
+import React, { useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
+import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle } from 'lucide-react';
+import { generateNextMatch } from '../utils/matchmaking';
+
+export const MatchSchedule: React.FC = () => {
+  const { matches, activeMatch, players, finishMatch, createNextMatch, generateSchedule, deleteMatch } = useApp();
+  const [scoreA, setScoreA] = useState(6);
+  const [scoreB, setScoreB] = useState(0);
+  const [planCount, setPlanCount] = useState(0);
+
+  const finishedMatches = matches.filter(m => m.isFinished).sort((a, b) => a.timestamp - b.timestamp);
+  // Queued matches are unfinished matches excluding the active one (if any)
+  const queuedMatches = matches.filter(m => !m.isFinished && m.id !== activeMatch?.id);
+  
+  const activeCount = players.filter(p => p.active).length;
+
+  // Set default plan count based on active players
+  useEffect(() => {
+    if (activeCount === 4) setPlanCount(3);
+    else if (activeCount > 4) setPlanCount(activeCount);
+    else setPlanCount(1);
+  }, [activeCount]);
+
+  // Helper to get name
+  const getName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
+
+  const handleFinish = () => {
+    if (activeMatch) {
+      finishMatch(activeMatch.id, scoreA, scoreB);
+      setScoreA(6);
+      setScoreB(0);
+    }
+  };
+
+  const handleGenerate = () => {
+    if (planCount > 0) {
+      generateSchedule(planCount);
+    }
+  };
+
+  return (
+    <div className="pb-24 space-y-6">
+      
+      {/* 1. Timeline Header */}
+      <div className="flex items-center gap-2 text-tennis-green font-bold text-lg px-2">
+        <CalendarDays size={20} />
+        <h2>Match Schedule</h2>
+      </div>
+
+      {/* 2. Match History (Past) */}
+      <div className="space-y-3 relative">
+        {finishedMatches.length > 0 && <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-800 -z-10" />}
+        
+        {finishedMatches.map((match, idx) => (
+          <div key={match.id} className="flex gap-4 items-start animate-in fade-in slide-in-from-left-4">
+            <div className="flex flex-col items-center min-w-[32px]">
+              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-mono text-slate-300 border border-slate-600">
+                {idx + 1}
+              </div>
+            </div>
+
+            <div className="flex-1 bg-slate-800/80 rounded-lg p-3 border border-slate-700 flex justify-between items-center group">
+               <div className="flex flex-col gap-1 w-full">
+                 <div className={`flex justify-between items-center ${match.scoreA > match.scoreB ? 'text-white font-bold' : 'text-slate-400'}`}>
+                    <span className="text-sm">{getName(match.teamA.player1Id)} & {getName(match.teamA.player2Id)}</span>
+                    <span className="text-lg font-mono">{match.scoreA}</span>
+                 </div>
+                 <div className={`flex justify-between items-center ${match.scoreB > match.scoreA ? 'text-white font-bold' : 'text-slate-400'}`}>
+                    <span className="text-sm">{getName(match.teamB.player1Id)} & {getName(match.teamB.player2Id)}</span>
+                    <span className="text-lg font-mono">{match.scoreB}</span>
+                 </div>
+               </div>
+               <button onClick={() => deleteMatch(match.id)} className="ml-3 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <Trash2 size={16} />
+               </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 3. Current Match (Active) */}
+      <div className="flex gap-4 items-start">
+        <div className="flex flex-col items-center min-w-[32px]">
+          <div className="w-8 h-8 rounded-full bg-tennis-green flex items-center justify-center text-xs font-bold text-slate-900 shadow-[0_0_10px_rgba(212,225,87,0.5)]">
+            {finishedMatches.length + 1}
+          </div>
+        </div>
+
+        {activeMatch ? (
+          <div className="flex-1">
+            <div className="bg-tennis-court p-1 rounded-2xl shadow-xl">
+              <div className="bg-slate-900/90 backdrop-blur-sm p-4 rounded-xl border border-white/10 text-center">
+                <div className="mb-2 text-tennis-green font-mono text-xs tracking-widest uppercase">Currently Playing</div>
+                
+                <div className="grid grid-cols-3 items-center mb-6">
+                  <div className="flex flex-col items-center">
+                    <div className="text-3xl font-bold text-tennis-green font-mono mb-2">{scoreA}</div>
+                    <div className="text-sm font-bold text-white leading-tight">
+                      {getName(activeMatch.teamA.player1Id)}<br/>
+                      {getName(activeMatch.teamA.player2Id)}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                       <button onClick={() => setScoreA(Math.max(0, scoreA - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white">-</button>
+                       <button onClick={() => setScoreA(scoreA + 1)} className="w-8 h-8 rounded-full bg-slate-700 text-white">+</button>
+                    </div>
+                  </div>
+
+                  <div className="text-slate-500 font-bold text-lg">VS</div>
+
+                  <div className="flex flex-col items-center">
+                    <div className="text-3xl font-bold text-tennis-clay font-mono mb-2">{scoreB}</div>
+                    <div className="text-sm font-bold text-white leading-tight">
+                      {getName(activeMatch.teamB.player1Id)}<br/>
+                      {getName(activeMatch.teamB.player2Id)}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                       <button onClick={() => setScoreB(Math.max(0, scoreB - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white">-</button>
+                       <button onClick={() => setScoreB(scoreB + 1)} className="w-8 h-8 rounded-full bg-slate-700 text-white">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleFinish}
+                  className="w-full bg-white text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-200 active:scale-95 transition-transform"
+                >
+                  <CheckCircle size={20} /> Finish Set
+                </button>
+              </div>
+            </div>
+            
+            <div className="mt-2 text-center">
+               <span className="text-xs text-slate-500">Resting now: </span>
+               {players.filter(p => p.active && 
+                  !activeMatch.teamA.player1Id.includes(p.id) && !activeMatch.teamA.player2Id.includes(p.id) &&
+                  !activeMatch.teamB.player1Id.includes(p.id) && !activeMatch.teamB.player2Id.includes(p.id)
+               ).map(p => (
+                  <span key={p.id} className="inline-block bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded ml-1 border border-slate-700">
+                    {p.name}
+                  </span>
+               ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 py-10 text-center border-2 border-dashed border-slate-700 rounded-xl">
+             <Trophy className="mx-auto text-slate-600 mb-2" size={32} />
+             <p className="text-slate-400 text-sm mb-4">No match active.</p>
+             <button
+               onClick={() => createNextMatch()}
+               className="bg-tennis-green text-slate-900 font-bold py-2 px-6 rounded-full shadow-lg hover:scale-105 transition-transform"
+             >
+               Start Next Set
+             </button>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Queued / Planned Matches */}
+      {queuedMatches.length > 0 && (
+         <div className="space-y-3 opacity-80">
+            <h3 className="text-xs font-bold text-slate-500 uppercase px-2 mt-4 flex items-center gap-2">
+                <Clock size={12} /> Upcoming Queue
+            </h3>
+            {queuedMatches.map((match, idx) => (
+                <div key={match.id} className="flex gap-4 items-center">
+                    <div className="flex flex-col items-center min-w-[32px]">
+                    <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-mono text-slate-500 border border-slate-700 border-dashed">
+                        {finishedMatches.length + (activeMatch ? 2 : 1) + idx}
+                    </div>
+                    </div>
+                    <div className="flex-1 bg-slate-900 rounded-lg p-3 border border-slate-800 border-dashed relative group">
+                        <div className="flex justify-between items-center text-sm text-slate-300">
+                            <span className="flex-1">{getName(match.teamA.player1Id)} & {getName(match.teamA.player2Id)}</span>
+                            <span className="px-2 text-xs font-bold text-slate-600">VS</span>
+                            <span className="flex-1 text-right">{getName(match.teamB.player1Id)} & {getName(match.teamB.player2Id)}</span>
+                        </div>
+                         <button onClick={() => deleteMatch(match.id)} className="absolute -right-2 -top-2 bg-slate-800 p-1 rounded-full text-slate-600 hover:text-red-400 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Trash2 size={12} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+         </div>
+      )}
+
+      {/* 5. Session Planner */}
+      <div className="mt-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+            <PlusCircle size={16} className="text-tennis-green" /> Session Planner
+        </h3>
+        <p className="text-xs text-slate-400 mb-4">
+            Pre-generate a schedule where everyone plays everyone exactly once (Round Robin).
+        </p>
+        <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-700">
+                <span className="text-xs text-slate-500 font-bold uppercase">Total Sets:</span>
+                <input 
+                    type="number" 
+                    min={1} 
+                    max={20} 
+                    value={planCount}
+                    onChange={(e) => setPlanCount(parseInt(e.target.value) || 0)}
+                    className="w-12 bg-transparent text-white font-bold text-center focus:outline-none"
+                />
+            </div>
+            <button 
+                onClick={handleGenerate}
+                disabled={activeCount < 4}
+                className="flex-1 bg-slate-700 hover:bg-tennis-green hover:text-slate-900 text-white font-bold py-2 rounded-lg transition-colors disabled:opacity-50 text-sm flex justify-center items-center gap-2"
+            >
+                <PlayCircle size={16} /> Generate Schedule
+            </button>
+        </div>
+        {activeCount === 4 && <p className="text-[10px] text-tennis-green mt-2">* 4 Players: 3 Sets is perfect rotation.</p>}
+        {activeCount === 5 && <p className="text-[10px] text-tennis-green mt-2">* 5 Players: 5 Sets is perfect rotation.</p>}
+      </div>
+      
+    </div>
+  );
+};

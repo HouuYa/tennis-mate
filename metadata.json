@@ -1,0 +1,5 @@
+{
+  "name": "Tennis Mate",
+  "description": "A smart tennis match manager for clubs and groups. Features fair matchmaking algorithms, score tracking, and AI-powered performance analysis.",
+  "requestFramePermissions": []
+}

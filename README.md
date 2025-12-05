@@ -1,11 +1,43 @@
-<div align="center">
+# Tennis Mate (테니스 메이트)
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+모바일 환경에 최적화된 테니스 클럽 매치 관리 매니저입니다.
+공정한 로테이션 로직, 실시간 점수 기록, 그리고 AI 코칭 기능을 제공합니다.
 
-  <h1>Built with AI Studio</h2>
+## 주요 기능
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+1.  **공정한 로테이션 & 세션 계획**
+    *   **라운드 로빈 로직**: 4명 또는 5명의 플레이어 참여 시, 모두가 서로 한 번씩 파트너를 할 수 있는 완벽한 로테이션을 생성합니다.
+    *   **세션 플래너**: 총 세트 수를 지정(예: 5명일 때 5세트)하여 전체 일정을 한 번에 생성할 수 있습니다.
+    *   **수동 순서 변경**: Players 탭의 "Edit Order" 모드를 통해 드래그 앤 드롭 또는 화살표 버튼으로 로테이션 순서를 변경할 수 있습니다.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+2.  **통합 매치 스케줄**
+    *   **타임라인 뷰**: 경기 기록, 현재 진행 중인 경기, 그리고 대기 중인 경기 목록을 한눈에 볼 수 있습니다.
+    *   **매치 큐**: 미리 생성된 경기들이 대기열에 표시되어 다음 차례 플레이어들이 미리 준비할 수 있습니다.
 
-</div>
+3.  **실시간 피드 & 공유**
+    *   **실명 채팅**: 플레이어 목록에서 본인의 이름을 선택하거나 **직접 입력(Direct Input)** 하여 메시지를 보낼 수 있습니다.
+    *   **서버리스 공유**: 별도의 로그인 없이 URL 링크 하나로 다른 사람들에게 실시간 스코어보드를 공유할 수 있습니다.
+
+4.  **AI 코치 (Gemini API)**
+    *   매치 데이터를 분석하여 MVP와 최고의 파트너 조합을 추천해줍니다.
+
+## 기술 스택
+
+*   **프레임워크**: React 18
+*   **언어**: TypeScript
+*   **스타일링**: Tailwind CSS
+*   **상태 관리**: Context API + LocalStorage
+*   **AI**: Google Gemini API (@google/genai)
+
+## 실행 방법
+
+백엔드 서버가 필요하지 않습니다.
+
+1.  `npm install`
+2.  `npm start`
+3.  `http://localhost:3000` 접속
+
+## 사용 팁
+- **세션 계획**: Match 탭에서 세트 수를 입력(예: 4명은 3세트)하고 "Generate Schedule"을 누르면 전체 대진표가 생성됩니다.
+- **순서 변경**: Players 탭에서 "Edit Order"를 누른 뒤, 우측의 그립 아이콘을 손가락으로 드래그하거나 화살표를 눌러 순서를 바꿀 수 있습니다 (아이폰 사파리 지원).
+- **공유하기**: Stats 탭 -> "Copy Link"를 클릭하여 현재 상태를 카카오톡방 등에 공유하세요.
