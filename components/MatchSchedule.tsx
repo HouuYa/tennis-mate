@@ -239,10 +239,16 @@ export const MatchSchedule: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex-1 bg-slate-900 rounded-lg p-3 border border-slate-800 border-dashed relative group">
-                        <div className="flex justify-between items-center text-sm text-slate-300">
-                            <span className="flex-1">{getNameWithNumber(match.teamA.player1Id)} & {getNameWithNumber(match.teamA.player2Id)}</span>
-                            <span className="px-2 text-xs font-bold text-slate-600">VS</span>
-                            <span className="flex-1 text-right">{getNameWithNumber(match.teamB.player1Id)} & {getNameWithNumber(match.teamB.player2Id)}</span>
+                        <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center text-sm">
+                            <div className="text-slate-300">
+                              <div>{getNameWithNumber(match.teamA.player1Id)}</div>
+                              <div>{getNameWithNumber(match.teamA.player2Id)}</div>
+                            </div>
+                            <span className="text-xs font-bold text-slate-600">VS</span>
+                            <div className="text-slate-300 text-right">
+                              <div>{getNameWithNumber(match.teamB.player1Id)}</div>
+                              <div>{getNameWithNumber(match.teamB.player2Id)}</div>
+                            </div>
                         </div>
                         {restingNames.length > 0 && (
                           <div className="mt-2 text-xs text-slate-500">
