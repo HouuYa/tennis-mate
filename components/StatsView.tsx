@@ -71,6 +71,11 @@ export const StatsView: React.FC = () => {
     }
   };
 
+  const handleResetConfirm = () => {
+    resetData();
+    setShowResetConfirm(false);
+  };
+
   return (
     <div className="pb-20 space-y-6">
       {/* AI Coach Section */}
@@ -204,7 +209,7 @@ export const StatsView: React.FC = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => { resetData(); setShowResetConfirm(false); }}
+                  onClick={handleResetConfirm}
                   className="flex-1 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500 text-sm"
                 >
                   Confirm Reset
