@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { generateAIAnalysis } from '../services/geminiService';
-import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText } from 'lucide-react';
+import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2 } from 'lucide-react';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData } = useApp();
@@ -9,6 +9,7 @@ export const StatsView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [importText, setImportText] = useState('');
   const [showImport, setShowImport] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const sortedPlayers = [...players].sort((a, b) => {
     // Sort by Wins desc, then Win Rate desc
@@ -169,7 +170,7 @@ export const StatsView: React.FC = () => {
         
         {showImport && (
           <div className="mt-4 p-3 bg-slate-900 rounded-lg animate-in fade-in slide-in-from-top-2">
-             <textarea 
+             <textarea
                className="w-full bg-slate-800 text-xs p-2 rounded border border-slate-700 text-slate-300 h-24 mb-2"
                placeholder="Paste JSON data here..."
                value={importText}
@@ -181,9 +182,37 @@ export const StatsView: React.FC = () => {
           </div>
         )}
 
-        <button onClick={resetData} className="w-full mt-6 text-red-900/50 text-xs py-2 hover:text-red-500 transition-colors">
-          Reset All Data (Clear Cache)
-        </button>
+        {/* Reset Button */}
+        <div className="mt-6">
+          {!showResetConfirm ? (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 bg-red-900/30 text-red-400 py-3 rounded-lg text-sm font-bold border border-red-900/50 hover:bg-red-900/50 transition-all"
+            >
+              <Trash2 size={16} /> Reset All Data
+            </button>
+          ) : (
+            <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 animate-in fade-in slide-in-from-top-2">
+              <p className="text-red-300 text-sm text-center mb-4">
+                ⚠️ This will delete ALL players, matches, and statistics. This action cannot be undone!
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 py-2 bg-slate-700 text-white font-bold rounded-lg hover:bg-slate-600 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { resetData(); setShowResetConfirm(false); }}
+                  className="flex-1 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500 text-sm"
+                >
+                  Confirm Reset
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

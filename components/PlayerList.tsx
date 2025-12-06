@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle } from 'lucide-react';
+import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw } from 'lucide-react';
 import { Tab } from '../types';
 
 interface Props {
@@ -8,9 +8,10 @@ interface Props {
 }
 
 export const PlayerList: React.FC<Props> = ({ setTab }) => {
-  const { players, addPlayer, togglePlayerActive, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule } = useApp();
+  const { players, matches, addPlayer, togglePlayerActive, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule, resetData } = useApp();
   const [newName, setNewName] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Refs for Drag and Drop
   const dragItem = useRef<number | null>(null);
@@ -45,11 +46,23 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
       alert("Need at least 4 active players to generate a schedule.");
       return;
     }
-    
-    const sets = activeCount === 4 ? 3 : activeCount;
-    generateSchedule(sets);
+
+    // Check if there are already unfinished matches (schedule exists)
+    const hasExistingSchedule = matches.some(m => !m.isFinished);
+
+    if (!hasExistingSchedule) {
+      // Only generate schedule if none exists
+      const sets = activeCount === 4 ? 3 : activeCount;
+      generateSchedule(sets);
+    }
+
     setIsEditMode(false);
     setTab(Tab.MATCHES);
+  };
+
+  const handleReset = () => {
+    resetData();
+    setShowResetConfirm(false);
   };
 
   // --- Desktop Drag & Drop Handlers ---
@@ -252,6 +265,38 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
             Active Players: {players.filter(p => p.active).length} / {players.length}
             <br/>
             <span className="text-xs opacity-70">Rotation proceeds in reverse order</span>
+          </div>
+
+          {/* Reset Button */}
+          <div className="mt-4">
+            {!showResetConfirm ? (
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="w-full py-3 bg-red-900/30 text-red-400 font-bold rounded-xl border border-red-900/50 hover:bg-red-900/50 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <RotateCcw size={18} /> Reset All Data
+              </button>
+            ) : (
+              <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                <p className="text-red-300 text-sm text-center mb-4">
+                  ⚠️ This will delete ALL players, matches, and statistics. This action cannot be undone!
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowResetConfirm(false)}
+                    className="flex-1 py-2 bg-slate-700 text-white font-bold rounded-lg hover:bg-slate-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="flex-1 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500"
+                  >
+                    Confirm Reset
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
