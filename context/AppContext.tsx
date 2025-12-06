@@ -334,12 +334,10 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
   };
 
   const resetData = () => {
-    if(confirm("Are you sure? This will delete all history.")) {
-      localStorage.removeItem(APP_STORAGE_KEY);
-      setMatches([]);
-      setFeed([]);
-      initializeDefaults();
-    }
+    localStorage.removeItem(APP_STORAGE_KEY);
+    setMatches([]);
+    setFeed([]);
+    initializeDefaults();
   };
 
   const exportData = () => JSON.stringify({ players, matches, feed });

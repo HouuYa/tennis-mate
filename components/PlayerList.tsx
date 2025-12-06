@@ -54,6 +54,8 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
       // Only generate schedule if none exists
       const sets = activeCount === 4 ? 3 : activeCount;
       generateSchedule(sets);
+    } else {
+      alert("Schedule already exists. Going to Match tab. Use Session Planner there to add more sets.");
     }
 
     setIsEditMode(false);
