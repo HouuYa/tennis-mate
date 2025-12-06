@@ -67,14 +67,16 @@ export const generateSessionSchedule = (
       [[0,3], [1,2]]  // A+D vs B+C
     ],
     5: [
-      // Game 1: P1(0), P2(1) vs P3(2), P4(3) (Rest P5(4))
-      [[0,1], [2,3]], 
-      // Game 2: P1(0), P3(2) vs P2(1), P5(4) (Rest P4(3))
-      [[0,2], [1,4]], 
-      // Game 3: P1(0), P4(3) vs P3(2), P5(4) (Rest P2(1)) - *Modified as per user request*
-      [[0,3], [2,4]], 
-      // Game 4: P2(1), P3(2) vs P4(3), P5(4) (Rest P1(0))
-      [[1,2], [3,4]] 
+      // Game 1: P1, P2 vs P3, P4 (P5 휴식)
+      [[0,1], [2,3]],
+      // Game 2: P1, P3 vs P2, P5 (P4 휴식)
+      [[0,2], [1,4]],
+      // Game 3: P1, P5 vs P2, P4 (P3 휴식)
+      [[0,4], [1,3]],
+      // Game 4: P1, P4 vs P3, P5 (P2 휴식)
+      [[0,3], [2,4]],
+      // Game 5: P2, P3 vs P4, P5 (P1 휴식)
+      [[1,2], [3,4]]
     ]
   };
 
