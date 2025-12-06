@@ -27,27 +27,31 @@ export const MatchSchedule: React.FC = () => {
     else setPlanCount(1);
   }, [activeCount]);
 
-  // Helper to get name with player number (e.g. "P1. John")
+  // Helper to get name with player number (e.g. "P1. John") - optimized
   const getNameWithNumber = (id: string) => {
     const playerIndex = activePlayers.findIndex(p => p.id === id);
-    const player = players.find(p => p.id === id);
     if (playerIndex >= 0) {
-      return `P${playerIndex + 1}. ${player?.name || 'Unknown'}`;
+      return `P${playerIndex + 1}. ${activePlayers[playerIndex].name}`;
     }
+    // Player might not be active but still part of a past match
+    const player = players.find(p => p.id === id);
     return player?.name || 'Unknown';
   };
 
-  // Helper to get resting player for a match
+  // Helper to get resting player for a match - optimized O(n)
   const getRestingPlayer = (match: Match) => {
-    const playingIds = [
+    const playingIds = new Set([
       match.teamA.player1Id, match.teamA.player2Id,
       match.teamB.player1Id, match.teamB.player2Id
-    ];
-    const resting = activePlayers.filter(p => !playingIds.includes(p.id));
-    return resting.map(p => {
-      const idx = activePlayers.findIndex(ap => ap.id === p.id);
-      return `P${idx + 1}. ${p.name}`;
-    });
+    ]);
+    const restingPlayers: string[] = [];
+    for (let i = 0; i < activePlayers.length; i++) {
+      const player = activePlayers[i];
+      if (!playingIds.has(player.id)) {
+        restingPlayers.push(`P${i + 1}. ${player.name}`);
+      }
+    }
+    return restingPlayers;
   };
 
   // Start editing a finished match
@@ -198,8 +202,8 @@ export const MatchSchedule: React.FC = () => {
             
             <div className="mt-2 text-center">
                <span className="text-xs text-slate-500">Resting now: </span>
-               {getRestingPlayer(activeMatch).map((name, i) => (
-                  <span key={i} className="inline-block bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded ml-1 border border-slate-700">
+               {getRestingPlayer(activeMatch).map((name) => (
+                  <span key={name} className="inline-block bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded ml-1 border border-slate-700">
                     {name}
                   </span>
                ))}
