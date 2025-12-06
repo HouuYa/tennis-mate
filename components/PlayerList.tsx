@@ -46,7 +46,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
       return;
     }
     
-    const sets = activeCount === 4 ? 3 : activeCount === 5 ? 4 : activeCount;
+    const sets = activeCount === 4 ? 3 : activeCount;
     generateSchedule(sets);
     setIsEditMode(false);
     setTab(Tab.MATCHES);
@@ -138,7 +138,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
           }`}
         >
           {isEditMode ? <Check size={14} /> : <GripVertical size={14} />}
-          {isEditMode ? 'Done' : 'Edit Order'}
+          {isEditMode ? 'Done' : 'Edit Order or Name'}
         </button>
       </div>
       
