@@ -12,10 +12,12 @@ interface AppContextType {
   addPlayer: (name: string) => void;
   updatePlayerName: (id: string, name: string) => void;
   reorderPlayers: (fromIndex: number, toIndex: number) => void;
+  shufflePlayers: () => void;
   togglePlayerActive: (id: string) => void;
   createNextMatch: () => boolean;
   generateSchedule: (count: number) => void;
   finishMatch: (matchId: string, scoreA: number, scoreB: number) => void;
+  updateMatchScore: (matchId: string, scoreA: number, scoreB: number) => void;
   deleteMatch: (matchId: string) => void;
   postAnnouncement: (text: string, author?: string) => void;
   resetData: () => void;
@@ -123,6 +125,18 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       result.splice(toIndex, 0, removed);
       return result;
     });
+  };
+
+  const shufflePlayers = () => {
+    setPlayers(prev => {
+      const shuffled = [...prev];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    });
+    addLog('SYSTEM', 'Player order has been shuffled randomly.');
   };
 
   const togglePlayerActive = (id: string) => {
@@ -252,6 +266,64 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     });
   };
 
+  const updateMatchScore = (matchId: string, newScoreA: number, newScoreB: number) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match || !match.isFinished) {
+      // Only allow editing finished matches
+      setMatches(prev => prev.map(m =>
+        m.id === matchId ? { ...m, scoreA: newScoreA, scoreB: newScoreB } : m
+      ));
+      return;
+    }
+
+    const oldScoreA = match.scoreA;
+    const oldScoreB = match.scoreB;
+
+    // Update match scores
+    setMatches(prev => prev.map(m =>
+      m.id === matchId ? { ...m, scoreA: newScoreA, scoreB: newScoreB } : m
+    ));
+
+    // Recalculate player stats: undo old scores, apply new scores
+    setPlayers(prevPlayers => {
+      return prevPlayers.map(p => {
+        const inTeamA = p.id === match.teamA.player1Id || p.id === match.teamA.player2Id;
+        const inTeamB = p.id === match.teamB.player1Id || p.id === match.teamB.player2Id;
+
+        if (!inTeamA && !inTeamB) return p;
+
+        // Calculate old result
+        const oldIsDraw = oldScoreA === oldScoreB;
+        const oldIsWinner = (inTeamA && oldScoreA > oldScoreB) || (inTeamB && oldScoreB > oldScoreA);
+        const oldIsLoser = (inTeamA && oldScoreB > oldScoreA) || (inTeamB && oldScoreA > oldScoreB);
+        const oldMyGames = inTeamA ? oldScoreA : oldScoreB;
+        const oldEnemyGames = inTeamA ? oldScoreB : oldScoreA;
+
+        // Calculate new result
+        const newIsDraw = newScoreA === newScoreB;
+        const newIsWinner = (inTeamA && newScoreA > newScoreB) || (inTeamB && newScoreB > newScoreA);
+        const newIsLoser = (inTeamA && newScoreB > newScoreA) || (inTeamB && newScoreA > newScoreB);
+        const newMyGames = inTeamA ? newScoreA : newScoreB;
+        const newEnemyGames = inTeamA ? newScoreB : newScoreA;
+
+        return {
+          ...p,
+          stats: {
+            ...p.stats,
+            // Undo old, apply new (matchesPlayed stays the same)
+            wins: p.stats.wins - (oldIsWinner ? 1 : 0) + (newIsWinner ? 1 : 0),
+            losses: p.stats.losses - (oldIsLoser ? 1 : 0) + (newIsLoser ? 1 : 0),
+            draws: (p.stats.draws || 0) - (oldIsDraw ? 1 : 0) + (newIsDraw ? 1 : 0),
+            gamesWon: p.stats.gamesWon - oldMyGames + newMyGames,
+            gamesLost: p.stats.gamesLost - oldEnemyGames + newEnemyGames,
+          }
+        };
+      });
+    });
+
+    addLog('SYSTEM', `Match score updated to ${newScoreA}:${newScoreB}.`);
+  };
+
   const deleteMatch = (matchId: string) => {
     setMatches(prev => prev.filter(m => m.id !== matchId));
     addLog('SYSTEM', 'A match record was deleted.');
@@ -305,10 +377,12 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       addPlayer,
       updatePlayerName,
       reorderPlayers,
+      shufflePlayers,
       togglePlayerActive,
       createNextMatch,
       generateSchedule,
       finishMatch,
+      updateMatchScore,
       deleteMatch,
       postAnnouncement,
       resetData,

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle } from 'lucide-react';
+import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle } from 'lucide-react';
 import { Tab } from '../types';
 
 interface Props {
@@ -8,7 +8,7 @@ interface Props {
 }
 
 export const PlayerList: React.FC<Props> = ({ setTab }) => {
-  const { players, addPlayer, togglePlayerActive, reorderPlayers, updatePlayerName, generateSchedule } = useApp();
+  const { players, addPlayer, togglePlayerActive, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule } = useApp();
   const [newName, setNewName] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   
@@ -229,14 +229,21 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
       
       {!isEditMode && (
         <>
-          <div className="mt-6 pt-4 border-t border-slate-800">
-            <button 
+          <div className="mt-6 pt-4 border-t border-slate-800 space-y-3">
+            <button
+              onClick={shufflePlayers}
+              disabled={players.length < 2}
+              className="w-full py-3 bg-slate-700 text-white font-bold rounded-xl hover:bg-slate-600 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Shuffle size={20} /> Shuffle Order
+            </button>
+            <button
               onClick={handleConfirmAndSchedule}
               className="w-full py-4 bg-tennis-green text-slate-900 font-black text-lg rounded-xl shadow-lg hover:bg-[#c0ce4e] active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <PlayCircle size={24} /> Confirm Roster & Schedule
             </button>
-            <p className="text-center text-xs text-slate-500 mt-2">
+            <p className="text-center text-xs text-slate-500">
               Generates optimal sets based on current list order
             </p>
           </div>

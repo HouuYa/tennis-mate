@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle } from 'lucide-react';
+import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle, Edit3 } from 'lucide-react';
 import { generateNextMatch } from '../utils/matchmaking';
+import { Match } from '../types';
 
 export const MatchSchedule: React.FC = () => {
-  const { matches, activeMatch, players, finishMatch, createNextMatch, generateSchedule, deleteMatch } = useApp();
+  const { matches, activeMatch, players, finishMatch, createNextMatch, generateSchedule, deleteMatch, updateMatchScore } = useApp();
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [planCount, setPlanCount] = useState(0);
+  const [editingMatch, setEditingMatch] = useState<string | null>(null);
+  const [editScoreA, setEditScoreA] = useState(0);
+  const [editScoreB, setEditScoreB] = useState(0);
 
   const finishedMatches = matches.filter(m => m.isFinished).sort((a, b) => a.timestamp - b.timestamp);
   // Queued matches are unfinished matches excluding the active one (if any)
   const queuedMatches = matches.filter(m => !m.isFinished && m.id !== activeMatch?.id);
-  
-  const activeCount = players.filter(p => p.active).length;
+
+  const activePlayers = players.filter(p => p.active);
+  const activeCount = activePlayers.length;
 
   // Set default plan count based on active players
   useEffect(() => {
@@ -22,8 +27,47 @@ export const MatchSchedule: React.FC = () => {
     else setPlanCount(1);
   }, [activeCount]);
 
-  // Helper to get name
-  const getName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
+  // Helper to get name with player number (e.g. "P1. John") - optimized
+  const getNameWithNumber = (id: string) => {
+    const playerIndex = activePlayers.findIndex(p => p.id === id);
+    if (playerIndex >= 0) {
+      return `P${playerIndex + 1}. ${activePlayers[playerIndex].name}`;
+    }
+    // Player might not be active but still part of a past match
+    const player = players.find(p => p.id === id);
+    return player?.name || 'Unknown';
+  };
+
+  // Helper to get resting player for a match - optimized O(n)
+  const getRestingPlayer = (match: Match) => {
+    const playingIds = new Set([
+      match.teamA.player1Id, match.teamA.player2Id,
+      match.teamB.player1Id, match.teamB.player2Id
+    ]);
+    const restingPlayers: string[] = [];
+    for (let i = 0; i < activePlayers.length; i++) {
+      const player = activePlayers[i];
+      if (!playingIds.has(player.id)) {
+        restingPlayers.push(`P${i + 1}. ${player.name}`);
+      }
+    }
+    return restingPlayers;
+  };
+
+  // Start editing a finished match
+  const startEditMatch = (match: Match) => {
+    setEditingMatch(match.id);
+    setEditScoreA(match.scoreA);
+    setEditScoreB(match.scoreB);
+  };
+
+  // Save edited match
+  const saveEditMatch = () => {
+    if (editingMatch) {
+      updateMatchScore(editingMatch, editScoreA, editScoreB);
+      setEditingMatch(null);
+    }
+  };
 
   const handleFinish = () => {
     if (activeMatch) {
@@ -60,20 +104,46 @@ export const MatchSchedule: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 bg-slate-800/80 rounded-lg p-3 border border-slate-700 flex justify-between items-center group">
-               <div className="flex flex-col gap-1 w-full">
-                 <div className={`flex justify-between items-center ${match.scoreA > match.scoreB ? 'text-white font-bold' : 'text-slate-400'}`}>
-                    <span className="text-sm">{getName(match.teamA.player1Id)} & {getName(match.teamA.player2Id)}</span>
-                    <span className="text-lg font-mono">{match.scoreA}</span>
+            <div className="flex-1 bg-slate-800/80 rounded-lg p-3 border border-slate-700 group">
+               {editingMatch === match.id ? (
+                 // Edit Mode
+                 <div className="flex flex-col gap-2">
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm text-white">{getNameWithNumber(match.teamA.player1Id)} & {getNameWithNumber(match.teamA.player2Id)}</span>
+                     <input type="number" value={editScoreA} onChange={e => setEditScoreA(parseInt(e.target.value) || 0)} className="w-12 bg-slate-900 text-white text-center rounded border border-slate-600" />
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm text-white">{getNameWithNumber(match.teamB.player1Id)} & {getNameWithNumber(match.teamB.player2Id)}</span>
+                     <input type="number" value={editScoreB} onChange={e => setEditScoreB(parseInt(e.target.value) || 0)} className="w-12 bg-slate-900 text-white text-center rounded border border-slate-600" />
+                   </div>
+                   <div className="flex gap-2 mt-1">
+                     <button onClick={saveEditMatch} className="flex-1 text-xs bg-tennis-green text-slate-900 py-1 rounded font-bold">Save</button>
+                     <button onClick={() => setEditingMatch(null)} className="flex-1 text-xs bg-slate-700 text-white py-1 rounded">Cancel</button>
+                   </div>
                  </div>
-                 <div className={`flex justify-between items-center ${match.scoreB > match.scoreA ? 'text-white font-bold' : 'text-slate-400'}`}>
-                    <span className="text-sm">{getName(match.teamB.player1Id)} & {getName(match.teamB.player2Id)}</span>
-                    <span className="text-lg font-mono">{match.scoreB}</span>
+               ) : (
+                 // View Mode
+                 <div className="flex justify-between items-center">
+                   <div className="flex flex-col gap-1 flex-1">
+                     <div className={`flex justify-between items-center ${match.scoreA > match.scoreB ? 'text-white font-bold' : 'text-slate-400'}`}>
+                        <span className="text-sm">{getNameWithNumber(match.teamA.player1Id)} & {getNameWithNumber(match.teamA.player2Id)}</span>
+                        <span className="text-lg font-mono">{match.scoreA}</span>
+                     </div>
+                     <div className={`flex justify-between items-center ${match.scoreB > match.scoreA ? 'text-white font-bold' : 'text-slate-400'}`}>
+                        <span className="text-sm">{getNameWithNumber(match.teamB.player1Id)} & {getNameWithNumber(match.teamB.player2Id)}</span>
+                        <span className="text-lg font-mono">{match.scoreB}</span>
+                     </div>
+                   </div>
+                   <div className="flex flex-col gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <button onClick={() => startEditMatch(match)} className="text-slate-500 hover:text-tennis-green p-1">
+                       <Edit3 size={14} />
+                     </button>
+                     <button onClick={() => deleteMatch(match.id)} className="text-slate-500 hover:text-red-400 p-1">
+                       <Trash2 size={14} />
+                     </button>
+                   </div>
                  </div>
-               </div>
-               <button onClick={() => deleteMatch(match.id)} className="ml-3 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <Trash2 size={16} />
-               </button>
+               )}
             </div>
           </div>
         ))}
@@ -97,8 +167,8 @@ export const MatchSchedule: React.FC = () => {
                   <div className="flex flex-col items-center">
                     <div className="text-3xl font-bold text-tennis-green font-mono mb-2">{scoreA}</div>
                     <div className="text-sm font-bold text-white leading-tight">
-                      {getName(activeMatch.teamA.player1Id)}<br/>
-                      {getName(activeMatch.teamA.player2Id)}
+                      {getNameWithNumber(activeMatch.teamA.player1Id)}<br/>
+                      {getNameWithNumber(activeMatch.teamA.player2Id)}
                     </div>
                     <div className="flex gap-2 mt-2">
                        <button onClick={() => setScoreA(Math.max(0, scoreA - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white">-</button>
@@ -111,8 +181,8 @@ export const MatchSchedule: React.FC = () => {
                   <div className="flex flex-col items-center">
                     <div className="text-3xl font-bold text-tennis-clay font-mono mb-2">{scoreB}</div>
                     <div className="text-sm font-bold text-white leading-tight">
-                      {getName(activeMatch.teamB.player1Id)}<br/>
-                      {getName(activeMatch.teamB.player2Id)}
+                      {getNameWithNumber(activeMatch.teamB.player1Id)}<br/>
+                      {getNameWithNumber(activeMatch.teamB.player2Id)}
                     </div>
                     <div className="flex gap-2 mt-2">
                        <button onClick={() => setScoreB(Math.max(0, scoreB - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white">-</button>
@@ -132,12 +202,9 @@ export const MatchSchedule: React.FC = () => {
             
             <div className="mt-2 text-center">
                <span className="text-xs text-slate-500">Resting now: </span>
-               {players.filter(p => p.active && 
-                  !activeMatch.teamA.player1Id.includes(p.id) && !activeMatch.teamA.player2Id.includes(p.id) &&
-                  !activeMatch.teamB.player1Id.includes(p.id) && !activeMatch.teamB.player2Id.includes(p.id)
-               ).map(p => (
-                  <span key={p.id} className="inline-block bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded ml-1 border border-slate-700">
-                    {p.name}
+               {getRestingPlayer(activeMatch).map((name) => (
+                  <span key={name} className="inline-block bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded ml-1 border border-slate-700">
+                    {name}
                   </span>
                ))}
             </div>
@@ -162,25 +229,33 @@ export const MatchSchedule: React.FC = () => {
             <h3 className="text-xs font-bold text-slate-500 uppercase px-2 mt-4 flex items-center gap-2">
                 <Clock size={12} /> Upcoming Queue
             </h3>
-            {queuedMatches.map((match, idx) => (
-                <div key={match.id} className="flex gap-4 items-center">
+            {queuedMatches.map((match, idx) => {
+                const restingNames = getRestingPlayer(match);
+                return (
+                <div key={match.id} className="flex gap-4 items-start">
                     <div className="flex flex-col items-center min-w-[32px]">
-                    <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-mono text-slate-500 border border-slate-700 border-dashed">
-                        {finishedMatches.length + (activeMatch ? 2 : 1) + idx}
-                    </div>
+                      <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-mono text-slate-500 border border-slate-700 border-dashed">
+                          {finishedMatches.length + (activeMatch ? 2 : 1) + idx}
+                      </div>
                     </div>
                     <div className="flex-1 bg-slate-900 rounded-lg p-3 border border-slate-800 border-dashed relative group">
                         <div className="flex justify-between items-center text-sm text-slate-300">
-                            <span className="flex-1">{getName(match.teamA.player1Id)} & {getName(match.teamA.player2Id)}</span>
+                            <span className="flex-1">{getNameWithNumber(match.teamA.player1Id)} & {getNameWithNumber(match.teamA.player2Id)}</span>
                             <span className="px-2 text-xs font-bold text-slate-600">VS</span>
-                            <span className="flex-1 text-right">{getName(match.teamB.player1Id)} & {getName(match.teamB.player2Id)}</span>
+                            <span className="flex-1 text-right">{getNameWithNumber(match.teamB.player1Id)} & {getNameWithNumber(match.teamB.player2Id)}</span>
                         </div>
-                         <button onClick={() => deleteMatch(match.id)} className="absolute -right-2 -top-2 bg-slate-800 p-1 rounded-full text-slate-600 hover:text-red-400 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {restingNames.length > 0 && (
+                          <div className="mt-2 text-xs text-slate-500">
+                            Rest: {restingNames.join(', ')}
+                          </div>
+                        )}
+                        <button onClick={() => deleteMatch(match.id)} className="absolute -right-2 -top-2 bg-slate-800 p-1 rounded-full text-slate-600 hover:text-red-400 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 size={12} />
                         </button>
                     </div>
                 </div>
-            ))}
+                );
+            })}
          </div>
       )}
 
@@ -213,7 +288,8 @@ export const MatchSchedule: React.FC = () => {
             </button>
         </div>
         {activeCount === 4 && <p className="text-[10px] text-tennis-green mt-2">* 4 Players: 3 Sets is perfect rotation.</p>}
-        {activeCount === 5 && <p className="text-[10px] text-tennis-green mt-2">* 5 Players: 4 Sets (Rest P5, P4, P2, P1).</p>}
+        {activeCount === 5 && <p className="text-[10px] text-tennis-green mt-2">* 5 Players: 5 Sets (Rest: P5→P4→P3→P2→P1)</p>}
+        {activeCount >= 6 && <p className="text-[10px] text-tennis-green mt-2">* {activeCount} Players: {activeCount} Sets (Rest: P{activeCount}→...→P1)</p>}
       </div>
       
     </div>
