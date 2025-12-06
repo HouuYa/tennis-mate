@@ -5,7 +5,7 @@ import { generateNextMatch } from '../utils/matchmaking';
 
 export const MatchSchedule: React.FC = () => {
   const { matches, activeMatch, players, finishMatch, createNextMatch, generateSchedule, deleteMatch } = useApp();
-  const [scoreA, setScoreA] = useState(6);
+  const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [planCount, setPlanCount] = useState(0);
 
@@ -28,7 +28,7 @@ export const MatchSchedule: React.FC = () => {
   const handleFinish = () => {
     if (activeMatch) {
       finishMatch(activeMatch.id, scoreA, scoreB);
-      setScoreA(6);
+      setScoreA(0);
       setScoreB(0);
     }
   };
@@ -213,7 +213,7 @@ export const MatchSchedule: React.FC = () => {
             </button>
         </div>
         {activeCount === 4 && <p className="text-[10px] text-tennis-green mt-2">* 4 Players: 3 Sets is perfect rotation.</p>}
-        {activeCount === 5 && <p className="text-[10px] text-tennis-green mt-2">* 5 Players: 5 Sets is perfect rotation.</p>}
+        {activeCount === 5 && <p className="text-[10px] text-tennis-green mt-2">* 5 Players: 4 Sets (Rest P5, P4, P2, P1).</p>}
       </div>
       
     </div>

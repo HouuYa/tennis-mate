@@ -6,6 +6,7 @@ export interface Player {
     matchesPlayed: number;
     wins: number;
     losses: number;
+    draws: number; // Added for matches that end in a tie
     gamesWon: number;
     gamesLost: number;
     restCount: number; // How many times they sat out

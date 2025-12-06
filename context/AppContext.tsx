@@ -10,6 +10,7 @@ interface AppContextType {
   feed: FeedMessage[];
   activeMatch: Match | null;
   addPlayer: (name: string) => void;
+  updatePlayerName: (id: string, name: string) => void;
   reorderPlayers: (fromIndex: number, toIndex: number) => void;
   togglePlayerActive: (id: string) => void;
   createNextMatch: () => boolean;
@@ -81,7 +82,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       id: uuidv4(),
       name,
       active: true,
-      stats: { matchesPlayed: 0, wins: 0, losses: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
+      stats: { matchesPlayed: 0, wins: 0, losses: 0, draws: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
     }));
     setPlayers(defaults);
     addLog('SYSTEM', 'Welcome to Tennis Mate! Add players and start a match.');
@@ -105,10 +106,14 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       id: uuidv4(),
       name,
       active: true,
-      stats: { matchesPlayed: 0, wins: 0, losses: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
+      stats: { matchesPlayed: 0, wins: 0, losses: 0, draws: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
     };
     setPlayers(prev => [...prev, newPlayer]);
     addLog('SYSTEM', `${name} has joined the club.`);
+  };
+
+  const updatePlayerName = (id: string, name: string) => {
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, name } : p));
   };
 
   const reorderPlayers = (fromIndex: number, toIndex: number) => {
@@ -196,8 +201,16 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
         const p3 = players.find(p => p.id === match.teamB.player1Id)?.name;
         const p4 = players.find(p => p.id === match.teamB.player2Id)?.name;
         
-        const winners = scoreA > scoreB ? `${p1} & ${p2}` : `${p3} & ${p4}`;
-        addLog('MATCH_END', `Match Ended: ${scoreA}:${scoreB}. Winners: ${winners}`);
+        let resultMsg = "";
+        if (scoreA > scoreB) {
+            resultMsg = `Winners: ${p1} & ${p2}`;
+        } else if (scoreB > scoreA) {
+            resultMsg = `Winners: ${p3} & ${p4}`;
+        } else {
+            resultMsg = `Result: Draw`;
+        }
+
+        addLog('MATCH_END', `Match Ended: ${scoreA}:${scoreB}. ${resultMsg}`);
     }
 
     setPlayers(prevPlayers => {
@@ -215,7 +228,11 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
             return p;
         }
 
+        // Logic for Win/Loss/Draw
+        const isDraw = scoreA === scoreB;
         const isWinner = (inTeamA && scoreA > scoreB) || (inTeamB && scoreB > scoreA);
+        const isLoser = (inTeamA && scoreB > scoreA) || (inTeamB && scoreA > scoreB);
+        
         const myGames = inTeamA ? scoreA : scoreB;
         const enemyGames = inTeamA ? scoreB : scoreA;
 
@@ -225,7 +242,8 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
             ...p.stats,
             matchesPlayed: p.stats.matchesPlayed + 1,
             wins: p.stats.wins + (isWinner ? 1 : 0),
-            losses: p.stats.losses + (isWinner ? 0 : 1),
+            losses: p.stats.losses + (isLoser ? 1 : 0),
+            draws: (p.stats.draws || 0) + (isDraw ? 1 : 0),
             gamesWon: p.stats.gamesWon + myGames,
             gamesLost: p.stats.gamesLost + enemyGames,
           }
@@ -285,6 +303,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       feed,
       activeMatch,
       addPlayer,
+      updatePlayerName,
       reorderPlayers,
       togglePlayerActive,
       createNextMatch,

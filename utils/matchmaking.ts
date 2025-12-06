@@ -67,11 +67,14 @@ export const generateSessionSchedule = (
       [[0,3], [1,2]]  // A+D vs B+C
     ],
     5: [
-      [[0,1], [2,3]], // Rest 4 (E) -> AB vs CD
-      [[0,4], [1,2]], // Rest 3 (D) -> AE vs BC
-      [[0,3], [1,4]], // Rest 2 (C) -> AD vs BE
-      [[0,2], [3,4]], // Rest 1 (B) -> AC vs DE
-      [[1,3], [2,4]]  // Rest 0 (A) -> BD vs CE
+      // Game 1: P1(0), P2(1) vs P3(2), P4(3) (Rest P5(4))
+      [[0,1], [2,3]], 
+      // Game 2: P1(0), P3(2) vs P2(1), P5(4) (Rest P4(3))
+      [[0,2], [1,4]], 
+      // Game 3: P1(0), P4(3) vs P3(2), P5(4) (Rest P2(1)) - *Modified as per user request*
+      [[0,3], [2,4]], 
+      // Game 4: P2(1), P3(2) vs P4(3), P5(4) (Rest P1(0))
+      [[1,2], [3,4]] 
     ]
   };
 
@@ -81,7 +84,7 @@ export const generateSessionSchedule = (
     // Check if we can use a preset (only if starting fresh or following strict pattern)
     // To keep it simple, if totalActive is 4 or 5, we use the preset modulo index
     if ((totalActive === 4 || totalActive === 5) && PRESETS[totalActive]) {
-        const roundIndex = currentMatchIndex % PRESETS[totalActive].length;
+        const roundIndex = i % PRESETS[totalActive].length; // Use 'i' to follow sequence from start of generation
         const config = PRESETS[totalActive][roundIndex];
         
         // Map indices back to player IDs
@@ -100,10 +103,6 @@ export const generateSessionSchedule = (
         });
     } else {
         // Dynamic generation for other counts or overflow
-        // We pass a simulated history including the matches we just planned
-        const simulatedHistory = [...existingMatches]; // We can't easily simulate match objects here without IDs
-        // So we just use the stateless pairing logic for now based on the index
-        
         const next = generateNextMatch(allPlayers, existingMatches, currentMatchIndex);
         if (next) schedule.push(next);
     }

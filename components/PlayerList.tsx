@@ -1,9 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check } from 'lucide-react';
+import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle } from 'lucide-react';
+import { Tab } from '../types';
 
-export const PlayerList: React.FC = () => {
-  const { players, addPlayer, togglePlayerActive, reorderPlayers } = useApp();
+interface Props {
+  setTab: (t: Tab) => void;
+}
+
+export const PlayerList: React.FC<Props> = ({ setTab }) => {
+  const { players, addPlayer, togglePlayerActive, reorderPlayers, updatePlayerName, generateSchedule } = useApp();
   const [newName, setNewName] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   
@@ -34,17 +39,28 @@ export const PlayerList: React.FC = () => {
     }
   };
 
+  const handleConfirmAndSchedule = () => {
+    const activeCount = players.filter(p => p.active).length;
+    if (activeCount < 4) {
+      alert("Need at least 4 active players to generate a schedule.");
+      return;
+    }
+    
+    const sets = activeCount === 4 ? 3 : activeCount === 5 ? 4 : activeCount;
+    generateSchedule(sets);
+    setIsEditMode(false);
+    setTab(Tab.MATCHES);
+  };
+
   // --- Desktop Drag & Drop Handlers ---
   const onDragStart = (e: React.DragEvent, index: number) => {
     dragItem.current = index;
     e.dataTransfer.effectAllowed = "move";
-    // Set transparent image or rely on browser default
   };
 
   const onDragEnter = (e: React.DragEvent, index: number) => {
     if (dragItem.current === null) return;
     if (dragItem.current !== index) {
-      // Live swap
       reorderPlayers(dragItem.current, index);
       dragItem.current = index;
     }
@@ -111,7 +127,7 @@ export const PlayerList: React.FC = () => {
       {/* Control Bar */}
       <div className="flex justify-between items-center px-2">
         <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-          {isEditMode ? 'Tap Arrows or Drag Grip' : 'Active Players & Rotation'}
+          {isEditMode ? 'Drag to Reorder & Rename' : 'Active Players & Rotation'}
         </p>
         <button 
           onClick={() => setIsEditMode(!isEditMode)}
@@ -143,24 +159,34 @@ export const PlayerList: React.FC = () => {
                 : 'bg-slate-900 border-slate-800 opacity-60'
             } ${isEditMode ? 'cursor-move' : ''}`}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1">
               <span className={`flex items-center justify-center w-8 h-8 rounded-full text-white font-mono font-bold text-sm ${isEditMode ? 'bg-slate-700' : 'bg-slate-700'}`}>
                 {index + 1}
               </span>
-              <div>
-                <h3 className="font-bold text-white">{player.name}</h3>
-                {!isEditMode && (
-                  <div className="flex gap-2 text-xs text-slate-400">
-                    <span>P: {player.stats.matchesPlayed}</span>
-                    <span className="text-slate-600">|</span>
-                    <span>W: {player.stats.wins}</span>
-                  </div>
+              <div className="flex-1">
+                {isEditMode ? (
+                  <input
+                    type="text"
+                    value={player.name}
+                    onChange={(e) => updatePlayerName(player.id, e.target.value)}
+                    className="bg-slate-900 text-white p-1 rounded border border-slate-600 w-full"
+                    onClick={(e) => e.stopPropagation()} 
+                  />
+                ) : (
+                  <>
+                    <h3 className="font-bold text-white">{player.name}</h3>
+                    <div className="flex gap-2 text-xs text-slate-400">
+                      <span>P: {player.stats.matchesPlayed}</span>
+                      <span className="text-slate-600">|</span>
+                      <span>W: {player.stats.wins}</span>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
 
             {isEditMode ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ml-2">
                  {/* Drag Grip for Mobile */}
                  <div 
                    className="p-2 text-slate-500 touch-none"
@@ -202,11 +228,25 @@ export const PlayerList: React.FC = () => {
       </div>
       
       {!isEditMode && (
-        <div className="p-4 text-center text-slate-500 text-sm bg-slate-900/50 rounded-lg">
-          Active Players: {players.filter(p => p.active).length} / {players.length}
-          <br/>
-          <span className="text-xs opacity-70">Rotation proceeds in reverse order (e.g. {players.length} rests first)</span>
-        </div>
+        <>
+          <div className="mt-6 pt-4 border-t border-slate-800">
+            <button 
+              onClick={handleConfirmAndSchedule}
+              className="w-full py-4 bg-tennis-green text-slate-900 font-black text-lg rounded-xl shadow-lg hover:bg-[#c0ce4e] active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <PlayCircle size={24} /> Confirm Roster & Schedule
+            </button>
+            <p className="text-center text-xs text-slate-500 mt-2">
+              Generates optimal sets based on current list order
+            </p>
+          </div>
+
+          <div className="p-4 text-center text-slate-500 text-sm bg-slate-900/50 rounded-lg mt-4">
+            Active Players: {players.filter(p => p.active).length} / {players.length}
+            <br/>
+            <span className="text-xs opacity-70">Rotation proceeds in reverse order</span>
+          </div>
+        </>
       )}
     </div>
   );

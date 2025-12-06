@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { generateAIAnalysis } from '../services/geminiService';
-import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download } from 'lucide-react';
+import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText } from 'lucide-react';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData } = useApp();
@@ -13,9 +13,10 @@ export const StatsView: React.FC = () => {
   const sortedPlayers = [...players].sort((a, b) => {
     // Sort by Wins desc, then Win Rate desc
     if (b.stats.wins !== a.stats.wins) return b.stats.wins - a.stats.wins;
-    const rateA = a.stats.matchesPlayed > 0 ? a.stats.wins / a.stats.matchesPlayed : 0;
-    const rateB = b.stats.matchesPlayed > 0 ? b.stats.wins / b.stats.matchesPlayed : 0;
-    return rateB - rateA;
+    // Tie breaker: Game Diff
+    const diffA = a.stats.gamesWon - a.stats.gamesLost;
+    const diffB = b.stats.gamesWon - b.stats.gamesLost;
+    return diffB - diffA;
   });
 
   const handleAskAI = async () => {
@@ -30,14 +31,33 @@ export const StatsView: React.FC = () => {
     if (link.length > 2000) {
       alert("Warning: Data is too large for a URL. Please use 'Copy JSON' instead.");
     }
-    navigator.clipboard.writeText(link);
-    alert("Link copied! Anyone with this link can view the current stats.");
+    navigator.clipboard.writeText(link).then(() => {
+        alert("Link copied! Anyone with this link can view the current stats.");
+    });
   };
 
   const copyExportJson = () => {
     const data = exportData();
-    navigator.clipboard.writeText(data);
-    alert("JSON Data copied to clipboard! Paste this in another device.");
+    navigator.clipboard.writeText(data).then(() => {
+        alert("JSON Data copied to clipboard! Paste this in another device.");
+    });
+  };
+
+  const copyStatsText = () => {
+    let text = "[Leaderboard]\n";
+    text += "Name   | M | W | D | L | Game+/-\n";
+    text += "--------------------------------\n";
+    sortedPlayers.forEach(p => {
+        const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
+        const gameDiffStr = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
+        const name = p.name.length > 6 ? p.name.substring(0, 5) + '.' : p.name;
+        const draws = p.stats.draws || 0;
+        
+        text += `${name.padEnd(6)} | ${p.stats.matchesPlayed} | ${p.stats.wins} | ${draws} | ${p.stats.losses} | ${gameDiffStr}\n`;
+    });
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Stats text copied to clipboard!");
+    });
   };
 
   const handleImport = () => {
@@ -86,29 +106,33 @@ export const StatsView: React.FC = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-900/50 text-slate-400 uppercase">
+            <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs">
               <tr>
                 <th className="p-3">#</th>
                 <th className="p-3">Name</th>
-                <th className="p-3 text-center">Match</th>
-                <th className="p-3 text-center">W</th>
-                <th className="p-3 text-center">L</th>
-                <th className="p-3 text-center font-bold text-white">Score</th>
+                <th className="p-3 text-center" title="Matches Played">M</th>
+                <th className="p-3 text-center text-tennis-green" title="Wins">W</th>
+                <th className="p-3 text-center text-blue-400" title="Draws">D</th>
+                <th className="p-3 text-center text-red-400" title="Losses">L</th>
+                <th className="p-3 text-center font-bold text-white" title="Game Difference">Game +/-</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
               {sortedPlayers.map((p, idx) => {
-                 const scoreDiff = p.stats.wins - p.stats.losses;
-                 const scoreText = scoreDiff > 0 ? `+${scoreDiff}` : `${scoreDiff}`;
+                 const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
+                 const gameDiffText = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
+                 const draws = p.stats.draws || 0;
+
                  return (
                   <tr key={p.id} className="hover:bg-slate-700/50">
                     <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
                     <td className="p-3 font-bold text-white">{p.name}</td>
                     <td className="p-3 text-center text-slate-300">{p.stats.matchesPlayed}</td>
                     <td className="p-3 text-center text-tennis-green font-bold">{p.stats.wins}</td>
+                    <td className="p-3 text-center text-blue-400">{draws}</td>
                     <td className="p-3 text-center text-red-400">{p.stats.losses}</td>
-                    <td className={`p-3 text-center font-bold ${scoreDiff > 0 ? 'text-tennis-green' : scoreDiff < 0 ? 'text-red-400' : 'text-slate-400'}`}>
-                       {scoreText}
+                    <td className={`p-3 text-center font-bold font-mono ${gameDiff > 0 ? 'text-tennis-green' : gameDiff < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                       {gameDiffText}
                     </td>
                   </tr>
                 );
@@ -131,12 +155,15 @@ export const StatsView: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={copyExportJson} className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-sm font-bold text-slate-300">
-            <Share2 size={16} /> Copy JSON
+        <div className="grid grid-cols-3 gap-3">
+          <button onClick={copyStatsText} className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300">
+            <FileText size={16} /> Text
           </button>
-          <button onClick={() => setShowImport(!showImport)} className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-sm font-bold text-slate-300">
-            <Download size={16} /> Import JSON
+          <button onClick={copyExportJson} className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300">
+            <Share2 size={16} /> JSON
+          </button>
+          <button onClick={() => setShowImport(!showImport)} className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-xs font-bold text-slate-300">
+            <Download size={16} /> Import
           </button>
         </div>
         
