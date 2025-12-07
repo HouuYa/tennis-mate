@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, PropsWithChildren } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, PropsWithChildren } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Toast, ToastType } from '../types';
 
@@ -12,9 +12,23 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider = ({ children }: PropsWithChildren<{}>) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastTimeouts = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+    // Clear timeout when toast is manually dismissed
+    if (toastTimeouts.current.has(id)) {
+      clearTimeout(toastTimeouts.current.get(id)!);
+      toastTimeouts.current.delete(id);
+    }
+  }, []);
+
+  // Cleanup all timeouts on provider unmount
+  useEffect(() => {
+    const timeouts = toastTimeouts.current;
+    return () => {
+      timeouts.forEach(clearTimeout);
+    };
   }, []);
 
   const showToast = useCallback((message: string, type: ToastType = 'info', duration: number = 3000) => {
@@ -23,11 +37,11 @@ export const ToastProvider = ({ children }: PropsWithChildren<{}>) => {
 
     setToasts(prev => [...prev, newToast]);
 
-    // Auto-remove after duration
     if (duration > 0) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         removeToast(id);
       }, duration);
+      toastTimeouts.current.set(id, timer);
     }
   }, [removeToast]);
 
