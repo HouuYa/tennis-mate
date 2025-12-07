@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 import { Send, MessageSquare, Copy, Share2, User } from 'lucide-react';
 import { FeedMessage } from '../types';
 
 export const LiveFeed: React.FC = () => {
   const { feed, postAnnouncement, activeMatch, players } = useApp();
+  const { showToast } = useToast();
   const [inputText, setInputText] = useState('');
   
   // Author selection state
@@ -60,9 +62,9 @@ export const LiveFeed: React.FC = () => {
     const lastMsg = feed.length > 0 ? `\n\nLatest: ${feed[feed.length - 1].content}` : "";
     
     const text = `[Tennis Mate Status]\n${active}${lastMsg}`;
-    
+
     navigator.clipboard.writeText(text);
-    alert("Status copied! You can paste it into your group chat.");
+    showToast("Status copied! You can paste it into your group chat.", "success");
   };
 
   const getMessageStyle = (type: FeedMessage['type']) => {
