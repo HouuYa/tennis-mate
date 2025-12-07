@@ -77,6 +77,22 @@ export const generateSessionSchedule = (
       [[0,3], [2,4]],
       // Game 5: P2, P3 vs P4, P5 (P1 휴식)
       [[1,2], [3,4]]
+    ],
+    7: [
+      // Set 1: P1, P2 vs P3, P4 (P7 휴식)
+      [[0,1], [2,3]],
+      // Set 2: P1, P3 vs P2, P5 (P6 휴식)
+      [[0,2], [1,4]],
+      // Set 3: P1, P4 vs P2, P6 (P5 휴식)
+      [[0,3], [1,5]],
+      // Set 4: P1, P5 vs P2, P7 (P4 휴식)
+      [[0,4], [1,6]],
+      // Set 5: P1, P6 vs P2, P4 (P3 휴식)
+      [[0,5], [1,3]],
+      // Set 6: P1, P7 vs P3, P5 (P2 휴식)
+      [[0,6], [2,4]],
+      // Set 7: P2, P3 vs P4, P5 (P1 휴식)
+      [[1,2], [3,4]]
     ]
   };
 
@@ -84,8 +100,8 @@ export const generateSessionSchedule = (
     const currentMatchIndex = existingMatches.length + i;
     
     // Check if we can use a preset (only if starting fresh or following strict pattern)
-    // To keep it simple, if totalActive is 4 or 5, we use the preset modulo index
-    if ((totalActive === 4 || totalActive === 5) && PRESETS[totalActive]) {
+    // To keep it simple, if totalActive is 4, 5, or 7, we use the preset modulo index
+    if (PRESETS[totalActive]) {
         const roundIndex = i % PRESETS[totalActive].length; // Use 'i' to follow sequence from start of generation
         const config = PRESETS[totalActive][roundIndex];
         
