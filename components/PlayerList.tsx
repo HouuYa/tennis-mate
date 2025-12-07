@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw } from 'lucide-react';
 import { Tab } from '../types';
 
@@ -9,6 +10,7 @@ interface Props {
 
 export const PlayerList: React.FC<Props> = ({ setTab }) => {
   const { players, matches, addPlayer, togglePlayerActive, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule, resetData } = useApp();
+  const { showToast } = useToast();
   const [newName, setNewName] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -43,7 +45,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
   const handleConfirmAndSchedule = () => {
     const activeCount = players.filter(p => p.active).length;
     if (activeCount < 4) {
-      alert("Need at least 4 active players to generate a schedule.");
+      showToast("Need at least 4 active players to generate a schedule.", "warning");
       return;
     }
 
@@ -55,7 +57,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
       const sets = activeCount === 4 ? 3 : activeCount;
       generateSchedule(sets);
     } else {
-      alert("Schedule already exists. Going to Match tab. Use Session Planner there to add more sets.");
+      showToast("Schedule already exists. Going to Match tab. Use Session Planner there to add more sets.", "info");
     }
 
     setIsEditMode(false);

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { AppProvider } from './context/AppContext';
+import { ToastProvider } from './context/ToastContext';
 import { BottomNav } from './components/BottomNav';
 import { PlayerList } from './components/PlayerList';
 import { MatchSchedule } from './components/MatchSchedule';
 import { StatsView } from './components/StatsView';
 import { LiveFeed } from './components/LiveFeed';
+import { ToastContainer } from './components/Toast';
 import { Tab } from './types';
 
 const MainLayout = () => {
@@ -33,9 +35,12 @@ const MainLayout = () => {
 
 const App = () => {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <ToastProvider>
+      <AppProvider>
+        <MainLayout />
+        <ToastContainer />
+      </AppProvider>
+    </ToastProvider>
   );
 };
 

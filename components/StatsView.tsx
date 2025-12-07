@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 import { generateAIAnalysis } from '../services/geminiService';
 import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2 } from 'lucide-react';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData } = useApp();
+  const { showToast } = useToast();
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [importText, setImportText] = useState('');
@@ -30,17 +32,17 @@ export const StatsView: React.FC = () => {
   const copyShareLink = () => {
     const link = getShareableLink();
     if (link.length > 2000) {
-      alert("Warning: Data is too large for a URL. Please use 'Copy JSON' instead.");
+      showToast("Warning: Data is too large for a URL. Please use 'Copy JSON' instead.", "warning");
     }
     navigator.clipboard.writeText(link).then(() => {
-        alert("Link copied! Anyone with this link can view the current stats.");
+        showToast("Link copied! Anyone with this link can view the current stats.", "success");
     });
   };
 
   const copyExportJson = () => {
     const data = exportData();
     navigator.clipboard.writeText(data).then(() => {
-        alert("JSON Data copied to clipboard! Paste this in another device.");
+        showToast("JSON Data copied to clipboard! Paste this in another device.", "success");
     });
   };
 
@@ -57,17 +59,17 @@ export const StatsView: React.FC = () => {
         text += `${name.padEnd(6)} | ${p.stats.matchesPlayed} | ${p.stats.wins} | ${draws} | ${p.stats.losses} | ${gameDiffStr}\n`;
     });
     navigator.clipboard.writeText(text).then(() => {
-        alert("Stats text copied to clipboard!");
+        showToast("Stats text copied to clipboard!", "success");
     });
   };
 
   const handleImport = () => {
     if (importData(importText)) {
-      alert("Data imported successfully!");
+      showToast("Data imported successfully!", "success");
       setShowImport(false);
       setImportText('');
     } else {
-      alert("Invalid data format.");
+      showToast("Invalid data format.", "error");
     }
   };
 
