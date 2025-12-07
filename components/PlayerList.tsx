@@ -54,7 +54,15 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
 
     if (!hasExistingSchedule) {
       // Only generate schedule if none exists
-      const sets = activeCount === 4 ? 3 : activeCount;
+      // Set counts based on 1-factorization optimal schedules
+      const setCountMap: Record<number, number> = {
+        4: 3,   // 3 games
+        5: 5,   // 5 games
+        6: 9,   // 9 games
+        7: 7,   // 7 rounds (1 match per round)
+        8: 14   // 7 rounds x 2 courts
+      };
+      const sets = setCountMap[activeCount] || activeCount;
       generateSchedule(sets);
     } else {
       showToast("Schedule already exists. Going to Match tab. Use Session Planner there to add more sets.", "info");
