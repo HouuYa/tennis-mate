@@ -7,10 +7,11 @@
 - [x] **Match Schedule**: Unified view showing Past Results -> Current Score -> Future Preview.
 - [x] **Reordering**: Manual "Edit Mode" with Up/Down arrows (Fixed Safari DnD issues).
 - [x] **Chat**: Select author identity.
+- [x] **Undo Function**: Revert "Finish Match" and stats if pressed by mistake.
+- [x] **Schedule Safety**: Confirmation warning before overwriting queued matches.
 
 ## Phase 2: Usability Improvements (Next)
 - [ ] **Tie-break Support**: Allow entering '7-6 (4)' style scores.
-- [ ] **Undo Function**: Revert "Finish Match" if pressed by mistake.
 - [ ] **Player Avatars**: Allow uploading simple photos or choosing colors.
 - [ ] **Multiple Courts**: Logic for 8-10 players on 2 courts simultaneously.
 

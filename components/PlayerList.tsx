@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw } from 'lucide-react';
+import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Tab } from '../types';
 
 interface Props {
@@ -14,11 +14,12 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
   const [newName, setNewName] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  
+  const [showScheduleConfirm, setShowScheduleConfirm] = useState(false); // New confirmation state
+
   // Refs for Drag and Drop
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
-  
+
   // Ref to track current dragging index during Touch events (to handle closure staleness)
   const activeDragIndex = useRef<number | null>(null);
 
@@ -42,6 +43,18 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
     }
   };
 
+  // Logic to determine sets based on player count
+  const getSetsCount = (activeCount: number) => {
+    const setCountMap: Record<number, number> = {
+      4: 3,   // 3 games
+      5: 5,   // 5 games
+      6: 9,   // 9 games
+      7: 7,   // 7 rounds (1 match per round)
+      8: 14   // 7 rounds x 2 courts
+    };
+    return setCountMap[activeCount] || activeCount;
+  };
+
   const handleConfirmAndSchedule = () => {
     const activeCount = players.filter(p => p.active).length;
     if (activeCount < 4) {
@@ -50,26 +63,29 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
     }
 
     // Check if there are already unfinished matches (schedule exists)
-    const hasExistingSchedule = matches.some(m => !m.isFinished);
+    const hasUnfinishedMatches = matches.some(m => !m.isFinished);
 
-    if (!hasExistingSchedule) {
-      // Only generate schedule if none exists
-      // Set counts based on 1-factorization optimal schedules
-      const setCountMap: Record<number, number> = {
-        4: 3,   // 3 games
-        5: 5,   // 5 games
-        6: 9,   // 9 games
-        7: 7,   // 7 rounds (1 match per round)
-        8: 14   // 7 rounds x 2 courts
-      };
-      const sets = setCountMap[activeCount] || activeCount;
-      generateSchedule(sets);
+    if (hasUnfinishedMatches) {
+      setShowScheduleConfirm(true); // Show confirmation dialog
     } else {
-      showToast("Schedule already exists. Going to Match tab. Use Session Planner there to add more sets.", "info");
+      // No existing matches, proceed normally (overwrite=true/false doesn't matter, but false is safe)
+      const sets = getSetsCount(activeCount);
+      generateSchedule(sets, false);
+      setIsEditMode(false);
+      setTab(Tab.MATCHES);
     }
+  };
 
+  const handleOverwriteSchedule = () => {
+    const activeCount = players.filter(p => p.active).length;
+    const sets = getSetsCount(activeCount);
+
+    generateSchedule(sets, true); // Overwrite existing unfinished matches
+
+    setShowScheduleConfirm(false);
     setIsEditMode(false);
     setTab(Tab.MATCHES);
+    showToast("New schedule generated!", "success");
   };
 
   const handleReset = () => {
@@ -91,7 +107,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
     }
     e.preventDefault();
   };
-  
+
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
@@ -154,35 +170,33 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
         <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">
           {isEditMode ? 'Drag to Reorder & Rename' : 'Active Players & Rotation'}
         </p>
-        <button 
+        <button
           onClick={() => setIsEditMode(!isEditMode)}
-          className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-            isEditMode 
-              ? 'bg-tennis-green text-slate-900 shadow-[0_0_10px_rgba(212,225,87,0.4)]' 
+          className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isEditMode
+              ? 'bg-tennis-green text-slate-900 shadow-[0_0_10px_rgba(212,225,87,0.4)]'
               : 'bg-slate-800 text-slate-400 border border-slate-700'
-          }`}
+            }`}
         >
           {isEditMode ? <Check size={14} /> : <GripVertical size={14} />}
           {isEditMode ? 'Done' : 'Edit Order or Name'}
         </button>
       </div>
-      
+
       {/* List */}
       <div className="space-y-2">
         {players.map((player, index) => (
-          <div 
-            key={player.id} 
+          <div
+            key={player.id}
             data-index={index}
             draggable={isEditMode}
             onDragStart={(e) => onDragStart(e, index)}
             onDragEnter={(e) => onDragEnter(e, index)}
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
-            className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
-              player.active 
-                ? 'bg-slate-800 border-tennis-green/30' 
+            className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${player.active
+                ? 'bg-slate-800 border-tennis-green/30'
                 : 'bg-slate-900 border-slate-800 opacity-60'
-            } ${isEditMode ? 'cursor-move' : ''}`}
+              } ${isEditMode ? 'cursor-move' : ''}`}
           >
             <div className="flex items-center gap-3 flex-1">
               <span className={`flex items-center justify-center w-8 h-8 rounded-full text-white font-mono font-bold text-sm ${isEditMode ? 'bg-slate-700' : 'bg-slate-700'}`}>
@@ -195,7 +209,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
                     value={player.name}
                     onChange={(e) => updatePlayerName(player.id, e.target.value)}
                     className="bg-slate-900 text-white p-1 rounded border border-slate-600 w-full"
-                    onClick={(e) => e.stopPropagation()} 
+                    onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <>
@@ -212,33 +226,33 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
 
             {isEditMode ? (
               <div className="flex items-center gap-2 ml-2">
-                 {/* Drag Grip for Mobile */}
-                 <div 
-                   className="p-2 text-slate-500 touch-none"
-                   onTouchStart={() => handleTouchStart(index)}
-                   onTouchMove={handleTouchMove}
-                   onTouchEnd={handleTouchEnd}
-                 >
-                   <GripVertical size={20} />
-                 </div>
-                 
-                 {/* Arrows for Precise Control */}
-                 <div className="flex flex-col gap-1">
-                    <button 
-                      onClick={() => handleMoveUp(index)}
-                      disabled={index === 0}
-                      className="p-1 rounded bg-slate-700 text-white hover:bg-tennis-green hover:text-slate-900 disabled:opacity-20"
-                    >
-                      <ArrowUp size={14} />
-                    </button>
-                    <button 
-                      onClick={() => handleMoveDown(index)}
-                      disabled={index === players.length - 1}
-                      className="p-1 rounded bg-slate-700 text-white hover:bg-tennis-green hover:text-slate-900 disabled:opacity-20"
-                    >
-                      <ArrowDown size={14} />
-                    </button>
-                 </div>
+                {/* Drag Grip for Mobile */}
+                <div
+                  className="p-2 text-slate-500 touch-none"
+                  onTouchStart={() => handleTouchStart(index)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <GripVertical size={20} />
+                </div>
+
+                {/* Arrows for Precise Control */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => handleMoveUp(index)}
+                    disabled={index === 0}
+                    className="p-1 rounded bg-slate-700 text-white hover:bg-tennis-green hover:text-slate-900 disabled:opacity-20"
+                  >
+                    <ArrowUp size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleMoveDown(index)}
+                    disabled={index === players.length - 1}
+                    className="p-1 rounded bg-slate-700 text-white hover:bg-tennis-green hover:text-slate-900 disabled:opacity-20"
+                  >
+                    <ArrowDown size={14} />
+                  </button>
+                </div>
               </div>
             ) : (
               <button
@@ -251,7 +265,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
           </div>
         ))}
       </div>
-      
+
       {!isEditMode && (
         <>
           <div className="mt-6 pt-4 border-t border-slate-800 space-y-3">
@@ -275,7 +289,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
 
           <div className="p-4 text-center text-slate-500 text-sm bg-slate-900/50 rounded-lg mt-4">
             Active Players: {players.filter(p => p.active).length} / {players.length}
-            <br/>
+            <br />
             <span className="text-xs opacity-70">Rotation proceeds in reverse order</span>
           </div>
 
@@ -310,6 +324,42 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
               </div>
             )}
           </div>
+
+          {/* Schedule Overwrite Confirmation Modal (Absolute Centered) */}
+          {showScheduleConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="bg-slate-800 border border-tennis-green rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in-95">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center text-yellow-500 mb-2">
+                    <AlertTriangle size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Overwrite Active Schedule?</h3>
+                  <p className="text-sm text-slate-300">
+                    matches are currently queued. Generating a new schedule will <span className="text-red-400 font-bold">delete unplayed matches</span> in the current queue.
+                  </p>
+                  <p className="text-xs text-slate-500 bg-slate-900/50 p-2 rounded">
+                    Finished matches will be saved in history.
+                  </p>
+
+                  <div className="flex gap-3 w-full mt-4">
+                    <button
+                      onClick={() => setShowScheduleConfirm(false)}
+                      className="flex-1 py-3 bg-slate-700 text-white font-bold rounded-xl hover:bg-slate-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleOverwriteSchedule}
+                      className="flex-1 py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e]"
+                    >
+                      Replace Schedule
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </>
       )}
     </div>

@@ -19,8 +19,9 @@
 │   └── BottomNav.tsx     # Navigation Bar
 ├── services/
 │   └── geminiService.ts  # Google GenAI Integration
-└── utils/
-    └── matchmaking.ts    # Pairing Logic (Rotation & Fairness)
+├── utils/
+│   ├── matchmaking.ts    # Pairing Logic (Rotation & Fairness)
+│   └── playerUtils.ts    # Shared Helper Functions (Formatting, Sorting)
 ```
 
 ## 2. Core Concepts
@@ -29,7 +30,7 @@
 - This app uses no backend database.
 - **Persistence**: `localStorage` ensures data survives refreshes.
 - **Sharing**: State is compressed into a JSON string and passed via URL Query Parameters (`?data=...`) for serverless sharing.
-- **Context API**: `AppContext` manages global state (`players`, `matches`, `feed`) and provides actions like `reorderPlayers`, `finishMatch`, etc.
+- **Context API**: `AppContext` manages global state (`players`, `matches`, `feed`) and provides actions like `reorderPlayers`, `finishMatch`, `undoFinishMatch`, etc.
 
 ### B. Matchmaking Algorithm (`utils/matchmaking.ts`)
 1.  **Rotation (Rest) Logic**:

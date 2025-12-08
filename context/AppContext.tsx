@@ -15,7 +15,7 @@ interface AppContextType {
   shufflePlayers: () => void;
   togglePlayerActive: (id: string) => void;
   createNextMatch: () => boolean;
-  generateSchedule: (count: number) => void;
+  generateSchedule: (count: number, overwrite?: boolean) => void;
   finishMatch: (matchId: string, scoreA: number, scoreB: number) => void;
   undoFinishMatch: (matchId: string) => void;
   updateMatchScore: (matchId: string, scoreA: number, scoreB: number) => void;
@@ -177,7 +177,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     return true;
   };
 
-  const generateSchedule = (count: number) => {
+  const generateSchedule = (count: number, overwrite: boolean = false) => {
     const scheduled = generateSessionSchedule(players, matches, count);
     if (scheduled.length === 0) {
       addLog('SYSTEM', 'Cannot generate schedule. Not enough active players.');
@@ -195,8 +195,16 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       courtNumber: 1
     }));
 
-    setMatches(prev => [...prev, ...newMatches]);
-    addLog('SYSTEM', `Generated ${scheduled.length} matches.`);
+    setMatches(prev => {
+      let updatedMatches = prev;
+      if (overwrite) {
+        // Keep finished matches, remove unfinished ones
+        updatedMatches = prev.filter(m => m.isFinished);
+      }
+      return [...updatedMatches, ...newMatches];
+    });
+
+    addLog('SYSTEM', `Generated ${scheduled.length} matches${overwrite ? ' (overwrote previous schedule)' : ''}.`);
   };
 
   const finishMatch = (matchId: string, scoreA: number, scoreB: number) => {
