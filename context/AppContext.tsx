@@ -17,12 +17,10 @@ interface AppContextType {
   createNextMatch: () => boolean;
   generateSchedule: (count: number) => void;
   finishMatch: (matchId: string, scoreA: number, scoreB: number) => void;
+  undoFinishMatch: (matchId: string) => void;
   updateMatchScore: (matchId: string, scoreA: number, scoreB: number) => void;
   deleteMatch: (matchId: string) => void;
   postAnnouncement: (text: string, author?: string) => void;
-  resetData: () => void;
-  importData: (json: string) => boolean;
-  exportData: () => string;
   getShareableLink: () => string;
 }
 
@@ -149,7 +147,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     const nextParams = generateNextMatch(players, matches);
     if (!nextParams) {
       addLog('SYSTEM', 'Not enough active players to start a match.');
-      return false; 
+      return false;
     }
 
     const newMatch: Match = {
@@ -174,7 +172,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     if (nextParams.restingPlayerName) {
       msg += `\n(Resting: ${nextParams.restingPlayerName})`;
     }
-    
+
     addLog('MATCH_START', msg);
     return true;
   };
@@ -198,55 +196,52 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     }));
 
     setMatches(prev => [...prev, ...newMatches]);
-    addLog('SYSTEM', `Generated schedule for ${count} upcoming matches.`);
+    addLog('SYSTEM', `Generated ${scheduled.length} matches.`);
   };
 
   const finishMatch = (matchId: string, scoreA: number, scoreB: number) => {
-    setMatches(prevMatches => 
-      prevMatches.map(m => 
-        m.id === matchId ? { ...m, scoreA, scoreB, isFinished: true } : m
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    setMatches(prevMatches =>
+      prevMatches.map(m =>
+        m.id === matchId ? { ...m, scoreA, scoreB, isFinished: true, endTime: Date.now() } : m
       )
     );
 
-    const match = matches.find(m => m.id === matchId);
-    if (match) {
-        const p1 = players.find(p => p.id === match.teamA.player1Id)?.name;
-        const p2 = players.find(p => p.id === match.teamA.player2Id)?.name;
-        const p3 = players.find(p => p.id === match.teamB.player1Id)?.name;
-        const p4 = players.find(p => p.id === match.teamB.player2Id)?.name;
-        
-        let resultMsg = "";
-        if (scoreA > scoreB) {
-            resultMsg = `Winners: ${p1} & ${p2}`;
-        } else if (scoreB > scoreA) {
-            resultMsg = `Winners: ${p3} & ${p4}`;
-        } else {
-            resultMsg = `Result: Draw`;
-        }
+    const p1 = players.find(p => p.id === match.teamA.player1Id)?.name;
+    const p2 = players.find(p => p.id === match.teamA.player2Id)?.name;
+    const p3 = players.find(p => p.id === match.teamB.player1Id)?.name;
+    const p4 = players.find(p => p.id === match.teamB.player2Id)?.name;
 
-        addLog('MATCH_END', `Match Ended: ${scoreA}:${scoreB}. ${resultMsg}`);
+    let resultMsg = "";
+    if (scoreA > scoreB) {
+      resultMsg = `Winners: ${p1} & ${p2}`;
+    } else if (scoreB > scoreA) {
+      resultMsg = `Winners: ${p3} & ${p4}`;
+    } else {
+      resultMsg = `Result: Draw`;
     }
 
-    setPlayers(prevPlayers => {
-      const targetMatch = matches.find(m => m.id === matchId);
-      const m = targetMatch || match!;
+    addLog('MATCH_END', `Match Ended: ${scoreA}:${scoreB}. ${resultMsg}`);
 
+    setPlayers(prevPlayers => {
       return prevPlayers.map(p => {
-        const inTeamA = p.id === m.teamA.player1Id || p.id === m.teamA.player2Id;
-        const inTeamB = p.id === m.teamB.player1Id || p.id === m.teamB.player2Id;
+        const inTeamA = p.id === match.teamA.player1Id || p.id === match.teamA.player2Id;
+        const inTeamB = p.id === match.teamB.player1Id || p.id === match.teamB.player2Id;
 
         if (!inTeamA && !inTeamB) {
-            if (p.active) {
-                return { ...p, stats: { ...p.stats, restCount: p.stats.restCount + 1 }};
-            }
-            return p;
+          if (p.active) {
+            return { ...p, stats: { ...p.stats, restCount: p.stats.restCount + 1 } };
+          }
+          return p;
         }
 
         // Logic for Win/Loss/Draw
         const isDraw = scoreA === scoreB;
         const isWinner = (inTeamA && scoreA > scoreB) || (inTeamB && scoreB > scoreA);
         const isLoser = (inTeamA && scoreB > scoreA) || (inTeamB && scoreA > scoreB);
-        
+
         const myGames = inTeamA ? scoreA : scoreB;
         const enemyGames = inTeamA ? scoreB : scoreA;
 
@@ -264,6 +259,54 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
         };
       });
     });
+  };
+  const undoFinishMatch = (matchId: string) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match || !match.isFinished) return;
+
+    // 1. Revert Match State
+    setMatches(prev => prev.map(m =>
+      m.id === matchId ? { ...m, isFinished: false, endTime: undefined } : m
+    ));
+
+    // 2. Revert Player Stats
+    setPlayers(prevPlayers => {
+      return prevPlayers.map(p => {
+        const inTeamA = p.id === match.teamA.player1Id || p.id === match.teamA.player2Id;
+        const inTeamB = p.id === match.teamB.player1Id || p.id === match.teamB.player2Id;
+
+        if (!inTeamA && !inTeamB) {
+          // Was resting, now decrement rest count
+          if (p.active) {
+            return { ...p, stats: { ...p.stats, restCount: Math.max(0, p.stats.restCount - 1) } };
+          }
+          return p;
+        }
+
+        const { scoreA, scoreB } = match;
+        const isDraw = scoreA === scoreB;
+        const isWinner = (inTeamA && scoreA > scoreB) || (inTeamB && scoreB > scoreA);
+        const isLoser = (inTeamA && scoreB > scoreA) || (inTeamB && scoreA > scoreB);
+
+        const myGames = inTeamA ? scoreA : scoreB;
+        const enemyGames = inTeamA ? scoreB : scoreA;
+
+        return {
+          ...p,
+          stats: {
+            ...p.stats,
+            matchesPlayed: Math.max(0, p.stats.matchesPlayed - 1),
+            wins: Math.max(0, p.stats.wins - (isWinner ? 1 : 0)),
+            losses: Math.max(0, p.stats.losses - (isLoser ? 1 : 0)),
+            draws: Math.max(0, (p.stats.draws || 0) - (isDraw ? 1 : 0)),
+            gamesWon: Math.max(0, p.stats.gamesWon - myGames),
+            gamesLost: Math.max(0, p.stats.gamesLost - enemyGames),
+          }
+        };
+      });
+    });
+
+    addLog('SYSTEM', 'Last match result was undone.');
   };
 
   const updateMatchScore = (matchId: string, newScoreA: number, newScoreB: number) => {
@@ -380,6 +423,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       createNextMatch,
       generateSchedule,
       finishMatch,
+      undoFinishMatch,
       updateMatchScore,
       deleteMatch,
       postAnnouncement,

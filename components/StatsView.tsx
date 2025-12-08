@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { generateAIAnalysis } from '../services/geminiService';
+import { sortPlayers } from '../utils/playerUtils';
 import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2 } from 'lucide-react';
 
 export const StatsView: React.FC = () => {
@@ -13,14 +14,7 @@ export const StatsView: React.FC = () => {
   const [showImport, setShowImport] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const sortedPlayers = [...players].sort((a, b) => {
-    // Sort by Wins desc, then Win Rate desc
-    if (b.stats.wins !== a.stats.wins) return b.stats.wins - a.stats.wins;
-    // Tie breaker: Game Diff
-    const diffA = a.stats.gamesWon - a.stats.gamesLost;
-    const diffB = b.stats.gamesWon - b.stats.gamesLost;
-    return diffB - diffA;
-  });
+  const sortedPlayers = sortPlayers(players);
 
   const handleAskAI = async () => {
     setLoading(true);
@@ -35,14 +29,14 @@ export const StatsView: React.FC = () => {
       showToast("Warning: Data is too large for a URL. Please use 'Copy JSON' instead.", "warning");
     }
     navigator.clipboard.writeText(link).then(() => {
-        showToast("Link copied! Anyone with this link can view the current stats.", "success");
+      showToast("Link copied! Anyone with this link can view the current stats.", "success");
     });
   };
 
   const copyExportJson = () => {
     const data = exportData();
     navigator.clipboard.writeText(data).then(() => {
-        showToast("JSON Data copied to clipboard! Paste this in another device.", "success");
+      showToast("JSON Data copied to clipboard! Paste this in another device.", "success");
     });
   };
 
@@ -51,15 +45,15 @@ export const StatsView: React.FC = () => {
     text += "Name   | M | W | D | L | Game+/-\n";
     text += "--------------------------------\n";
     sortedPlayers.forEach(p => {
-        const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
-        const gameDiffStr = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
-        const name = p.name.length > 6 ? p.name.substring(0, 5) + '.' : p.name;
-        const draws = p.stats.draws || 0;
-        
-        text += `${name.padEnd(6)} | ${p.stats.matchesPlayed} | ${p.stats.wins} | ${draws} | ${p.stats.losses} | ${gameDiffStr}\n`;
+      const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
+      const gameDiffStr = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
+      const name = p.name.length > 6 ? p.name.substring(0, 5) + '.' : p.name;
+      const draws = p.stats.draws || 0;
+
+      text += `${name.padEnd(6)} | ${p.stats.matchesPlayed} | ${p.stats.wins} | ${draws} | ${p.stats.losses} | ${gameDiffStr}\n`;
     });
     navigator.clipboard.writeText(text).then(() => {
-        showToast("Stats text copied to clipboard!", "success");
+      showToast("Stats text copied to clipboard!", "success");
     });
   };
 
@@ -86,7 +80,7 @@ export const StatsView: React.FC = () => {
           <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
             <Sparkles size={20} /> AI Coach
           </h2>
-          <button 
+          <button
             onClick={handleAskAI}
             disabled={loading}
             className="text-xs bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded-full text-white font-semibold transition-colors disabled:opacity-50"
@@ -94,7 +88,7 @@ export const StatsView: React.FC = () => {
             {loading ? "Analyzing..." : "Analyze Stats"}
           </button>
         </div>
-        
+
         {aiAnalysis ? (
           <div className="text-sm text-indigo-100 leading-relaxed whitespace-pre-wrap bg-indigo-950/50 p-4 rounded-lg">
             {aiAnalysis}
@@ -109,8 +103,8 @@ export const StatsView: React.FC = () => {
       {/* Leaderboard */}
       <div className="bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-700">
         <div className="p-4 bg-slate-900 border-b border-slate-700 flex items-center gap-2">
-           <BarChart3 className="text-tennis-green" />
-           <h3 className="font-bold text-white">Leaderboard</h3>
+          <BarChart3 className="text-tennis-green" />
+          <h3 className="font-bold text-white">Leaderboard</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -127,11 +121,11 @@ export const StatsView: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-700">
               {sortedPlayers.map((p, idx) => {
-                 const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
-                 const gameDiffText = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
-                 const draws = p.stats.draws || 0;
+                const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
+                const gameDiffText = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
+                const draws = p.stats.draws || 0;
 
-                 return (
+                return (
                   <tr key={p.id} className="hover:bg-slate-700/50">
                     <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
                     <td className="p-3 font-bold text-white">{p.name}</td>
@@ -140,7 +134,7 @@ export const StatsView: React.FC = () => {
                     <td className="p-3 text-center text-blue-400">{draws}</td>
                     <td className="p-3 text-center text-red-400">{p.stats.losses}</td>
                     <td className={`p-3 text-center font-bold font-mono ${gameDiff > 0 ? 'text-tennis-green' : gameDiff < 0 ? 'text-red-400' : 'text-slate-400'}`}>
-                       {gameDiffText}
+                      {gameDiffText}
                     </td>
                   </tr>
                 );
@@ -156,9 +150,9 @@ export const StatsView: React.FC = () => {
         <p className="text-xs text-slate-400 mb-4">
           Since we don't use a server, use these buttons to share match progress with others.
         </p>
-        
+
         <div className="grid grid-cols-1 gap-3 mb-4">
-           <button onClick={copyShareLink} className="flex items-center justify-center gap-2 bg-tennis-green text-slate-900 py-3 rounded-lg text-sm font-bold shadow-lg shadow-tennis-green/20 hover:scale-[1.02] transition-transform">
+          <button onClick={copyShareLink} className="flex items-center justify-center gap-2 bg-tennis-green text-slate-900 py-3 rounded-lg text-sm font-bold shadow-lg shadow-tennis-green/20 hover:scale-[1.02] transition-transform">
             <LinkIcon size={16} /> Copy Shareable Link
           </button>
         </div>
@@ -174,18 +168,18 @@ export const StatsView: React.FC = () => {
             <Download size={16} /> Import
           </button>
         </div>
-        
+
         {showImport && (
           <div className="mt-4 p-3 bg-slate-900 rounded-lg animate-in fade-in slide-in-from-top-2">
-             <textarea
-               className="w-full bg-slate-800 text-xs p-2 rounded border border-slate-700 text-slate-300 h-24 mb-2"
-               placeholder="Paste JSON data here..."
-               value={importText}
-               onChange={e => setImportText(e.target.value)}
-             />
-             <button onClick={handleImport} className="w-full bg-slate-600 text-white py-2 rounded font-bold text-sm hover:bg-slate-500">
-               Load Data
-             </button>
+            <textarea
+              className="w-full bg-slate-800 text-xs p-2 rounded border border-slate-700 text-slate-300 h-24 mb-2"
+              placeholder="Paste JSON data here..."
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+            />
+            <button onClick={handleImport} className="w-full bg-slate-600 text-white py-2 rounded font-bold text-sm hover:bg-slate-500">
+              Load Data
+            </button>
           </div>
         )}
 

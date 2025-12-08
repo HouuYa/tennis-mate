@@ -27,6 +27,7 @@ export interface Match {
   scoreB: number;
   isFinished: boolean;
   courtNumber: number;
+  endTime?: number;
 }
 
 export interface FeedMessage {
