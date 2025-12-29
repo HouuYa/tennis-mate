@@ -22,3 +22,10 @@
 
 ## Known Issues
 - URL length limit is reached quickly if Match Feed is very long.
+
+## etc
+- [ ] 현재 components 폴더에 모든 UI가 모여 있는데, 이를 기능 단위로 쪼개는 연습.
+  `features/match/components/...`
+  `features/player/components/...`
+- [ ] 핵심 로직 단위 테스트 (Unit Test) 구현
+  - 로테이션 공식을 검증하는 코드
