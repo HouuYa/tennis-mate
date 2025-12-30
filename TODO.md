@@ -15,10 +15,20 @@
 - [ ] **Player Avatars**: Allow uploading simple photos or choosing colors.
 - [ ] **Multiple Courts**: Logic for 8-10 players on 2 courts simultaneously.
 
-## Phase 3: Backend & Social
-- [ ] **Auth**: Simple admin login for clubs.
-- [ ] **Cloud Sync**: Replace URL sharing with Firebase/Supabase real-time database.
+## Phase 3: Backend & Persistence (Completed)
+- [x] **Cloud Sync**: Supabase integration for multi-device sync (Dual Mode).
+- [x] **Stats Dashboard**: Recharts integration (Win Rate, Game Diff icons).
+- [x] **Database Schema**: Players, Sessions, Matches tables set up.
+
+## Phase 4: Social & Advanced (Next)
+- [ ] **Auth**: Simple admin login / Row Level Security hardening.
 - [ ] **Tournament Mode**: Bracket generation.
+- [ ] **Notification**: Push notifications for match start.
+- [ ] **Tennis Rules RAG**: 테니스 규칙 답변 챗봇 구현 (RAG).
+	- [ITF Rules & Regulations](https://www.itftennis.com/en/about-us/governance/rules-and-regulations/)
+		- [2025 Rules of Tennis (English)](https://www.itftennis.com/media/7221/2025-rules-of-tennis-english.pdf)
+		- [2025 Code of Conduct for Officials](https://www.itftennis.com/media/2511/2025-code-of-conduct-for-officials.pdf)
+		- [2025 Duties and Procedures for Officials](https://www.itftennis.com/media/2509/2025-duties-procedures-for-officials.pdf)
 
 ## Known Issues
 - URL length limit is reached quickly if Match Feed is very long.

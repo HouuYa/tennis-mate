@@ -38,11 +38,16 @@
 - **실행 취소 (Undo):** 실수로 경기를 종료했더라도, 다시 활성 상태로 되돌려 점수를 수정할 수 있습니다.
 - **스케줄 보호:** 대기 중인 경기가 있을 때 새로운 일정을 생성하려 하면 경고 팝업을 띄워 데이터 유실을 방지합니다.
 
-### 3. 💬 실시간 소통 및 공유
-- **서버리스 공유:** 별도의 회원가입이나 로그인 없이, 현재 상태가 담긴 URL 링크 하나로 모든 데이터를 팀원과 공유할 수 있습니다.
-- **아이덴티티 채팅:** 플레이어 목록에 있는 이름뿐만 아니라, 'Guest' 또는 직접 입력(Direct Input)을 통해 채팅에 참여할 수 있습니다.
+### 3. ☁️ 클라우드 동기화 (Cloud Mode)
+- **Supabase 연동:** 로컬 저장소 외에 클라우드 데이터베이스 모드를 지원합니다.
+- **멀티 디바이스:** 여러 기기에서 같은 세션을 불러와 실시간으로 결과를 공유할 수 있습니다.
+- **글로벌 플레이어:** DB에 저장된 플레이어 목록을 불러와 빠르게 세션을 시작할 수 있습니다.
 
-### 4. 🤖 AI 코치 (Powered by Gemini)
+### 4. 📊 고급 통계 및 분석
+- **시각화:** Recharts를 이용한 승률 그래프, 게임 득실 추이 등을 시각적으로 제공합니다.
+- **Best Partner:** 가장 호흡이 잘 맞는 파트너 조합을 자동으로 분석해 추천합니다.
+
+### 5. 🤖 AI 코치 (Powered by Gemini)
 - **매치 분석:** Google Gemini API를 활용하여 누적된 경기 데이터를 분석합니다.
 - **인사이트 제공:** 오늘의 MVP, 최고의 파트너 조합, 승률 분석 등을 자연어 형태로 브리핑해줍니다.
 
@@ -53,8 +58,9 @@
 | 분류 | 기술 |
 |------|------|
 | **Frontend** | React 18, TypeScript, Vite |
-| **Styling** | Tailwind CSS |
-| **State** | Context API, LocalStorage (Persistence) |
+| **Styling** | Tailwind CSS, Recharts |
+| **State** | Context API, LocalStorage (Guest Mode) |
+| **Backend** | Supabase (Cloud Mode) - Postgres, RLS |
 | **AI** | Google Gemini API (@google/genai) |
 | **Deploy** | GitHub Pages / Vercel (Static Hosting) |
 
@@ -77,7 +83,9 @@ Tennis Mate는 **Serverless & Local-First** 철학을 따릅니다.
 
 ## ⚡ 시작하기 (Getting Started)
 
-이 프로젝트는 백엔드 서버가 필요하지 않습니다.
+이 프로젝트는 **Serverless (Guest Mode)** 를 기본으로 지원합니다.
+백엔드 설정 없이도 즉시 모든 기능을 로컬에서 사용할 수 있습니다.
+옵션으로 Supabase를 연결하여 클라우드 동기화를 활성화할 수 있습니다.
 
 1.  **설치**
     ```bash
@@ -94,7 +102,7 @@ Tennis Mate는 **Serverless & Local-First** 철학을 따릅니다.
 
 3.  **실행**
     ```bash
-    npm start
+    npm run dev
     ```
     브라우저에서 `http://localhost:3000` 접속
 
@@ -106,9 +114,11 @@ Tennis Mate는 **Serverless & Local-First** 철학을 따릅니다.
 
 - [x] 4인부터 8인까지 로테이션 및 순서 변경 기능
 - [x] 매치 실행 취소(Undo) 기능
+- [x] **Supabase 연동:** 히스토리 관리 및 클라우드 동기화 (Dual Mode)
+- [x] **고급 통계:** 승률 그래프 및 파트너십 분석
 - [ ] **Tie-break 지원:** '7-6 (4)' 형태의 스코어 입력
 - [ ] **다중 코트 지원:** 8~10명 인원을 위한 2코트 로직
-- [ ] Supabase를 이용하여, 히스토리 관리 등
+- [ ] **Auth:** 관리자 로그인 및 보안 강화 (RLS)
 - [ ] **플레이어 아바타:** 사진 업로드 또는 색상 선택
 
 더 자세한 계획은 [TODO.md](./TODO.md)에서 확인하세요.

@@ -1,16 +1,26 @@
 # 📅 Change Log
 
 ## [Unreleased]
+- **Tie-break Support**: 준비 중.
+
+## [v0.9.0] - Cloud Integration & Stats Overhaul
 ### Added
-- **Session Planner**: Match Schedule 탭 하단에 "Generate Schedule" 기능 추가. 
-  - 4명일 경우 3세트, 5명일 경우 5세트 등 총 세트 수를 지정하여 대진표를 한 번에 생성 가능.
-  - 4인/5인 시 모든 플레이어가 서로 한 번씩 파트너를 맺는(Round Robin) 최적화 로직 적용.
-- **Custom Chat Identity**: 채팅 입력 시 목록에 없는 이름("Guest" 또는 직접 입력)으로 메시지를 보낼 수 있는 기능 추가.
-- **Match Queue**: 생성된 미래 경기들을 미리 볼 수 있는 큐(Queue) UI 추가.
+- **Cloud Mode (Supabase)**: 
+  - 로컬 모드(Guest)와 클라우드 모드를 선택하여 시작할 수 있는 "Dual Mode" 아키텍처 도입.
+  - 세션, 플레이어, 매치 데이터를 Supabase Postgres DB에 저장 및 동기화.
+  - 클라우드 모드에서 글로벌 플레이어 목록 불러오기 기능 추가.
+- **Enhanced Stats View**:
+  - **Recharts** 라이브러리 도입: 승률(Win Rate) 및 게임 득실(Game +/-) 차트 시각화.
+  - **Best Partnerships**: 승률이 가장 높은 복식 파트너 조합 자동 추천 카드 추가.
+  - 상세 리더보드 테이블 디자인 개선.
+
+### Fixed
+- **Stats Persistence**: 앱 재로딩 시 통계 데이터가 0으로 초기화되거나 0점 경기가 반영되지 않던 문제 수정 (Stats Auto-Healing 로직 추가).
+- **Chart Empty State**: 데이터 부족 시(3경기 미만) 차트 대신 안내 메시지 표시.
 
 ### Changed
-- **Rotation Logic**: 1경기씩 생성하던 기존 방식에 더해, 세션 단위로 생성하는 로직 추가.
-- **UI Improvements**: 대진표 생성기 UI 및 채팅 입력창 개선.
+- **Architecture**: `DataService` 패턴 도입으로 로컬/클라우드 로직 분리.
+- **Backend**: `supabase_schema.sql` 정의 및 적용.
 
 ## [v0.1.0] - Initial MVP
 - React + TypeScript 기반 프로젝트 세팅.

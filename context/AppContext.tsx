@@ -3,13 +3,22 @@ import { v4 as uuidv4 } from 'uuid';
 import { Player, Match, AppState, FeedMessage } from '../types';
 import { APP_STORAGE_KEY, INITIAL_PLAYERS } from '../constants';
 import { generateNextMatch, generateSessionSchedule } from '../utils/matchmaking';
+import { recalculatePlayerStats } from '../utils/statsUtils';
+import { DataService } from '../services/DataService';
+import { LocalDataService } from '../services/LocalDataService';
+import { SupabaseDataService } from '../services/SupabaseDataService';
 
 interface AppContextType {
   players: Player[];
   matches: Match[];
   feed: FeedMessage[];
   activeMatch: Match | null;
-  addPlayer: (name: string) => void;
+  mode: 'LOCAL' | 'CLOUD' | null;
+  switchMode: (mode: 'LOCAL' | 'CLOUD') => void;
+  startCloudSession: (location?: string) => Promise<void>;
+  loadCloudSession: (sessionId: string) => Promise<void>;
+
+  addPlayer: (name: string, fromDB?: Player) => Promise<void>;
   updatePlayerName: (id: string, name: string) => void;
   reorderPlayers: (fromIndex: number, toIndex: number) => void;
   shufflePlayers: () => void;
@@ -27,6 +36,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
+  const [mode, setMode] = useState<'LOCAL' | 'CLOUD' | null>(null);
+  const [dataService, setDataService] = useState<DataService>(new LocalDataService());
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [feed, setFeed] = useState<FeedMessage[]>([]);
@@ -69,13 +80,64 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     }
   }, []);
 
-  // Save to local storage on change
+  // Save to local storage on change (ONLY IN LOCAL MODE)
   useEffect(() => {
-    if (players.length > 0 || feed.length > 0) {
+    if (mode === 'LOCAL' && (players.length > 0 || feed.length > 0)) {
       const state: AppState = { players, matches, feed };
-      localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state));
+      dataService.saveState(state);
     }
-  }, [players, matches, feed]);
+  }, [players, matches, feed, mode, dataService]);
+
+  const switchMode = (newMode: 'LOCAL' | 'CLOUD') => {
+    setMode(newMode);
+    if (newMode === 'LOCAL') {
+      setDataService(new LocalDataService());
+      // Reload local data? Or keep current?
+      // Ideally reload local data to ensure consistency
+      const localService = new LocalDataService();
+      localService.loadSession().then(state => {
+        if (state) {
+          setPlayers(state.players);
+          setMatches(state.matches);
+          setFeed(state.feed);
+        } else {
+          initializeDefaults();
+        }
+      });
+    } else {
+      setDataService(new SupabaseDataService());
+      // For cloud, we initialize defaults so the user sees some data
+      initializeDefaults();
+      addLog('SYSTEM', 'Switched to Cloud Mode. Please load or start a session.');
+    }
+  };
+
+  const startCloudSession = async (location?: string) => {
+    if (mode !== 'CLOUD') return;
+    try {
+      const id = await dataService.createSession?.(location);
+      addLog('SYSTEM', `New Cloud Session Started (ID: ${id})`);
+    } catch (e) {
+      console.error(e);
+      addLog('SYSTEM', 'Failed to start cloud session.');
+    }
+  };
+
+  const loadCloudSession = async (sessionId: string) => {
+    if (mode !== 'CLOUD') return;
+    try {
+      const state = await dataService.loadSession(sessionId);
+      if (state) {
+        setPlayers(state.players);
+        setMatches(state.matches);
+        setFeed(state.feed);
+        addLog('SYSTEM', 'Session loaded from Cloud.');
+      }
+    } catch (e) {
+      console.error(e);
+      addLog('SYSTEM', 'Failed to load cloud session.');
+    }
+  };
 
   const initializeDefaults = () => {
     const defaults = INITIAL_PLAYERS.map(name => ({
@@ -101,19 +163,35 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
   const activeMatch = matches.find(m => !m.isFinished) || null;
 
-  const addPlayer = (name: string) => {
-    const newPlayer: Player = {
+  const addPlayer = async (name: string, fromDB?: Player) => {
+    const newPlayer: Player = fromDB || {
       id: uuidv4(),
       name,
       active: true,
       stats: { matchesPlayed: 0, wins: 0, losses: 0, draws: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
     };
+
     setPlayers(prev => [...prev, newPlayer]);
-    addLog('SYSTEM', `${name} has joined the club.`);
+    addLog('SYSTEM', `${newPlayer.name} has joined the club.`);
+
+    if (mode === 'CLOUD') {
+      await dataService.addPlayer?.(newPlayer);
+    }
+  };
+
+  const getAllPlayers = async (): Promise<Player[]> => {
+    if (dataService.getAllPlayers) {
+      return await dataService.getAllPlayers();
+    }
+    return [];
   };
 
   const updatePlayerName = (id: string, name: string) => {
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, name } : p));
+    if (mode === 'CLOUD') {
+      const p = players.find(p => p.id === id);
+      if (p) dataService.updatePlayer?.({ ...p, name });
+    }
   };
 
   const reorderPlayers = (fromIndex: number, toIndex: number) => {
@@ -207,15 +285,25 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     addLog('SYSTEM', `Generated ${scheduled.length} matches${overwrite ? ' (overwrote previous schedule)' : ''}.`);
   };
 
-  const finishMatch = (matchId: string, scoreA: number, scoreB: number) => {
+  const finishMatch = async (matchId: string, scoreA: number, scoreB: number) => {
     const match = matches.find(m => m.id === matchId);
     if (!match) return;
 
-    setMatches(prevMatches =>
-      prevMatches.map(m =>
-        m.id === matchId ? { ...m, scoreA, scoreB, isFinished: true, endTime: Date.now() } : m
-      )
-    );
+    // 1. Calculate the NEW match object
+    const updatedMatch: Match = { ...match, scoreA, scoreB, isFinished: true, endTime: Date.now() };
+
+    // 2. Update Matches State First
+    let updatedMatches = matches.map(m => m.id === matchId ? updatedMatch : m);
+    setMatches(updatedMatches);
+
+    // 3. Recalculate Player Stats from the updated matches list
+    // This ensures stats are always 100% in sync with match history
+    const updatedPlayers = recalculatePlayerStats(players, updatedMatches); // players (current list)
+    setPlayers(updatedPlayers);
+
+    if (mode === 'CLOUD') {
+      await dataService.saveMatch?.(updatedMatch);
+    }
 
     const p1 = players.find(p => p.id === match.teamA.player1Id)?.name;
     const p2 = players.find(p => p.id === match.teamA.player2Id)?.name;
@@ -232,152 +320,62 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     }
 
     addLog('MATCH_END', `Match Ended: ${scoreA}:${scoreB}. ${resultMsg}`);
-
-    setPlayers(prevPlayers => {
-      return prevPlayers.map(p => {
-        const inTeamA = p.id === match.teamA.player1Id || p.id === match.teamA.player2Id;
-        const inTeamB = p.id === match.teamB.player1Id || p.id === match.teamB.player2Id;
-
-        if (!inTeamA && !inTeamB) {
-          if (p.active) {
-            return { ...p, stats: { ...p.stats, restCount: p.stats.restCount + 1 } };
-          }
-          return p;
-        }
-
-        // Logic for Win/Loss/Draw
-        const isDraw = scoreA === scoreB;
-        const isWinner = (inTeamA && scoreA > scoreB) || (inTeamB && scoreB > scoreA);
-        const isLoser = (inTeamA && scoreB > scoreA) || (inTeamB && scoreA > scoreB);
-
-        const myGames = inTeamA ? scoreA : scoreB;
-        const enemyGames = inTeamA ? scoreB : scoreA;
-
-        return {
-          ...p,
-          stats: {
-            ...p.stats,
-            matchesPlayed: p.stats.matchesPlayed + 1,
-            wins: p.stats.wins + (isWinner ? 1 : 0),
-            losses: p.stats.losses + (isLoser ? 1 : 0),
-            draws: (p.stats.draws || 0) + (isDraw ? 1 : 0),
-            gamesWon: p.stats.gamesWon + myGames,
-            gamesLost: p.stats.gamesLost + enemyGames,
-          }
-        };
-      });
-    });
   };
+
   const undoFinishMatch = (matchId: string) => {
     const match = matches.find(m => m.id === matchId);
     if (!match || !match.isFinished) return;
 
     // 1. Revert Match State
-    setMatches(prev => prev.map(m =>
-      m.id === matchId ? { ...m, isFinished: false, endTime: undefined } : m
-    ));
+    const revertedMatch = { ...match, isFinished: false, endTime: undefined };
+    const updatedMatches = matches.map(m => m.id === matchId ? revertedMatch : m);
 
-    // 2. Revert Player Stats
-    setPlayers(prevPlayers => {
-      return prevPlayers.map(p => {
-        const inTeamA = p.id === match.teamA.player1Id || p.id === match.teamA.player2Id;
-        const inTeamB = p.id === match.teamB.player1Id || p.id === match.teamB.player2Id;
+    setMatches(updatedMatches);
 
-        if (!inTeamA && !inTeamB) {
-          // Was resting, now decrement rest count
-          if (p.active) {
-            return { ...p, stats: { ...p.stats, restCount: Math.max(0, p.stats.restCount - 1) } };
-          }
-          return p;
-        }
+    // 2. Recalculate Stats from updated matches
+    const updatedPlayers = recalculatePlayerStats(players, updatedMatches);
+    setPlayers(updatedPlayers);
 
-        const { scoreA, scoreB } = match;
-        const isDraw = scoreA === scoreB;
-        const isWinner = (inTeamA && scoreA > scoreB) || (inTeamB && scoreB > scoreA);
-        const isLoser = (inTeamA && scoreB > scoreA) || (inTeamB && scoreA > scoreB);
-
-        const myGames = inTeamA ? scoreA : scoreB;
-        const enemyGames = inTeamA ? scoreB : scoreA;
-
-        return {
-          ...p,
-          stats: {
-            ...p.stats,
-            matchesPlayed: Math.max(0, p.stats.matchesPlayed - 1),
-            wins: Math.max(0, p.stats.wins - (isWinner ? 1 : 0)),
-            losses: Math.max(0, p.stats.losses - (isLoser ? 1 : 0)),
-            draws: Math.max(0, (p.stats.draws || 0) - (isDraw ? 1 : 0)),
-            gamesWon: Math.max(0, p.stats.gamesWon - myGames),
-            gamesLost: Math.max(0, p.stats.gamesLost - enemyGames),
-          }
-        };
-      });
-    });
+    if (mode === 'CLOUD') {
+      dataService.saveMatch?.(revertedMatch);
+    }
 
     addLog('SYSTEM', 'Last match result was undone.');
   };
 
   const updateMatchScore = (matchId: string, newScoreA: number, newScoreB: number) => {
+    // Check if match exists
     const match = matches.find(m => m.id === matchId);
-    if (!match || !match.isFinished) {
-      // Only allow editing finished matches
-      setMatches(prev => prev.map(m =>
-        m.id === matchId ? { ...m, scoreA: newScoreA, scoreB: newScoreB } : m
-      ));
-      return;
+    if (!match) return;
+
+    // Updates
+    const updatedMatch = { ...match, scoreA: newScoreA, scoreB: newScoreB };
+    const updatedMatches = matches.map(m => m.id === matchId ? updatedMatch : m);
+
+    setMatches(updatedMatches);
+
+    // Only recalculate stats if the match was finished
+    if (match.isFinished) {
+      const updatedPlayers = recalculatePlayerStats(players, updatedMatches);
+      setPlayers(updatedPlayers);
     }
-
-    const oldScoreA = match.scoreA;
-    const oldScoreB = match.scoreB;
-
-    // Update match scores
-    setMatches(prev => prev.map(m =>
-      m.id === matchId ? { ...m, scoreA: newScoreA, scoreB: newScoreB } : m
-    ));
-
-    // Recalculate player stats: undo old scores, apply new scores
-    setPlayers(prevPlayers => {
-      return prevPlayers.map(p => {
-        const inTeamA = p.id === match.teamA.player1Id || p.id === match.teamA.player2Id;
-        const inTeamB = p.id === match.teamB.player1Id || p.id === match.teamB.player2Id;
-
-        if (!inTeamA && !inTeamB) return p;
-
-        // Calculate old result
-        const oldIsDraw = oldScoreA === oldScoreB;
-        const oldIsWinner = (inTeamA && oldScoreA > oldScoreB) || (inTeamB && oldScoreB > oldScoreA);
-        const oldIsLoser = (inTeamA && oldScoreB > oldScoreA) || (inTeamB && oldScoreA > oldScoreB);
-        const oldMyGames = inTeamA ? oldScoreA : oldScoreB;
-        const oldEnemyGames = inTeamA ? oldScoreB : oldScoreA;
-
-        // Calculate new result
-        const newIsDraw = newScoreA === newScoreB;
-        const newIsWinner = (inTeamA && newScoreA > newScoreB) || (inTeamB && newScoreB > newScoreA);
-        const newIsLoser = (inTeamA && newScoreB > newScoreA) || (inTeamB && newScoreA > newScoreB);
-        const newMyGames = inTeamA ? newScoreA : newScoreB;
-        const newEnemyGames = inTeamA ? newScoreB : newScoreA;
-
-        return {
-          ...p,
-          stats: {
-            ...p.stats,
-            // Undo old, apply new (matchesPlayed stays the same)
-            wins: p.stats.wins - (oldIsWinner ? 1 : 0) + (newIsWinner ? 1 : 0),
-            losses: p.stats.losses - (oldIsLoser ? 1 : 0) + (newIsLoser ? 1 : 0),
-            draws: (p.stats.draws || 0) - (oldIsDraw ? 1 : 0) + (newIsDraw ? 1 : 0),
-            gamesWon: p.stats.gamesWon - oldMyGames + newMyGames,
-            gamesLost: p.stats.gamesLost - oldEnemyGames + newEnemyGames,
-          }
-        };
-      });
-    });
 
     addLog('SYSTEM', `Match score updated to ${newScoreA}:${newScoreB}.`);
   };
 
   const deleteMatch = (matchId: string) => {
-    setMatches(prev => prev.filter(m => m.id !== matchId));
+    const updatedMatches = matches.filter(m => m.id !== matchId);
+    setMatches(updatedMatches);
+
+    // Recalculate stats cleanly
+    const updatedPlayers = recalculatePlayerStats(players, updatedMatches);
+    setPlayers(updatedPlayers);
+
     addLog('SYSTEM', 'A match record was deleted.');
+
+    if (mode === 'CLOUD') {
+      dataService.deleteMatch?.(matchId);
+    }
   };
 
   const postAnnouncement = (text: string, author?: string) => {
@@ -423,7 +421,12 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       matches,
       feed,
       activeMatch,
+      mode,
+      switchMode,
+      startCloudSession,
+      loadCloudSession,
       addPlayer,
+      getAllPlayers,
       updatePlayerName,
       reorderPlayers,
       shufflePlayers,

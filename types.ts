@@ -59,3 +59,10 @@ export interface Toast {
   type: ToastType;
   duration?: number;
 }
+
+export interface SessionSummary {
+  id: string;
+  playedAt: number;
+  location?: string;
+  status: string;
+}

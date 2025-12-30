@@ -9,9 +9,11 @@ interface Props {
 }
 
 export const PlayerList: React.FC<Props> = ({ setTab }) => {
-  const { players, matches, addPlayer, togglePlayerActive, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule, resetData } = useApp();
+  const { players, matches, mode, getAllPlayers, addPlayer, togglePlayerActive, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule, resetData } = useApp();
   const { showToast } = useToast();
   const [newName, setNewName] = useState('');
+  const [dbPlayers, setDbPlayers] = useState<any[]>([]);
+  const [showDbPicker, setShowDbPicker] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showScheduleConfirm, setShowScheduleConfirm] = useState(false); // New confirmation state
@@ -22,6 +24,14 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
 
   // Ref to track current dragging index during Touch events (to handle closure staleness)
   const activeDragIndex = useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (mode === 'CLOUD' && showDbPicker) {
+      getAllPlayers()
+        .then(p => setDbPlayers(p))
+        .catch(err => console.error("Failed to load players", err));
+    }
+  }, [mode, showDbPicker]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,10 +156,43 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
     <div className="space-y-4 pb-24">
       {/* Add Player Box */}
       {!isEditMode && (
-        <div className="bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700">
-          <h2 className="text-xl font-bold text-tennis-green mb-4 flex items-center">
-            <UserPlus className="mr-2" size={24} /> Add Player
+        <div className="bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700 space-y-3">
+          <h2 className="text-xl font-bold text-tennis-green mb-4 flex items-center justify-between">
+            <span className="flex items-center"><UserPlus className="mr-2" size={24} /> Add Player</span>
+            {mode === 'CLOUD' && (
+              <button
+                onClick={() => setShowDbPicker(!showDbPicker)}
+                className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300 hover:text-white"
+              >
+                {showDbPicker ? 'Close Global List' : 'From Global List'}
+              </button>
+            )}
           </h2>
+
+          {/* Global DB Picker */}
+          {mode === 'CLOUD' && showDbPicker && (
+            <div className="bg-slate-900 rounded-lg p-2 max-h-40 overflow-y-auto mb-2 border border-slate-700">
+              <p className="text-xs text-slate-500 mb-2 px-1">Select from database:</p>
+              <div className="flex flex-wrap gap-2">
+                {dbPlayers
+                  .filter(dp => !players.some(p => p.id === dp.id || p.name.toLowerCase() === dp.name.toLowerCase()))
+                  .map(dp => (
+                    <button
+                      key={dp.id}
+                      onClick={() => {
+                        addPlayer(dp.name, dp);
+                        showToast(`${dp.name} added`, "success");
+                      }}
+                      className="text-xs bg-slate-800 border border-slate-600 px-2 py-1 rounded hover:border-tennis-green hover:text-tennis-green transition-colors"
+                    >
+                      + {dp.name}
+                    </button>
+                  ))}
+                {dbPlayers.length === 0 && <span className="text-xs text-slate-500 pl-1">Loading...</span>}
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleAdd} className="flex gap-2">
             <input
               type="text"
@@ -173,8 +216,8 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
         <button
           onClick={() => setIsEditMode(!isEditMode)}
           className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isEditMode
-              ? 'bg-tennis-green text-slate-900 shadow-[0_0_10px_rgba(212,225,87,0.4)]'
-              : 'bg-slate-800 text-slate-400 border border-slate-700'
+            ? 'bg-tennis-green text-slate-900 shadow-[0_0_10px_rgba(212,225,87,0.4)]'
+            : 'bg-slate-800 text-slate-400 border border-slate-700'
             }`}
         >
           {isEditMode ? <Check size={14} /> : <GripVertical size={14} />}
@@ -194,8 +237,8 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
             className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${player.active
-                ? 'bg-slate-800 border-tennis-green/30'
-                : 'bg-slate-900 border-slate-800 opacity-60'
+              ? 'bg-slate-800 border-tennis-green/30'
+              : 'bg-slate-900 border-slate-800 opacity-60'
               } ${isEditMode ? 'cursor-move' : ''}`}
           >
             <div className="flex items-center gap-3 flex-1">

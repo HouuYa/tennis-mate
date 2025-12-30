@@ -18,6 +18,9 @@
 │   ├── StatsView.tsx     # Leaderboard & AI Analysis
 │   └── BottomNav.tsx     # Navigation Bar
 ├── services/
+│   ├── DataService.ts    # Interface for Data Operations
+│   ├── LocalDataService.ts # LocalStorage Implementation
+│   ├── SupabaseDataService.ts # Supabase Implementation
 │   └── geminiService.ts  # Google GenAI Integration
 ├── utils/
 │   ├── matchmaking.ts    # Pairing Logic (Rotation & Fairness)
@@ -26,11 +29,26 @@
 
 ## 2. Core Concepts
 
-### A. State Management (Serverless)
-- This app uses no backend database.
-- **Persistence**: `localStorage` ensures data survives refreshes.
-- **Sharing**: State is compressed into a JSON string and passed via URL Query Parameters (`?data=...`) for serverless sharing.
-- **Context API**: `AppContext` manages global state (`players`, `matches`, `feed`) and provides actions like `reorderPlayers`, `finishMatch`, `undoFinishMatch`, etc.
+### A. Dual Mode Architecture (Data Service Pattern)
+The app implements a **Repository/Adapter Pattern** via the `DataService` interface, allowing two distinct modes:
+
+1.  **Guest Mode (Local)**:
+    - **Persistence**: `localStorage`.
+    - **Dependency**: None (works offline).
+    - **Logic**: `LocalDataService` handles JSON serialization/deserialization.
+    
+2.  **Cloud Mode (Supabase)**:
+    - **Persistence**: Postgres Database (Supabase).
+    - **Dependency**: Internet connection.
+    - **Logic**: `SupabaseDataService` maps domain objects to SQL tables.
+    - **Features**: Real-time sync (potential), Global Player List, Report generation.
+
+### B. State Management
+- **Context API**: `AppContext` is the single source of truth. It holds the `mode` ('LOCAL' | 'CLOUD') and an instance of the active `DataService`.
+- **Sync Strategy**:
+    - **Write**: Actions (e.g., `finishMatch`) update the local React State immediately (Optimistic UI) and then call `dataService.save...()` asynchronously.
+    - **Read**: On load, `dataService.loadSession()` fetches the initial state.
+    - **Re-calculation**: New utility `recalculatePlayerStats` ensures stats are always computed from the match history log, guaranteeing consistency.
 
 ### B. Matchmaking Algorithm (`utils/matchmaking.ts`)
 1.  **Rotation (Rest) Logic**:
@@ -50,3 +68,17 @@
 
 ### D. AI Integration
 - Google Gemini API analyzes the raw JSON match data to generate natural language insights (MVPs, best partners) in the Stats view.
+
+### E. Database Schema (Supabase)
+
+*   **`players`**: Global registry of players.
+    *   `id` (uuid), `name` (text), `created_at`
+*   **`sessions`**: Represents a day of play or an event.
+    *   `id` (uuid), `location` (text), `played_at` (timestamp), `status`
+*   **`session_players`**: Junction table for players participating in a session.
+    *   `session_id`, `player_id`
+*   **`matches`**: Individual game records.
+    *   `id`, `session_id`
+    *   `team_a` (uuid[]), `team_b` (uuid[])
+    *   `score_a`, `score_b`
+    *   `is_finished` (bool)
