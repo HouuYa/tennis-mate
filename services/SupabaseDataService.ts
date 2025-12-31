@@ -19,6 +19,32 @@ async function executeSupabaseQuery<T extends { data: any; error: any }>(
 export class SupabaseDataService implements DataService {
     type: 'CLOUD' = 'CLOUD';
     private currentSessionId: string | null = null;
+    private static SESSION_STORAGE_KEY = 'tennis-mate-current-session-id';
+
+    constructor() {
+        // Restore session ID from localStorage if available
+        const savedSessionId = localStorage.getItem(SupabaseDataService.SESSION_STORAGE_KEY);
+        if (savedSessionId) {
+            this.currentSessionId = savedSessionId;
+            console.log('Restored session ID from localStorage:', savedSessionId);
+        }
+    }
+
+    private setCurrentSessionId(sessionId: string) {
+        this.currentSessionId = sessionId;
+        localStorage.setItem(SupabaseDataService.SESSION_STORAGE_KEY, sessionId);
+        console.log('Set current session ID:', sessionId);
+    }
+
+    private clearCurrentSessionId() {
+        this.currentSessionId = null;
+        localStorage.removeItem(SupabaseDataService.SESSION_STORAGE_KEY);
+        console.log('Cleared current session ID');
+    }
+
+    getCurrentSessionId(): string | null {
+        return this.currentSessionId;
+    }
 
     async listSessions(): Promise<SessionSummary[]> {
         const data = await executeSupabaseQuery(
@@ -47,7 +73,7 @@ export class SupabaseDataService implements DataService {
             'Failed to create session:'
         );
 
-        this.currentSessionId = data.id;
+        this.setCurrentSessionId(data.id);
         return data.id;
     }
 
@@ -68,7 +94,7 @@ export class SupabaseDataService implements DataService {
     async loadSession(sessionId?: string): Promise<AppState | null> {
         if (!sessionId) return null; // Or logic to find active session?
 
-        this.currentSessionId = sessionId;
+        this.setCurrentSessionId(sessionId);
 
         // Fetch players for this session
         // This is tricky because players are in session_players or active match participants.
