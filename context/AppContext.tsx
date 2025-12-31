@@ -220,10 +220,11 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
   const activeMatch = matches.find(m => !m.isFinished) || null;
 
   const addPlayer = async (name: string, fromDB?: Player) => {
-    // Ensure fromDB has all required fields, or create new player
+    // When adding a player to the session, always set active: true
+    // User can toggle inactive later if needed via UI
     const newPlayer: Player = fromDB ? {
       ...fromDB,
-      active: fromDB.active !== undefined ? fromDB.active : true,
+      active: true, // Force active when adding to session (semantic: "I want this player today")
       stats: fromDB.stats || { matchesPlayed: 0, wins: 0, losses: 0, draws: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
     } : {
       id: uuidv4(),
