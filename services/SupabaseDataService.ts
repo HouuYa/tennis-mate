@@ -119,22 +119,40 @@ export class SupabaseDataService implements DataService {
     async addPlayer(player: Player): Promise<void> {
         if (!this.currentSessionId) throw new Error("No active session");
 
-        // 1. Ensure player exists in master 'players' table
-        // We assume player.id is already a UUID.
-        // Check if player exists or insert
         // 1. Ensure player exists in master 'players' table using upsert for safety
-        await supabase.from('players').upsert({ id: player.id, name: player.name });
+        const { error: playerError } = await supabase
+            .from('players')
+            .upsert({ id: player.id, name: player.name }, { onConflict: 'id' });
 
-        // 2. Add to session_players
-        await supabase.from('session_players').insert({
-            session_id: this.currentSessionId,
-            player_id: player.id
-        });
+        if (playerError) {
+            console.error('Failed to upsert player:', playerError);
+            throw playerError;
+        }
+
+        // 2. Add to session_players (use upsert to avoid duplicate key errors)
+        const { error: sessionError } = await supabase
+            .from('session_players')
+            .upsert(
+                { session_id: this.currentSessionId, player_id: player.id },
+                { onConflict: 'session_id,player_id' }
+            );
+
+        if (sessionError) {
+            console.error('Failed to add player to session:', sessionError);
+            throw sessionError;
+        }
     }
 
     async updatePlayer(player: Player): Promise<void> {
-        // Update name?
-        await supabase.from('players').update({ name: player.name }).eq('id', player.id);
+        const { error } = await supabase
+            .from('players')
+            .update({ name: player.name })
+            .eq('id', player.id);
+
+        if (error) {
+            console.error('Failed to update player:', error);
+            throw error;
+        }
     }
 
     async saveMatch(match: Match): Promise<void> {
@@ -159,6 +177,14 @@ export class SupabaseDataService implements DataService {
     }
 
     async deleteMatch(matchId: string): Promise<void> {
-        await supabase.from('matches').delete().eq('id', matchId);
+        const { error } = await supabase
+            .from('matches')
+            .delete()
+            .eq('id', matchId);
+
+        if (error) {
+            console.error('Failed to delete match:', error);
+            throw error;
+        }
     }
 }
