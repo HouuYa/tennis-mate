@@ -23,23 +23,35 @@ export class SupabaseDataService implements DataService {
 
     constructor() {
         // Restore session ID from localStorage if available
-        const savedSessionId = localStorage.getItem(SupabaseDataService.SESSION_STORAGE_KEY);
-        if (savedSessionId) {
-            this.currentSessionId = savedSessionId;
-            console.log('Restored session ID from localStorage:', savedSessionId);
+        try {
+            const savedSessionId = localStorage.getItem(SupabaseDataService.SESSION_STORAGE_KEY);
+            if (savedSessionId) {
+                this.currentSessionId = savedSessionId;
+                console.log('Restored session ID from localStorage:', savedSessionId);
+            }
+        } catch (error) {
+            console.warn('Failed to restore session ID from localStorage:', error);
         }
     }
 
     private setCurrentSessionId(sessionId: string) {
         this.currentSessionId = sessionId;
-        localStorage.setItem(SupabaseDataService.SESSION_STORAGE_KEY, sessionId);
-        console.log('Set current session ID:', sessionId);
+        try {
+            localStorage.setItem(SupabaseDataService.SESSION_STORAGE_KEY, sessionId);
+            console.log('Set current session ID:', sessionId);
+        } catch (error) {
+            console.warn('Failed to save session ID to localStorage:', error);
+        }
     }
 
     private clearCurrentSessionId() {
         this.currentSessionId = null;
-        localStorage.removeItem(SupabaseDataService.SESSION_STORAGE_KEY);
-        console.log('Cleared current session ID');
+        try {
+            localStorage.removeItem(SupabaseDataService.SESSION_STORAGE_KEY);
+            console.log('Cleared current session ID');
+        } catch (error) {
+            console.warn('Failed to clear session ID from localStorage:', error);
+        }
     }
 
     getCurrentSessionId(): string | null {
