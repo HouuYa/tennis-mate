@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle, Edit3, RotateCcw } from 'lucide-react';
+import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle, Edit3, RotateCcw, AlertTriangle, TrendingUp } from 'lucide-react';
 import { generateNextMatch } from '../utils/matchmaking';
-import { Match } from '../types';
+import { Match, Tab } from '../types';
 import { getNameWithNumber, getRestingPlayerNames } from '../utils/playerUtils';
 
-export const MatchSchedule: React.FC = () => {
+interface Props {
+  setTab: (t: Tab) => void;
+}
+
+export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
   const { matches, activeMatch, players, finishMatch, undoFinishMatch, createNextMatch, generateSchedule, deleteMatch, updateMatchScore } = useApp();
   const { showToast } = useToast();
   const [scoreA, setScoreA] = useState(0);
@@ -15,11 +19,12 @@ export const MatchSchedule: React.FC = () => {
   const [editingMatch, setEditingMatch] = useState<string | null>(null);
   const [editScoreA, setEditScoreA] = useState(0);
   const [editScoreB, setEditScoreB] = useState(0);
+  const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
 
   const finishedMatches = matches.filter(m => m.isFinished).sort((a, b) => (a.endTime || a.timestamp) - (b.endTime || b.timestamp));
   const queuedMatches = matches.filter(m => !m.isFinished && m.id !== activeMatch?.id);
 
-  const activePlayers = players.filter(p => p.active);
+  const activePlayers = players;
   const activeCount = activePlayers.length;
 
   useEffect(() => {
@@ -60,6 +65,14 @@ export const MatchSchedule: React.FC = () => {
       generateSchedule(planCount);
     }
   };
+
+  const handleEndSession = () => {
+    setShowEndSessionDialog(false);
+    showToast('Session completed! Viewing results...', 'success');
+    setTab(Tab.STATS);
+  };
+
+  const allMatchesFinished = matches.length > 0 && !activeMatch && queuedMatches.length === 0;
 
   return (
     <div className="pb-24 space-y-6">
@@ -247,37 +260,102 @@ export const MatchSchedule: React.FC = () => {
       )}
 
       {/* 5. Session Planner */}
-      <div className="mt-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
-        <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-          <PlusCircle size={16} className="text-tennis-green" /> Session Planner
-        </h3>
-        <p className="text-xs text-slate-400 mb-4">
-          Pre-generate a schedule where everyone plays everyone exactly once (Round Robin).
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-700">
-            <span className="text-xs text-slate-500 font-bold uppercase">Total Sets:</span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={planCount}
-              onChange={(e) => setPlanCount(parseInt(e.target.value) || 0)}
-              className="w-12 bg-transparent text-white font-bold text-center focus:outline-none"
-            />
+      {!allMatchesFinished && (
+        <div className="mt-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
+          <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+            <PlusCircle size={16} className="text-tennis-green" /> Session Planner
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">
+            Pre-generate a schedule where everyone plays everyone exactly once (Round Robin).
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-700">
+              <span className="text-xs text-slate-500 font-bold uppercase">Total Sets:</span>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={planCount}
+                onChange={(e) => setPlanCount(parseInt(e.target.value) || 0)}
+                className="w-12 bg-transparent text-white font-bold text-center focus:outline-none"
+              />
+            </div>
+            <button
+              onClick={handleGenerate}
+              disabled={activeCount < 4}
+              className="flex-1 bg-slate-700 hover:bg-tennis-green hover:text-slate-900 text-white font-bold py-2 rounded-lg transition-colors disabled:opacity-50 text-sm flex justify-center items-center gap-2"
+            >
+              <PlayCircle size={16} /> Generate Schedule
+            </button>
+          </div>
+          {activeCount === 4 && <p className="text-[10px] text-tennis-green mt-2">* 4 Players: 3 Sets is perfect rotation.</p>}
+          {activeCount === 5 && <p className="text-[10px] text-tennis-green mt-2">* 5 Players: 5 Sets (Rest: P5→P4→P3→P2→P1)</p>}
+          {activeCount >= 6 && <p className="text-[10px] text-tennis-green mt-2">* {activeCount} Players: {activeCount} Sets (Rest: P{activeCount}→...→P1)</p>}
+        </div>
+      )}
+
+      {/* 6. End Session Button */}
+      {allMatchesFinished && (
+        <div className="mt-8 bg-gradient-to-br from-tennis-green/10 to-tennis-green/5 p-6 rounded-xl border-2 border-tennis-green/30 space-y-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-tennis-green/20 rounded-full flex items-center justify-center">
+              <Trophy size={24} className="text-tennis-green" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">All Matches Completed!</h3>
+              <p className="text-sm text-slate-400">Ready to end the session and view stats?</p>
+            </div>
           </div>
           <button
-            onClick={handleGenerate}
-            disabled={activeCount < 4}
-            className="flex-1 bg-slate-700 hover:bg-tennis-green hover:text-slate-900 text-white font-bold py-2 rounded-lg transition-colors disabled:opacity-50 text-sm flex justify-center items-center gap-2"
+            onClick={() => setShowEndSessionDialog(true)}
+            className="w-full py-4 bg-tennis-green text-slate-900 font-black text-lg rounded-xl shadow-lg hover:bg-[#c0ce4e] active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <PlayCircle size={16} /> Generate Schedule
+            <TrendingUp size={24} /> End Session & View Stats
           </button>
         </div>
-        {activeCount === 4 && <p className="text-[10px] text-tennis-green mt-2">* 4 Players: 3 Sets is perfect rotation.</p>}
-        {activeCount === 5 && <p className="text-[10px] text-tennis-green mt-2">* 5 Players: 5 Sets (Rest: P5→P4→P3→P2→P1)</p>}
-        {activeCount >= 6 && <p className="text-[10px] text-tennis-green mt-2">* {activeCount} Players: {activeCount} Sets (Rest: P{activeCount}→...→P1)</p>}
-      </div>
+      )}
+
+      {/* End Session Confirmation Dialog */}
+      {showEndSessionDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-tennis-green rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 bg-tennis-green/20 rounded-full flex items-center justify-center text-tennis-green mb-2">
+                <Trophy size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white">End Session & Save Results?</h3>
+              <div className="w-full bg-slate-900 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Total Matches:</span>
+                  <span className="text-white font-bold">{finishedMatches.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Players:</span>
+                  <span className="text-white font-bold">{players.length}</span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-300">
+                All match results will be saved and you'll be able to view detailed statistics.
+              </p>
+
+              <div className="flex gap-3 w-full mt-4">
+                <button
+                  onClick={() => setShowEndSessionDialog(false)}
+                  className="flex-1 py-3 bg-slate-700 text-white font-bold rounded-xl hover:bg-slate-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEndSession}
+                  className="flex-1 py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e]"
+                >
+                  View Stats
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

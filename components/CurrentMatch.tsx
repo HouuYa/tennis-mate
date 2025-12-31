@@ -11,13 +11,13 @@ export const CurrentMatch: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
 
   if (!activeMatch) {
-    const activeCount = players.filter(p => p.active).length;
+    const activeCount = players.length;
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
         <Trophy size={64} className="text-slate-600 mb-6" />
         <h2 className="text-2xl font-bold text-slate-300 mb-2">No Match in Progress</h2>
         {activeCount < 4 ? (
-          <p className="text-red-400">Need at least 4 active players to start.</p>
+          <p className="text-red-400">Need at least 4 players to start.</p>
         ) : (
           <button
             onClick={() => createNextMatch()}
@@ -148,7 +148,7 @@ export const CurrentMatch: React.FC = () => {
       <div className="bg-slate-800 p-4 rounded-xl">
         <h3 className="text-slate-400 text-sm font-bold uppercase mb-2">Resting Players</h3>
         <div className="flex flex-wrap gap-2">
-          {players.filter(p => p.active &&
+          {players.filter(p =>
             p.id !== activeMatch.teamA.player1Id &&
             p.id !== activeMatch.teamA.player2Id &&
             p.id !== activeMatch.teamB.player1Id &&
@@ -158,7 +158,7 @@ export const CurrentMatch: React.FC = () => {
               {p.name}
             </span>
           ))}
-          {players.filter(p => p.active).length <= 4 && <span className="text-slate-500 text-sm italic">No one is resting.</span>}
+          {players.length <= 4 && <span className="text-slate-500 text-sm italic">No one is resting.</span>}
         </div>
       </div>
     </div>

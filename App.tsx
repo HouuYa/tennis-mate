@@ -47,7 +47,7 @@ const MainLayout = () => {
 
       <main className="max-w-md mx-auto p-4 h-full">
         {activeTab === Tab.PLAYERS && <PlayerList setTab={setActiveTab} />}
-        {activeTab === Tab.MATCHES && <MatchSchedule />}
+        {activeTab === Tab.MATCHES && <MatchSchedule setTab={setActiveTab} />}
         {activeTab === Tab.FEED && <LiveFeed />}
         {activeTab === Tab.STATS && <StatsView />}
       </main>

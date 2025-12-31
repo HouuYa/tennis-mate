@@ -24,6 +24,7 @@ interface AppContextType {
   reorderPlayers: (fromIndex: number, toIndex: number) => void;
   shufflePlayers: () => void;
   togglePlayerActive: (id: string) => void;
+  deletePlayer: (id: string) => void;
   createNextMatch: () => boolean;
   generateSchedule: (count: number, overwrite?: boolean) => void;
   finishMatch: (matchId: string, scoreA: number, scoreB: number) => void;
@@ -293,6 +294,14 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p));
   };
 
+  const deletePlayer = (id: string) => {
+    const player = players.find(p => p.id === id);
+    if (player) {
+      setPlayers(prev => prev.filter(p => p.id !== id));
+      addLog('SYSTEM', `${player.name} has been removed from the roster.`);
+    }
+  };
+
   const createNextMatch = (): boolean => {
     if (activeMatch) return false; // Already playing
 
@@ -546,6 +555,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       reorderPlayers,
       shufflePlayers,
       togglePlayerActive,
+      deletePlayer,
       createNextMatch,
       generateSchedule,
       finishMatch,

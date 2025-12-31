@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { UserPlus, UserCheck, UserX, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw, AlertTriangle } from 'lucide-react';
+import { UserPlus, Trash2, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Tab } from '../types';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export const PlayerList: React.FC<Props> = ({ setTab }) => {
-  const { players, matches, mode, getAllPlayers, addPlayer, togglePlayerActive, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule, resetData } = useApp();
+  const { players, matches, mode, getAllPlayers, addPlayer, deletePlayer, reorderPlayers, shufflePlayers, updatePlayerName, generateSchedule, resetData } = useApp();
   const { showToast } = useToast();
   const [newName, setNewName] = useState('');
   const [dbPlayers, setDbPlayers] = useState<any[]>([]);
@@ -17,6 +17,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showScheduleConfirm, setShowScheduleConfirm] = useState(false); // New confirmation state
+  const [playerToDelete, setPlayerToDelete] = useState<string | null>(null);
 
   // Refs for Drag and Drop
   const dragItem = useRef<number | null>(null);
@@ -66,9 +67,9 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
   };
 
   const handleConfirmAndSchedule = () => {
-    const activeCount = players.filter(p => p.active).length;
-    if (activeCount < 4) {
-      showToast("Need at least 4 active players to generate a schedule.", "warning");
+    const playerCount = players.length;
+    if (playerCount < 4) {
+      showToast("Need at least 4 players to generate a schedule.", "warning");
       return;
     }
 
@@ -79,16 +80,22 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
       setShowScheduleConfirm(true); // Show confirmation dialog
     } else {
       // No existing matches, proceed normally (overwrite=true/false doesn't matter, but false is safe)
-      const sets = getSetsCount(activeCount);
+      const sets = getSetsCount(playerCount);
       generateSchedule(sets, false);
       setIsEditMode(false);
       setTab(Tab.MATCHES);
     }
   };
 
+  const handleKeepSchedule = () => {
+    setShowScheduleConfirm(false);
+    setTab(Tab.MATCHES);
+    showToast("Keeping current schedule", "success");
+  };
+
   const handleOverwriteSchedule = () => {
-    const activeCount = players.filter(p => p.active).length;
-    const sets = getSetsCount(activeCount);
+    const playerCount = players.length;
+    const sets = getSetsCount(playerCount);
 
     generateSchedule(sets, true); // Overwrite existing unfinished matches
 
@@ -96,6 +103,18 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
     setIsEditMode(false);
     setTab(Tab.MATCHES);
     showToast("New schedule generated!", "success");
+  };
+
+  const handleDeleteClick = (playerId: string) => {
+    setPlayerToDelete(playerId);
+  };
+
+  const handleConfirmDelete = () => {
+    if (playerToDelete) {
+      deletePlayer(playerToDelete);
+      setPlayerToDelete(null);
+      showToast("Player deleted", "success");
+    }
   };
 
   const handleReset = () => {
@@ -241,13 +260,10 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
             onDragEnter={(e) => onDragEnter(e, index)}
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
-            className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${player.active
-              ? 'bg-slate-800 border-tennis-green/30'
-              : 'bg-slate-900 border-slate-800 opacity-60'
-              } ${isEditMode ? 'cursor-move' : ''}`}
+            className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all bg-slate-800 border-tennis-green/30 ${isEditMode ? 'cursor-move' : ''}`}
           >
             <div className="flex items-center gap-3 flex-1">
-              <span className={`flex items-center justify-center w-8 h-8 rounded-full text-white font-mono font-bold text-sm ${isEditMode ? 'bg-slate-700' : 'bg-slate-700'}`}>
+              <span className={`flex items-center justify-center w-8 h-8 rounded-full text-white font-mono font-bold text-sm bg-slate-700`}>
                 {index + 1}
               </span>
               <div className="flex-1">
@@ -274,6 +290,15 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
 
             {isEditMode ? (
               <div className="flex items-center gap-2 ml-2">
+                {/* Delete Button */}
+                <button
+                  onClick={() => handleDeleteClick(player.id)}
+                  className="p-2 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
+                  title="Delete player"
+                >
+                  <Trash2 size={18} />
+                </button>
+
                 {/* Drag Grip for Mobile */}
                 <div
                   className="p-2 text-slate-500 touch-none"
@@ -302,14 +327,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
                   </button>
                 </div>
               </div>
-            ) : (
-              <button
-                onClick={() => togglePlayerActive(player.id)}
-                className={`p-2 rounded-full ${player.active ? 'bg-tennis-green text-slate-900' : 'bg-slate-700 text-slate-400'}`}
-              >
-                {player.active ? <UserCheck size={18} /> : <UserX size={18} />}
-              </button>
-            )}
+            ) : null}
           </div>
         ))}
       </div>
@@ -336,7 +354,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
           </div>
 
           <div className="p-4 text-center text-slate-500 text-sm bg-slate-900/50 rounded-lg mt-4">
-            Active Players: {players.filter(p => p.active).length} / {players.length}
+            Total Players: {players.length}
             <br />
             <span className="text-xs opacity-70">Rotation proceeds in reverse order</span>
           </div>
@@ -373,36 +391,84 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
             )}
           </div>
 
-          {/* Schedule Overwrite Confirmation Modal (Absolute Centered) */}
-          {showScheduleConfirm && (
+          {/* Delete Player Confirmation Modal */}
+          {playerToDelete && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-              <div className="bg-slate-800 border border-tennis-green rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in-95">
+              <div className="bg-slate-800 border border-red-500 rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in-95">
                 <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center text-yellow-500 mb-2">
+                  <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-2">
                     <AlertTriangle size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-white">Overwrite Active Schedule?</h3>
+                  <h3 className="text-xl font-bold text-white">Delete Player?</h3>
                   <p className="text-sm text-slate-300">
-                    matches are currently queued. Generating a new schedule will <span className="text-red-400 font-bold">delete unplayed matches</span> in the current queue.
+                    Are you sure you want to delete <span className="text-tennis-green font-bold">{players.find(p => p.id === playerToDelete)?.name}</span>?
                   </p>
                   <p className="text-xs text-slate-500 bg-slate-900/50 p-2 rounded">
-                    Finished matches will be saved in history.
+                    This action cannot be undone.
                   </p>
 
                   <div className="flex gap-3 w-full mt-4">
                     <button
-                      onClick={() => setShowScheduleConfirm(false)}
+                      onClick={() => setPlayerToDelete(null)}
                       className="flex-1 py-3 bg-slate-700 text-white font-bold rounded-xl hover:bg-slate-600"
                     >
                       Cancel
                     </button>
                     <button
-                      onClick={handleOverwriteSchedule}
-                      className="flex-1 py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e]"
+                      onClick={handleConfirmDelete}
+                      className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-500"
                     >
-                      Replace Schedule
+                      Delete
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Schedule Overwrite Confirmation Modal (Absolute Centered) */}
+          {showScheduleConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="bg-slate-800 border border-tennis-green rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center text-yellow-500 mb-2">
+                    <AlertTriangle size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Match Schedule Already Exists</h3>
+                  <p className="text-sm text-slate-300">
+                    A match schedule is already in progress. What would you like to do?
+                  </p>
+
+                  <div className="w-full space-y-2 mt-4">
+                    <button
+                      onClick={handleKeepSchedule}
+                      className="w-full py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e] transition-colors"
+                    >
+                      Keep Current Schedule
+                    </button>
+                    <p className="text-xs text-slate-500">Continue with existing matches</p>
+                  </div>
+
+                  <div className="w-full border-t border-slate-700 my-2"></div>
+
+                  <div className="w-full space-y-2">
+                    <button
+                      onClick={handleOverwriteSchedule}
+                      className="w-full py-3 bg-red-900/30 text-red-400 font-bold rounded-xl hover:bg-red-900/50 border border-red-900/50 transition-colors"
+                    >
+                      Delete & Create New Schedule
+                    </button>
+                    <p className="text-xs text-slate-500">
+                      <span className="text-red-400 font-bold">⚠️ Warning:</span> This will delete all unfinished matches
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowScheduleConfirm(false)}
+                    className="mt-2 text-sm text-slate-500 hover:text-slate-300 underline"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>
