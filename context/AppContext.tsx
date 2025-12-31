@@ -157,16 +157,20 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
       // Add default players automatically for better UX
       addLog('SYSTEM', 'Adding default players...');
-      let successCount = 0;
-      for (const playerName of INITIAL_PLAYERS) {
+
+      const playerAddPromises = INITIAL_PLAYERS.map(async (playerName) => {
         try {
           await addPlayer(playerName);
-          successCount++;
+          return true;
         } catch (error) {
           console.error(`Failed to add player ${playerName}:`, error);
           // Continue adding other players even if one fails
+          return false;
         }
-      }
+      });
+
+      const results = await Promise.all(playerAddPromises);
+      const successCount = results.filter(Boolean).length;
 
       if (successCount > 0) {
         addLog('SYSTEM', `✅ Session ready! ${successCount} players added.`);
