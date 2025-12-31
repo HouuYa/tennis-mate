@@ -83,11 +83,12 @@ export class SupabaseDataService implements DataService {
         }));
 
         // Transform Matches
+        // team_a and team_b are JSONB objects: { player1Id, player2Id }
         const matches: Match[] = matchesRes.data.map((m: any) => ({
             id: m.id,
             timestamp: new Date(m.played_at).getTime(),
-            teamA: { player1Id: m.team_a[0], player2Id: m.team_a[1] },
-            teamB: { player1Id: m.team_b[0], player2Id: m.team_b[1] },
+            teamA: { player1Id: m.team_a.player1Id, player2Id: m.team_a.player2Id },
+            teamB: { player1Id: m.team_b.player1Id, player2Id: m.team_b.player2Id },
             scoreA: m.score_a,
             scoreB: m.score_b,
             isFinished: m.is_finished,
@@ -143,8 +144,9 @@ export class SupabaseDataService implements DataService {
             id: match.id,
             session_id: this.currentSessionId,
             played_at: new Date(match.timestamp).toISOString(),
-            team_a: [match.teamA.player1Id, match.teamA.player2Id],
-            team_b: [match.teamB.player1Id, match.teamB.player2Id],
+            // Store as JSONB objects (not arrays) to match DB schema
+            team_a: { player1Id: match.teamA.player1Id, player2Id: match.teamA.player2Id },
+            team_b: { player1Id: match.teamB.player1Id, player2Id: match.teamB.player2Id },
             score_a: match.scoreA,
             score_b: match.scoreB,
             is_finished: match.isFinished,
