@@ -3,6 +3,20 @@
 ## [Unreleased]
 - **Tie-break Support**: 준비 중.
 
+## [v0.9.1] - UX Improvements for Cloud Mode
+### Added
+- **Auto-create Default Players**: Cloud Mode에서 "Start Session" 클릭 시 5명의 기본 플레이어가 자동으로 추가됨 (Nadal, Federer, Djokovic, Murray, Alcaraz).
+- Local Mode와 일관된 UX 제공 - 세션 시작 즉시 매치 생성 가능.
+
+### Changed
+- `startCloudSession()`: 세션 생성 후 자동으로 기본 플레이어 추가 로직 구현.
+- 개별 플레이어 추가 실패 시에도 나머지 플레이어는 계속 추가되도록 에러 핸들링 개선.
+
+### Fixed
+- **Critical Bug #16**: Global List에서 플레이어 추가 시 `active: false`로 설정되어 매치 생성 불가 문제 해결.
+- `addPlayer()`: Session에 추가되는 모든 플레이어를 `active: true`로 강제 설정.
+- Active/Inactive 의미 명확화: Global DB는 중립(false), Session 추가 시 active(true), UI 토글로 비활성화 가능.
+
 ## [v0.9.0] - Cloud Integration & Stats Overhaul
 ### Added
 - **Cloud Mode (Supabase)**: 

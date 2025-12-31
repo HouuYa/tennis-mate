@@ -569,15 +569,68 @@ loadSession(sessionId).then(state => {
 
 ---
 
+### 16. Global List 플레이어가 inactive로 추가됨
+**발견일:** 2024-12-31
+**심각도:** 🔥🔥 Critical
+
+**증상:**
+- Global List에서 플레이어를 추가해도 매치 생성 불가
+- "Need at least 4 active players to generate a schedule" 에러
+- 5명의 플레이어가 추가되었는데도 inactive 상태
+
+**원인:**
+```typescript
+// ❌ BEFORE - Global List는 active: false로 로드
+async getAllPlayers(): Promise<Player[]> {
+  return data.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    active: false,  // 데이터베이스 기본값
+    stats: { ... }
+  }));
+}
+
+// addPlayer에서 fromDB.active를 그대로 유지
+const newPlayer: Player = fromDB ? {
+  ...fromDB,
+  active: fromDB.active !== undefined ? fromDB.active : true,  // false 유지!
+} : { ... };
+```
+
+**해결:**
+```typescript
+// ✅ AFTER - Session에 추가할 때는 항상 active: true
+const newPlayer: Player = fromDB ? {
+  ...fromDB,
+  active: true,  // 강제로 active (세션 참여 의도)
+  stats: fromDB.stats || { ... }
+} : {
+  id: uuidv4(),
+  name,
+  active: true,
+  stats: { ... }
+};
+```
+
+**의미적 구분:**
+- **Global Database**: 모든 선수 풀 (중립, active: false)
+- **Session Players**: 오늘 참여 선수 (추가 시 active: true)
+- **Toggle**: 사용자가 UI에서 비활성화 가능 (삭제 대신)
+
+**파일:** `context/AppContext.tsx`
+**Commit:** `TBD`
+
+---
+
 ## 요약
 
 ### 수정된 버그 통계
-- 🔥🔥🔥 Critical: 4개
+- 🔥🔥🔥 Critical: 5개
 - 🔥🔥 High: 5개
 - 🔥 Medium: 4개
 - ⭐ Low: 2개
 
-**총 15개 버그 수정**
+**총 16개 버그 수정**
 
 ### 주요 개선 사항
 1. ✅ Session 영속성 구현 (localStorage)

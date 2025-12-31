@@ -154,9 +154,32 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     try {
       const id = await dataService.createSession?.(location);
       addLog('SYSTEM', `New Cloud Session Started (ID: ${id})`);
+
+      // Add default players automatically for better UX
+      addLog('SYSTEM', 'Adding default players...');
+
+      const playerAddPromises = INITIAL_PLAYERS.map(async (playerName) => {
+        try {
+          await addPlayer(playerName);
+          return true;
+        } catch (error) {
+          console.error(`Failed to add player ${playerName}:`, error);
+          // Continue adding other players even if one fails
+          return false;
+        }
+      });
+
+      const results = await Promise.all(playerAddPromises);
+      const successCount = results.filter(Boolean).length;
+
+      if (successCount > 0) {
+        addLog('SYSTEM', `✅ Session ready! ${successCount} players added.`);
+      } else {
+        addLog('SYSTEM', '⚠️ Session created, but failed to add default players. Please add players manually.');
+      }
     } catch (e) {
       console.error(e);
-      addLog('SYSTEM', 'Failed to start cloud session.');
+      addLog('SYSTEM', '⚠️ Failed to start cloud session.');
     }
   };
 
@@ -201,10 +224,11 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
   const activeMatch = matches.find(m => !m.isFinished) || null;
 
   const addPlayer = async (name: string, fromDB?: Player) => {
-    // Ensure fromDB has all required fields, or create new player
+    // When adding a player to the session, always set active: true
+    // User can toggle inactive later if needed via UI
     const newPlayer: Player = fromDB ? {
       ...fromDB,
-      active: fromDB.active !== undefined ? fromDB.active : true,
+      active: true, // Force active when adding to session (semantic: "I want this player today")
       stats: fromDB.stats || { matchesPlayed: 0, wins: 0, losses: 0, draws: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
     } : {
       id: uuidv4(),
