@@ -168,7 +168,12 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
   const activeMatch = matches.find(m => !m.isFinished) || null;
 
   const addPlayer = async (name: string, fromDB?: Player) => {
-    const newPlayer: Player = fromDB || {
+    // Ensure fromDB has all required fields, or create new player
+    const newPlayer: Player = fromDB ? {
+      ...fromDB,
+      active: fromDB.active !== undefined ? fromDB.active : true,
+      stats: fromDB.stats || { matchesPlayed: 0, wins: 0, losses: 0, draws: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
+    } : {
       id: uuidv4(),
       name,
       active: true,
