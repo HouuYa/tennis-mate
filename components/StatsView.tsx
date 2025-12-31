@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { generateAIAnalysis } from '../services/geminiService';
 import { sortPlayers, calculatePoints } from '../utils/playerUtils';
-import { BarChart3, Sparkles, Link as LinkIcon, Download, FileText, Trash2, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2, Users, ChevronDown, ChevronRight } from 'lucide-react';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData } = useApp();

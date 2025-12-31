@@ -301,6 +301,10 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     const match = matches.find(m => m.id === matchId);
     if (!match) return;
 
+    // Save original state for rollback
+    const originalMatches = matches;
+    const originalPlayers = players;
+
     try {
       // 1. Calculate the NEW match object
       const updatedMatch: Match = { ...match, scoreA, scoreB, isFinished: true, endTime: Date.now() };
@@ -320,6 +324,9 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     } catch (error) {
       console.error('Failed to finish match:', error);
       addLog('SYSTEM', '⚠️ Failed to save match result. Please try again.');
+      // Rollback state changes
+      setMatches(originalMatches);
+      setPlayers(originalPlayers);
       throw error; // Re-throw so components can handle it
     }
 
