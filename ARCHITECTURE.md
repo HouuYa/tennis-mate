@@ -71,14 +71,125 @@ The app implements a **Repository/Adapter Pattern** via the `DataService` interf
 
 ### E. Database Schema (Supabase)
 
-*   **`players`**: Global registry of players.
-    *   `id` (uuid), `name` (text), `created_at`
-*   **`sessions`**: Represents a day of play or an event.
-    *   `id` (uuid), `location` (text), `played_at` (timestamp), `status`
-*   **`session_players`**: Junction table for players participating in a session.
-    *   `session_id`, `player_id`
-*   **`matches`**: Individual game records.
-    *   `id`, `session_id`
-    *   `team_a` (uuid[]), `team_b` (uuid[])
-    *   `score_a`, `score_b`
-    *   `is_finished` (bool)
+**테이블 구조:**
+
+*   **`players`**: 전역 플레이어 레지스트리
+    *   `id` (uuid, primary key)
+    *   `name` (text)
+    *   `created_at` (timestamptz)
+
+*   **`sessions`**: 경기 세션 (날짜/이벤트 단위)
+    *   `id` (uuid, primary key)
+    *   `location` (text, optional)
+    *   `played_at` (timestamptz)
+    *   `status` (text: 'active' | 'completed')
+
+*   **`session_players`**: 세션-플레이어 연결 (Junction Table)
+    *   `session_id` (uuid, references sessions)
+    *   `player_id` (uuid, references players)
+    *   `joined_at` (timestamptz)
+    *   **Primary Key**: `(session_id, player_id)`
+
+*   **`matches`**: 개별 경기 기록
+    *   `id` (uuid, primary key)
+    *   `session_id` (uuid, references sessions)
+    *   `team_a` (jsonb) - `{player1Id: uuid, player2Id: uuid}`
+    *   `team_b` (jsonb) - `{player1Id: uuid, player2Id: uuid}`
+    *   `score_a`, `score_b` (integer)
+    *   `is_finished` (boolean)
+    *   `court_number` (integer)
+    *   `played_at`, `end_time` (timestamptz)
+
+**Row Level Security (RLS) Policies:**
+- 모든 테이블: Public read/insert/update/delete access
+- Production 환경에서는 사용자별 권한으로 변경 필요
+
+**중요 설계 결정:**
+1. `team_a`, `team_b`는 JSONB로 저장 (유연성)
+2. `session_players`는 중복 방지를 위한 composite primary key 사용
+3. Cascade delete로 session 삭제 시 관련 데이터 자동 삭제
+
+---
+
+### F. Session Management & Persistence
+
+**Session ID 영속성:**
+- `SupabaseDataService`는 `currentSessionId`를 localStorage에 저장
+- 페이지 새로고침 시 자동 복원
+- Key: `'tennis-mate-current-session-id'`
+
+**Session Lifecycle:**
+1. **생성**: `CloudSessionManager`에서 "Start Session" 클릭
+2. **저장**: `createSession()` → localStorage에 ID 저장
+3. **복원**: `switchMode('CLOUD')` → 저장된 ID로 세션 데이터 로드
+4. **삭제**: "Reset All Data" → localStorage에서 ID 제거
+
+**Error Recovery:**
+- Invalid session ID 발견 시 localStorage에서 자동 삭제
+- Session 복원 실패 시 CloudSessionManager UI 표시
+- Rollback pattern으로 state 일관성 보장
+
+---
+
+### G. Error Handling Pattern
+
+**DRY Helper Function:**
+```typescript
+async function executeSupabaseQuery<T>(
+  queryPromise: Promise<T>,
+  errorMessage: string
+): Promise<T['data']> {
+  const result = await queryPromise;
+  if (result.error) {
+    console.error(errorMessage, result.error);
+    throw result.error;
+  }
+  return result.data;
+}
+```
+
+**Rollback Pattern:**
+```typescript
+const finishMatch = async (matchId, scoreA, scoreB) => {
+  const originalMatches = matches;
+  const originalPlayers = players;
+
+  try {
+    // Optimistic update
+    setMatches(updatedMatches);
+    setPlayers(updatedPlayers);
+
+    // Persist to DB
+    await dataService.saveMatch(match);
+  } catch (error) {
+    // Rollback on failure
+    setMatches(originalMatches);
+    setPlayers(originalPlayers);
+    throw error;
+  }
+}
+```
+
+**Toast Notifications:**
+- Success: 모든 중요 작업 완료 시
+- Error: 실패 시 사용자 친화적 메시지
+- Feed: 시스템 로그 (SYSTEM, ANNOUNCEMENT)
+
+---
+
+### H. Code Organization Principles
+
+**파일 책임 분리:**
+- `services/`: 데이터 레이어 (DB, API)
+- `context/`: 상태 관리 (React Context)
+- `components/`: UI 컴포넌트 (Presentation)
+- `utils/`: 순수 함수 (비즈니스 로직)
+
+**명명 규칙:**
+- Components: PascalCase (e.g., `PlayerList.tsx`)
+- Utilities: camelCase (e.g., `playerUtils.ts`)
+- Constants: UPPER_SNAKE_CASE (e.g., `APP_STORAGE_KEY`)
+
+**에러 문서화:**
+- `ERRORS.md`: 모든 버그와 해결 방법 기록
+- Commit 메시지에 명확한 문제-해결 설명
