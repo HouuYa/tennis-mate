@@ -3,6 +3,18 @@ import { AppState, Player, Match, FeedMessage, SessionSummary } from '../types';
 import { supabase } from './supabaseClient';
 import { recalculatePlayerStats } from '../utils/statsUtils';
 
+// Helper function for DRY error handling
+async function executeSupabaseQuery<T extends { error: any }>(
+    queryPromise: Promise<T> | T,
+    errorMessage: string
+): Promise<void> {
+    const result = await queryPromise;
+    if (result.error) {
+        console.error(errorMessage, result.error);
+        throw result.error;
+    }
+}
+
 export class SupabaseDataService implements DataService {
     type: 'CLOUD' = 'CLOUD';
     private currentSessionId: string | null = null;
@@ -120,39 +132,26 @@ export class SupabaseDataService implements DataService {
         if (!this.currentSessionId) throw new Error("No active session");
 
         // 1. Ensure player exists in master 'players' table using upsert for safety
-        const { error: playerError } = await supabase
-            .from('players')
-            .upsert({ id: player.id, name: player.name }, { onConflict: 'id' });
-
-        if (playerError) {
-            console.error('Failed to upsert player:', playerError);
-            throw playerError;
-        }
+        await executeSupabaseQuery(
+            supabase.from('players').upsert({ id: player.id, name: player.name }, { onConflict: 'id' }),
+            'Failed to upsert player:'
+        );
 
         // 2. Add to session_players (use upsert to avoid duplicate key errors)
-        const { error: sessionError } = await supabase
-            .from('session_players')
-            .upsert(
+        await executeSupabaseQuery(
+            supabase.from('session_players').upsert(
                 { session_id: this.currentSessionId, player_id: player.id },
                 { onConflict: 'session_id,player_id' }
-            );
-
-        if (sessionError) {
-            console.error('Failed to add player to session:', sessionError);
-            throw sessionError;
-        }
+            ),
+            'Failed to add player to session:'
+        );
     }
 
     async updatePlayer(player: Player): Promise<void> {
-        const { error } = await supabase
-            .from('players')
-            .update({ name: player.name })
-            .eq('id', player.id);
-
-        if (error) {
-            console.error('Failed to update player:', error);
-            throw error;
-        }
+        await executeSupabaseQuery(
+            supabase.from('players').update({ name: player.name }).eq('id', player.id),
+            'Failed to update player:'
+        );
     }
 
     async saveMatch(match: Match): Promise<void> {
@@ -172,19 +171,16 @@ export class SupabaseDataService implements DataService {
             end_time: match.endTime ? new Date(match.endTime).toISOString() : null
         };
 
-        const { error } = await supabase.from('matches').upsert(payload);
-        if (error) throw error;
+        await executeSupabaseQuery(
+            supabase.from('matches').upsert(payload),
+            'Failed to save match:'
+        );
     }
 
     async deleteMatch(matchId: string): Promise<void> {
-        const { error } = await supabase
-            .from('matches')
-            .delete()
-            .eq('id', matchId);
-
-        if (error) {
-            console.error('Failed to delete match:', error);
-            throw error;
-        }
+        await executeSupabaseQuery(
+            supabase.from('matches').delete().eq('id', matchId),
+            'Failed to delete match:'
+        );
     }
 }

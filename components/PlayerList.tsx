@@ -179,9 +179,14 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
                   .map(dp => (
                     <button
                       key={dp.id}
-                      onClick={() => {
-                        addPlayer(dp.name, dp);
-                        showToast(`${dp.name} added`, "success");
+                      onClick={async () => {
+                        try {
+                          await addPlayer(dp.name, dp);
+                          showToast(`${dp.name} added`, "success");
+                        } catch (error) {
+                          // Error already logged and shown in Feed by AppContext
+                          // No need to show additional toast here
+                        }
                       }}
                       className="text-xs bg-slate-800 border border-slate-600 px-2 py-1 rounded hover:border-tennis-green hover:text-tennis-green transition-colors"
                     >
