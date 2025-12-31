@@ -154,9 +154,28 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     try {
       const id = await dataService.createSession?.(location);
       addLog('SYSTEM', `New Cloud Session Started (ID: ${id})`);
+
+      // Add default players automatically for better UX
+      addLog('SYSTEM', 'Adding default players...');
+      let successCount = 0;
+      for (const playerName of INITIAL_PLAYERS) {
+        try {
+          await addPlayer(playerName);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to add player ${playerName}:`, error);
+          // Continue adding other players even if one fails
+        }
+      }
+
+      if (successCount > 0) {
+        addLog('SYSTEM', `✅ Session ready! ${successCount} players added.`);
+      } else {
+        addLog('SYSTEM', '⚠️ Session created, but failed to add default players. Please add players manually.');
+      }
     } catch (e) {
       console.error(e);
-      addLog('SYSTEM', 'Failed to start cloud session.');
+      addLog('SYSTEM', '⚠️ Failed to start cloud session.');
     }
   };
 
