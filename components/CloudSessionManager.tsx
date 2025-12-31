@@ -5,7 +5,11 @@ import { MapPin, Play, Clock, ChevronRight, Loader2 } from 'lucide-react';
 import { SessionSummary } from '../types';
 import { supabase } from '../services/supabaseClient';
 
-export const CloudSessionManager: React.FC = () => {
+interface CloudSessionManagerProps {
+    onSessionReady?: () => void;
+}
+
+export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSessionReady }) => {
     const { startCloudSession, loadCloudSession } = useApp();
     const { showToast } = useToast();
 
@@ -43,13 +47,23 @@ export const CloudSessionManager: React.FC = () => {
 
     const handleStart = async () => {
         setLoading(true);
-        await startCloudSession(location || 'Unknown Location');
+        try {
+            await startCloudSession(location || 'Unknown Location');
+            onSessionReady?.(); // Notify parent that session is ready
+        } catch (error) {
+            console.error('Failed to start session:', error);
+        }
         setLoading(false);
     };
 
     const handleLoad = async (id: string) => {
         setLoading(true);
-        await loadCloudSession(id);
+        try {
+            await loadCloudSession(id);
+            onSessionReady?.(); // Notify parent that session is ready
+        } catch (error) {
+            console.error('Failed to load session:', error);
+        }
         setLoading(false);
     };
 

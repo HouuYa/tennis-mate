@@ -10,14 +10,23 @@ import { ToastContainer } from './components/Toast';
 import { Tab } from './types';
 import { useApp } from './context/AppContext';
 import { ModeSelection } from './components/ModeSelection';
+import { CloudSessionManager } from './components/CloudSessionManager';
 
 const MainLayout = () => {
-  const { mode, switchMode } = useApp();
+  const { mode, players } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.PLAYERS);
+
+  // Show Session Manager modal when in Cloud mode with no session
+  const showSessionManager = mode === 'CLOUD' && players.length === 0;
 
   if (!mode) {
     return <ModeSelection />;
   }
+
+  const handleSessionReady = () => {
+    // Navigate to Player tab after session is created
+    setActiveTab(Tab.PLAYERS);
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-tennis-green selection:text-slate-900">
@@ -44,6 +53,15 @@ const MainLayout = () => {
       </main>
 
       <BottomNav activeTab={activeTab} setTab={setActiveTab} />
+
+      {/* Cloud Session Manager Modal */}
+      {showSessionManager && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800 animate-in zoom-in-95 duration-200">
+            <CloudSessionManager onSessionReady={handleSessionReady} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
