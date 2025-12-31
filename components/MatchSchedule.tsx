@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle, Edit3, RotateCcw } from 'lucide-react';
 import { CloudSessionManager } from './CloudSessionManager';
 import { generateNextMatch } from '../utils/matchmaking';
@@ -8,6 +9,7 @@ import { getNameWithNumber, getRestingPlayerNames } from '../utils/playerUtils';
 
 export const MatchSchedule: React.FC = () => {
   const { matches, activeMatch, players, finishMatch, undoFinishMatch, createNextMatch, generateSchedule, deleteMatch, updateMatchScore } = useApp();
+  const { showToast } = useToast();
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [planCount, setPlanCount] = useState(0);
@@ -40,11 +42,17 @@ export const MatchSchedule: React.FC = () => {
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (activeMatch) {
-      finishMatch(activeMatch.id, scoreA, scoreB);
-      setScoreA(0);
-      setScoreB(0);
+      try {
+        await finishMatch(activeMatch.id, scoreA, scoreB);
+        setScoreA(0);
+        setScoreB(0);
+        showToast('Match finished successfully!', 'success');
+      } catch (error) {
+        showToast('Failed to save match result. Please try again.', 'error');
+        console.error('Failed to finish match:', error);
+      }
     }
   };
 
