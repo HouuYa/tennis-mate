@@ -109,10 +109,39 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
         }
       });
     } else {
-      setDataService(new SupabaseDataService());
-      // For cloud, we initialize defaults so the user sees some data
-      initializeDefaults();
-      addLog('SYSTEM', 'Switched to Cloud Mode. Please load or start a session.');
+      const cloudService = new SupabaseDataService();
+      setDataService(cloudService);
+
+      // Check if there's a saved session ID to restore
+      const savedSessionId = cloudService.getCurrentSessionId();
+
+      if (savedSessionId) {
+        // Restore the session
+        addLog('SYSTEM', `Restoring Cloud Session (ID: ${savedSessionId})`);
+        cloudService.loadSession(savedSessionId).then(state => {
+          if (state) {
+            setPlayers(state.players);
+            setMatches(state.matches);
+            setFeed(state.feed);
+            addLog('SYSTEM', 'Session restored successfully.');
+          } else {
+            // Session ID exists but couldn't load - clear it and show manager
+            addLog('SYSTEM', 'Failed to restore session. Please start or load a session.');
+            setPlayers([]);
+            setMatches([]);
+          }
+        }).catch(err => {
+          console.error('Failed to restore session:', err);
+          addLog('SYSTEM', '⚠️ Failed to restore session. Please start or load a session.');
+          setPlayers([]);
+          setMatches([]);
+        });
+      } else {
+        // No saved session - show CloudSessionManager UI
+        addLog('SYSTEM', 'Switched to Cloud Mode. Please start or load a session.');
+        setPlayers([]);
+        setMatches([]);
+      }
     }
   };
 
