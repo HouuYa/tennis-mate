@@ -52,8 +52,9 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
             onSessionReady?.(); // Notify parent that session is ready
         } catch (error) {
             console.error('Failed to start session:', error);
+            showToast('Failed to start a new session. Please try again.', 'error');
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleLoad = async (id: string) => {
@@ -63,8 +64,9 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
             onSessionReady?.(); // Notify parent that session is ready
         } catch (error) {
             console.error('Failed to load session:', error);
+            showToast('Failed to load the session. Please try again.', 'error');
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
