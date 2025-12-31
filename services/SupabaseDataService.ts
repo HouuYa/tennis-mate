@@ -3,17 +3,31 @@ import { AppState, Player, Match, FeedMessage, SessionSummary } from '../types';
 import { supabase } from './supabaseClient';
 import { recalculatePlayerStats } from '../utils/statsUtils';
 
+// Helper function for DRY error handling
+async function executeSupabaseQuery<T extends { data: any; error: any }>(
+    queryPromise: Promise<T> | T,
+    errorMessage: string
+): Promise<T['data']> {
+    const result = await queryPromise;
+    if (result.error) {
+        console.error(errorMessage, result.error);
+        throw result.error;
+    }
+    return result.data;
+}
+
 export class SupabaseDataService implements DataService {
     type: 'CLOUD' = 'CLOUD';
     private currentSessionId: string | null = null;
 
     async listSessions(): Promise<SessionSummary[]> {
-        const { data, error } = await supabase
-            .from('sessions')
-            .select('id, played_at, location, status')
-            .order('played_at', { ascending: false });
-
-        if (error) throw error;
+        const data = await executeSupabaseQuery(
+            supabase
+                .from('sessions')
+                .select('id, played_at, location, status')
+                .order('played_at', { ascending: false }),
+            'Failed to list sessions:'
+        );
 
         return data.map((s: any) => ({
             id: s.id,
@@ -24,20 +38,25 @@ export class SupabaseDataService implements DataService {
     }
 
     async createSession(location?: string): Promise<string> {
-        const { data, error } = await supabase
-            .from('sessions')
-            .insert({ location, status: 'active' })
-            .select('id')
-            .single();
+        const data = await executeSupabaseQuery(
+            supabase
+                .from('sessions')
+                .insert({ location, status: 'active' })
+                .select('id')
+                .single(),
+            'Failed to create session:'
+        );
 
-        if (error) throw error;
         this.currentSessionId = data.id;
         return data.id;
     }
 
     async getAllPlayers(): Promise<Player[]> {
-        const { data, error } = await supabase.from('players').select('*').order('name');
-        if (error) throw error;
+        const data = await executeSupabaseQuery(
+            supabase.from('players').select('*').order('name'),
+            'Failed to get all players:'
+        );
+
         return data.map((p: any) => ({
             id: p.id,
             name: p.name,
@@ -57,21 +76,24 @@ export class SupabaseDataService implements DataService {
         // But wait, our 'sessions' table only has meta data.
         // 'session_players' has the roster.
 
-        const [playersRes, matchesRes] = await Promise.all([
-            supabase.from('session_players')
-                .select('player_id, players(*)')
-                .eq('session_id', sessionId),
-            supabase.from('matches')
-                .select('*')
-                .eq('session_id', sessionId)
-                .order('played_at', { ascending: true })
+        const [playersData, matchesData] = await Promise.all([
+            executeSupabaseQuery(
+                supabase.from('session_players')
+                    .select('player_id, players(*)')
+                    .eq('session_id', sessionId),
+                'Failed to load session players:'
+            ),
+            executeSupabaseQuery(
+                supabase.from('matches')
+                    .select('*')
+                    .eq('session_id', sessionId)
+                    .order('played_at', { ascending: true }),
+                'Failed to load session matches:'
+            )
         ]);
 
-        if (playersRes.error) throw playersRes.error;
-        if (matchesRes.error) throw matchesRes.error;
-
         // Transform Players
-        const players: Player[] = playersRes.data.map((item: any) => ({
+        const players: Player[] = playersData.map((item: any) => ({
             id: item.players.id,
             name: item.players.name,
             active: true, // Default to true when loading? Or need to store active state?
@@ -84,7 +106,7 @@ export class SupabaseDataService implements DataService {
 
         // Transform Matches
         // team_a and team_b are JSONB objects: { player1Id, player2Id }
-        const matches: Match[] = matchesRes.data.map((m: any) => ({
+        const matches: Match[] = matchesData.map((m: any) => ({
             id: m.id,
             timestamp: new Date(m.played_at).getTime(),
             teamA: { player1Id: m.team_a.player1Id, player2Id: m.team_a.player2Id },
@@ -120,39 +142,26 @@ export class SupabaseDataService implements DataService {
         if (!this.currentSessionId) throw new Error("No active session");
 
         // 1. Ensure player exists in master 'players' table using upsert for safety
-        const { error: playerError } = await supabase
-            .from('players')
-            .upsert({ id: player.id, name: player.name }, { onConflict: 'id' });
-
-        if (playerError) {
-            console.error('Failed to upsert player:', playerError);
-            throw playerError;
-        }
+        await executeSupabaseQuery(
+            supabase.from('players').upsert({ id: player.id, name: player.name }, { onConflict: 'id' }),
+            'Failed to upsert player:'
+        );
 
         // 2. Add to session_players (use upsert to avoid duplicate key errors)
-        const { error: sessionError } = await supabase
-            .from('session_players')
-            .upsert(
+        await executeSupabaseQuery(
+            supabase.from('session_players').upsert(
                 { session_id: this.currentSessionId, player_id: player.id },
                 { onConflict: 'session_id,player_id' }
-            );
-
-        if (sessionError) {
-            console.error('Failed to add player to session:', sessionError);
-            throw sessionError;
-        }
+            ),
+            'Failed to add player to session:'
+        );
     }
 
     async updatePlayer(player: Player): Promise<void> {
-        const { error } = await supabase
-            .from('players')
-            .update({ name: player.name })
-            .eq('id', player.id);
-
-        if (error) {
-            console.error('Failed to update player:', error);
-            throw error;
-        }
+        await executeSupabaseQuery(
+            supabase.from('players').update({ name: player.name }).eq('id', player.id),
+            'Failed to update player:'
+        );
     }
 
     async saveMatch(match: Match): Promise<void> {
@@ -172,19 +181,16 @@ export class SupabaseDataService implements DataService {
             end_time: match.endTime ? new Date(match.endTime).toISOString() : null
         };
 
-        const { error } = await supabase.from('matches').upsert(payload);
-        if (error) throw error;
+        await executeSupabaseQuery(
+            supabase.from('matches').upsert(payload),
+            'Failed to save match:'
+        );
     }
 
     async deleteMatch(matchId: string): Promise<void> {
-        const { error } = await supabase
-            .from('matches')
-            .delete()
-            .eq('id', matchId);
-
-        if (error) {
-            console.error('Failed to delete match:', error);
-            throw error;
-        }
+        await executeSupabaseQuery(
+            supabase.from('matches').delete().eq('id', matchId),
+            'Failed to delete match:'
+        );
     }
 }
