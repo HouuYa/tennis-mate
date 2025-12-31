@@ -463,7 +463,21 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     localStorage.removeItem(APP_STORAGE_KEY);
     setMatches([]);
     setFeed([]);
-    initializeDefaults();
+
+    // In Cloud mode, clear everything and show SessionManager
+    // In Local mode, initialize with default players
+    if (mode === 'CLOUD') {
+      setPlayers([]);
+      // Clear session ID from localStorage
+      try {
+        localStorage.removeItem('tennis-mate-current-session-id');
+      } catch (e) {
+        console.warn('Failed to clear session ID:', e);
+      }
+      addLog('SYSTEM', 'Data reset. Please start or load a session.');
+    } else {
+      initializeDefaults();
+    }
   };
 
   const exportData = () => JSON.stringify({ players, matches, feed });
