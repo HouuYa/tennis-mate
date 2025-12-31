@@ -94,6 +94,13 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
   const switchMode = (newMode: 'LOCAL' | 'CLOUD') => {
     setMode(newMode);
+
+    // Helper function to reset session state
+    const resetSessionState = () => {
+      setPlayers([]);
+      setMatches([]);
+    };
+
     if (newMode === 'LOCAL') {
       setDataService(new LocalDataService());
       // Reload local data? Or keep current?
@@ -109,10 +116,36 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
         }
       });
     } else {
-      setDataService(new SupabaseDataService());
-      // For cloud, we initialize defaults so the user sees some data
-      initializeDefaults();
-      addLog('SYSTEM', 'Switched to Cloud Mode. Please load or start a session.');
+      const cloudService = new SupabaseDataService();
+      setDataService(cloudService);
+
+      // Check if there's a saved session ID to restore
+      const savedSessionId = cloudService.getCurrentSessionId();
+
+      if (savedSessionId) {
+        // Restore the session
+        addLog('SYSTEM', `Restoring Cloud Session (ID: ${savedSessionId})`);
+        cloudService.loadSession(savedSessionId).then(state => {
+          setPlayers(state.players);
+          setMatches(state.matches);
+          setFeed(state.feed);
+          addLog('SYSTEM', 'Session restored successfully.');
+        }).catch(err => {
+          console.error('Failed to restore session:', err);
+          addLog('SYSTEM', '⚠️ Failed to restore session. Please start or load a session.');
+          // Clear the invalid session ID to prevent repeated failures
+          try {
+            localStorage.removeItem('tennis-mate-current-session-id');
+          } catch (e) {
+            console.warn('Failed to clear invalid session ID:', e);
+          }
+          resetSessionState();
+        });
+      } else {
+        // No saved session - show CloudSessionManager UI
+        addLog('SYSTEM', 'Switched to Cloud Mode. Please start or load a session.');
+        resetSessionState();
+      }
     }
   };
 
