@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { generateAIAnalysis } from '../services/geminiService';
-import { sortPlayers } from '../utils/playerUtils';
-import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2, Users, ChevronDown, ChevronRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { sortPlayers, calculatePoints } from '../utils/playerUtils';
+import { BarChart3, Sparkles, Link as LinkIcon, Download, FileText, Trash2, Users, ChevronDown, ChevronRight } from 'lucide-react';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData } = useApp();
@@ -13,8 +12,8 @@ export const StatsView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [importText, setImportText] = useState('');
   const [showImport, setShowImport] = useState(false);
-  const [showCharts, setShowCharts] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showPartnerships, setShowPartnerships] = useState(false);
 
   const sortedPlayers = sortPlayers(players);
 
@@ -25,9 +24,15 @@ export const StatsView: React.FC = () => {
     const winners = m.scoreA > m.scoreB ? m.teamA : (m.scoreB > m.scoreA ? m.teamB : null);
 
     teams.forEach(t => {
-      const p1 = players.find(p => p.id === t.player1Id)?.name || 'Unknown';
-      const p2 = players.find(p => p.id === t.player2Id)?.name || 'Unknown';
-      // Ensure consistent key key
+      const player1 = players.find(p => p.id === t.player1Id);
+      const player2 = players.find(p => p.id === t.player2Id);
+
+      // Skip if either player is not found (deleted or missing)
+      if (!player1 || !player2) return;
+
+      const p1 = player1.name;
+      const p2 = player2.name;
+      // Ensure consistent key
       const names = [p1, p2].sort().join(' & ');
 
       if (!pairStats[names]) pairStats[names] = { p1, p2, wins: 0, total: 0 };
@@ -41,8 +46,7 @@ export const StatsView: React.FC = () => {
   const sortedPairs = Object.entries(pairStats)
     .map(([name, stats]) => ({ name, ...stats, rate: (stats.wins / stats.total) * 100 }))
     .filter(s => s.total >= 2) // Min 2 matches together
-    .sort((a, b) => b.rate - a.rate || b.total - a.total)
-    .slice(0, 3);
+    .sort((a, b) => b.rate - a.rate || b.total - a.total);
 
 
   const handleAskAI = async () => {
@@ -129,94 +133,22 @@ export const StatsView: React.FC = () => {
         )}
       </div>
 
-      {/* Charts Section (Collapsible) */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-        <button
-          onClick={() => setShowCharts(!showCharts)}
-          className="w-full p-4 flex items-center justify-between text-left text-white font-bold hover:bg-slate-700 transition-colors"
-        >
-          <span className="flex items-center gap-2 text-sm"><BarChart3 size={16} className="text-tennis-green" /> Graphical Analysis</span>
-          {showCharts ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </button>
 
-        {showCharts && (
-          <div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-700 mt-2">
-            {/* Win Rate Chart */}
-            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-              <h3 className="text-xs text-slate-400 font-bold mb-2 uppercase">Win Rate (Min 3 Matches)</h3>
-              <div className="h-48">
-                {sortedPlayers.some(p => p.stats.matchesPlayed >= 3) ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sortedPlayers.filter(p => p.stats.matchesPlayed >= 3).map(p => ({
-                      name: p.name,
-                      rate: Math.round((p.stats.wins / p.stats.matchesPlayed) * 100)
-                    }))} layout="vertical" margin={{ left: 10 }}>
-                      <XAxis type="number" domain={[0, 100]} hide />
-                      <YAxis dataKey="name" type="category" width={70} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
-                        itemStyle={{ color: '#d4e157' }}
-                        cursor={{ fill: '#334155', opacity: 0.4 }}
-                      />
-                      <Bar dataKey="rate" fill="#d4e157" radius={[0, 4, 4, 0]} barSize={16}>
-                        {sortedPlayers.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={index < 3 ? '#d4e157' : '#64748b'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs text-center p-4">
-                    <p>Not enough data.</p>
-                    <p>Play 3 matches to unlock.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Game Diff Chart */}
-            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-              <h3 className="text-xs text-slate-400 font-bold mb-2 uppercase">Game Difference</h3>
-              <div className="h-48">
-                {sortedPlayers.some(p => p.stats.matchesPlayed > 0) ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sortedPlayers.filter(p => p.stats.matchesPlayed > 0).map(p => ({
-                      name: p.name,
-                      diff: p.stats.gamesWon - p.stats.gamesLost
-                    }))}>
-                      <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} interval={0} />
-                      <YAxis hide />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
-                        cursor={{ fill: '#334155', opacity: 0.4 }}
-                      />
-                      <Bar dataKey="diff" radius={[4, 4, 0, 0]}>
-                        {sortedPlayers.filter(p => p.stats.matchesPlayed > 0).map((entry, index) => {
-                          const diff = entry.stats.gamesWon - entry.stats.gamesLost;
-                          return <Cell key={`cell-${index}`} fill={diff > 0 ? '#d4e157' : '#ef4444'} />;
-                        })}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs text-center p-4">
-                    <p>No matches played yet.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-
-      {
-        sortedPairs.length > 0 && (
-          <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg col-span-1 md:col-span-2">
-            <h3 className="font-bold text-white mb-4 text-sm flex items-center gap-2">
+      {/* Best Partnerships Section (Collapsible) */}
+      {sortedPairs.length > 0 && (
+        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+          <button
+            onClick={() => setShowPartnerships(!showPartnerships)}
+            className="w-full p-4 flex items-center justify-between text-left text-white font-bold hover:bg-slate-700 transition-colors"
+          >
+            <span className="flex items-center gap-2 text-sm">
               <Users size={16} className="text-purple-400" /> Best Partnerships (Min 2 Matches)
-            </h3>
-            <div className="space-y-3">
+            </span>
+            {showPartnerships ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+
+          {showPartnerships && (
+            <div className="p-4 pt-0 space-y-3 border-t border-slate-700 mt-2">
               {sortedPairs.map((pair, idx) => (
                 <div key={idx} className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-700">
                   <div className="flex items-center gap-3">
@@ -230,9 +162,9 @@ export const StatsView: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-        )
-      }
+          )}
+        </div>
+      )}
 
       {/* Leaderboard Table */}
       <div className="bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-700">
@@ -247,9 +179,10 @@ export const StatsView: React.FC = () => {
                 <th className="p-3">#</th>
                 <th className="p-3">Name</th>
                 <th className="p-3 text-center" title="Matches Played">M</th>
-                <th className="p-3 text-center text-tennis-green" title="Wins">W</th>
-                <th className="p-3 text-center text-blue-400" title="Draws">D</th>
-                <th className="p-3 text-center text-red-400" title="Losses">L</th>
+                <th className="p-3 text-center text-tennis-green" title="Wins (2 pts)">W</th>
+                <th className="p-3 text-center text-blue-400" title="Draws (1 pt)">D</th>
+                <th className="p-3 text-center text-red-400" title="Losses (0 pt)">L</th>
+                <th className="p-3 text-center font-bold text-yellow-400" title="Total Points (W×2 + D×1)">PTS</th>
                 <th className="p-3 text-center font-bold text-white" title="Game Difference">Game +/-</th>
               </tr>
             </thead>
@@ -258,6 +191,7 @@ export const StatsView: React.FC = () => {
                 const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
                 const gameDiffText = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
                 const draws = p.stats.draws || 0;
+                const points = calculatePoints(p);
 
                 return (
                   <tr key={p.id} className="hover:bg-slate-700/50">
@@ -267,6 +201,7 @@ export const StatsView: React.FC = () => {
                     <td className="p-3 text-center text-tennis-green font-bold">{p.stats.wins}</td>
                     <td className="p-3 text-center text-blue-400">{draws}</td>
                     <td className="p-3 text-center text-red-400">{p.stats.losses}</td>
+                    <td className="p-3 text-center text-yellow-400 font-bold font-mono">{points}</td>
                     <td className={`p-3 text-center font-bold font-mono ${gameDiff > 0 ? 'text-tennis-green' : gameDiff < 0 ? 'text-red-400' : 'text-slate-400'}`}>
                       {gameDiffText}
                     </td>

@@ -1,16 +1,33 @@
 import { Player, Match } from '../types';
 
 /**
- * Sorts players by Wins (desc), then Game Difference (desc).
+ * Calculates total points for a player based on W/D/L
+ * W = 2 points, D = 1 point, L = 0 points
+ */
+export const calculatePoints = (player: Player): number => {
+    return (player.stats.wins * 2) + (player.stats.draws * 1) + (player.stats.losses * 0);
+};
+
+/**
+ * Sorts players by:
+ * 1. Total Points (W=2, D=1, L=0) desc
+ * 2. Game Difference desc
+ * 3. Matches Played desc
  */
 export const sortPlayers = (players: Player[]): Player[] => {
     return [...players].sort((a, b) => {
-        // Sort by Wins desc
-        if (b.stats.wins !== a.stats.wins) return b.stats.wins - a.stats.wins;
-        // Tie breaker: Game Diff
+        // 1. Sort by Total Points desc
+        const pointsA = calculatePoints(a);
+        const pointsB = calculatePoints(b);
+        if (pointsB !== pointsA) return pointsB - pointsA;
+
+        // 2. Tie breaker: Game Diff desc
         const diffA = a.stats.gamesWon - a.stats.gamesLost;
         const diffB = b.stats.gamesWon - b.stats.gamesLost;
-        return diffB - diffA;
+        if (diffB !== diffA) return diffB - diffA;
+
+        // 3. Tie breaker: Matches Played desc
+        return b.stats.matchesPlayed - a.stats.matchesPlayed;
     });
 };
 
