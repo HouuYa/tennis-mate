@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle, Edit3, RotateCcw } from 'lucide-react';
-import { CloudSessionManager } from './CloudSessionManager';
 import { generateNextMatch } from '../utils/matchmaking';
 import { Match } from '../types';
 import { getNameWithNumber, getRestingPlayerNames } from '../utils/playerUtils';
@@ -64,11 +63,6 @@ export const MatchSchedule: React.FC = () => {
 
   return (
     <div className="pb-24 space-y-6">
-
-      {/* 0. Cloud Session Manager Empty State */}
-      {players.length === 0 && matches.length === 0 && (
-        <CloudSessionManager />
-      )}
 
       {/* 1. Timeline Header */}
       <div className="flex items-center gap-2 text-tennis-green font-bold text-lg px-2">

@@ -5,11 +5,16 @@
 
 ## [v0.9.1] - UX Improvements for Cloud Mode
 ### Added
-- **Auto-create Default Players**: Cloud Mode에서 "Start Session" 클릭 시 5명의 기본 플레이어가 자동으로 추가됨 (Nadal, Federer, Djokovic, Murray, Alcaraz).
-- Local Mode와 일관된 UX 제공 - 세션 시작 즉시 매치 생성 가능.
+- **Session Manager Modal**: Cloud Mode 선택 즉시 전체 화면 모달로 Session Manager 표시.
+- **Auto-create Default Players**: "Start Session" 클릭 시 5명의 기본 플레이어 자동 생성 (병렬 처리).
+- **자동 네비게이션**: 세션 생성/로드 후 Player 탭으로 자동 이동.
+- Local Mode와 일관된 UX - 세션 시작 즉시 매치 생성 가능.
 
 ### Changed
-- `startCloudSession()`: 세션 생성 후 자동으로 기본 플레이어 추가 로직 구현.
+- **App.tsx**: Session Manager를 App 레벨 모달로 이동 (Match 탭에서 분리).
+- **CloudSessionManager**: `onSessionReady` 콜백 추가로 세션 완료 알림 지원.
+- **MatchSchedule**: Session Manager 제거 (Match Schedule만 표시).
+- `startCloudSession()`: Promise.all로 병렬 처리 (성능 개선).
 - 개별 플레이어 추가 실패 시에도 나머지 플레이어는 계속 추가되도록 에러 핸들링 개선.
 
 ### Fixed

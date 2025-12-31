@@ -126,9 +126,24 @@ The app implements a **Repository/Adapter Pattern** via the `DataService` interf
 5. **삭제**: "Reset All Data" → localStorage에서 ID 제거
 
 **UX Improvement (v0.9.1):**
-- Cloud Mode에서 세션 시작 시 Local Mode와 동일하게 5명의 기본 플레이어가 자동 추가됨
-- 즉시 매치 생성 가능한 상태로 시작
-- "From Global List" 기능으로 추가 플레이어 선택 가능
+- **Session Manager Modal**: Cloud Mode 선택 즉시 전체 화면 모달로 Session Manager 표시
+- **자동 네비게이션**: 세션 생성/로드 후 자동으로 Player 탭으로 이동
+- **Default Players**: 세션 시작 시 5명의 기본 플레이어 자동 생성 (병렬 처리)
+- **즉시 사용 가능**: Local Mode와 동일하게 바로 매치 생성 가능
+- **Match Schedule**: Match 탭에서 스케줄 생성 (기존 위치 유지)
+
+**Workflow:**
+```
+1. CLOUD MODE 클릭
+   ↓
+2. Session Manager 모달 자동 표시
+   ├─ Start New → 세션 생성 → 5명 자동 추가 → Player 탭
+   └─ Load Existing → 기존 세션 로드 → 기존 상태 복원
+   ↓
+3. Player 탭에서 선수 관리
+   ↓
+4. Match 탭에서 Schedule 생성
+```
 
 **Error Recovery:**
 - Invalid session ID 발견 시 localStorage에서 자동 삭제
