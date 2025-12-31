@@ -74,7 +74,9 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 try {
-                    // Use reverse geocoding to get address
+                    // TODO: Replace with Kakao or Naver API for Korean address support
+                    // See TODO.md for implementation guide
+                    // Current: OpenStreetMap Nominatim (returns English addresses)
                     const response = await fetch(
                         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`
                     );
