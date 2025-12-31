@@ -32,9 +32,9 @@ create table public.matches (
   played_at timestamptz default now(),
   end_time timestamptz,
   
-  -- We store player IDs in arrays for teams
-  team_a uuid[] not null, -- Array of player_ids
-  team_b uuid[] not null, -- Array of player_ids
+  -- We store player IDs in JSONB objects for teams
+  team_a jsonb not null, -- {player1Id: uuid, player2Id: uuid}
+  team_b jsonb not null, -- {player1Id: uuid, player2Id: uuid}
   
   score_a integer default 0,
   score_b integer default 0,
