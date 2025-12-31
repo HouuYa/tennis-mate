@@ -19,6 +19,7 @@ interface AppContextType {
   loadCloudSession: (sessionId: string) => Promise<void>;
 
   addPlayer: (name: string, fromDB?: Player) => Promise<void>;
+  getAllPlayers: () => Promise<Player[]>;
   updatePlayerName: (id: string, name: string) => void;
   reorderPlayers: (fromIndex: number, toIndex: number) => void;
   shufflePlayers: () => void;
@@ -30,6 +31,9 @@ interface AppContextType {
   updateMatchScore: (matchId: string, scoreA: number, scoreB: number) => void;
   deleteMatch: (matchId: string) => void;
   postAnnouncement: (text: string, author?: string) => void;
+  resetData: () => void;
+  exportData: () => string;
+  importData: (jsonString: string) => boolean;
   getShareableLink: () => string;
 }
 
@@ -171,11 +175,19 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       stats: { matchesPlayed: 0, wins: 0, losses: 0, draws: 0, gamesWon: 0, gamesLost: 0, restCount: 0 }
     };
 
-    setPlayers(prev => [...prev, newPlayer]);
-    addLog('SYSTEM', `${newPlayer.name} has joined the club.`);
+    try {
+      setPlayers(prev => [...prev, newPlayer]);
+      addLog('SYSTEM', `${newPlayer.name} has joined the club.`);
 
-    if (mode === 'CLOUD') {
-      await dataService.addPlayer?.(newPlayer);
+      if (mode === 'CLOUD') {
+        await dataService.addPlayer?.(newPlayer);
+      }
+    } catch (error) {
+      console.error('Failed to add player:', error);
+      addLog('SYSTEM', '⚠️ Failed to add player. Please try again.');
+      // Rollback
+      setPlayers(prev => prev.filter(p => p.id !== newPlayer.id));
+      throw error;
     }
   };
 
@@ -289,20 +301,33 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     const match = matches.find(m => m.id === matchId);
     if (!match) return;
 
-    // 1. Calculate the NEW match object
-    const updatedMatch: Match = { ...match, scoreA, scoreB, isFinished: true, endTime: Date.now() };
+    // Save original state for rollback
+    const originalMatches = matches;
+    const originalPlayers = players;
 
-    // 2. Update Matches State First
-    let updatedMatches = matches.map(m => m.id === matchId ? updatedMatch : m);
-    setMatches(updatedMatches);
+    try {
+      // 1. Calculate the NEW match object
+      const updatedMatch: Match = { ...match, scoreA, scoreB, isFinished: true, endTime: Date.now() };
 
-    // 3. Recalculate Player Stats from the updated matches list
-    // This ensures stats are always 100% in sync with match history
-    const updatedPlayers = recalculatePlayerStats(players, updatedMatches); // players (current list)
-    setPlayers(updatedPlayers);
+      // 2. Update Matches State First
+      let updatedMatches = matches.map(m => m.id === matchId ? updatedMatch : m);
+      setMatches(updatedMatches);
 
-    if (mode === 'CLOUD') {
-      await dataService.saveMatch?.(updatedMatch);
+      // 3. Recalculate Player Stats from the updated matches list
+      // This ensures stats are always 100% in sync with match history
+      const updatedPlayers = recalculatePlayerStats(players, updatedMatches); // players (current list)
+      setPlayers(updatedPlayers);
+
+      if (mode === 'CLOUD') {
+        await dataService.saveMatch?.(updatedMatch);
+      }
+    } catch (error) {
+      console.error('Failed to finish match:', error);
+      addLog('SYSTEM', '⚠️ Failed to save match result. Please try again.');
+      // Rollback state changes
+      setMatches(originalMatches);
+      setPlayers(originalPlayers);
+      throw error; // Re-throw so components can handle it
     }
 
     const p1 = players.find(p => p.id === match.teamA.player1Id)?.name;
@@ -363,18 +388,32 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     addLog('SYSTEM', `Match score updated to ${newScoreA}:${newScoreB}.`);
   };
 
-  const deleteMatch = (matchId: string) => {
-    const updatedMatches = matches.filter(m => m.id !== matchId);
-    setMatches(updatedMatches);
+  const deleteMatch = async (matchId: string) => {
+    const deletedMatch = matches.find(m => m.id === matchId);
 
-    // Recalculate stats cleanly
-    const updatedPlayers = recalculatePlayerStats(players, updatedMatches);
-    setPlayers(updatedPlayers);
+    try {
+      const updatedMatches = matches.filter(m => m.id !== matchId);
+      setMatches(updatedMatches);
 
-    addLog('SYSTEM', 'A match record was deleted.');
+      // Recalculate stats cleanly
+      const updatedPlayers = recalculatePlayerStats(players, updatedMatches);
+      setPlayers(updatedPlayers);
 
-    if (mode === 'CLOUD') {
-      dataService.deleteMatch?.(matchId);
+      if (mode === 'CLOUD') {
+        await dataService.deleteMatch?.(matchId);
+      }
+
+      addLog('SYSTEM', 'A match record was deleted.');
+    } catch (error) {
+      console.error('Failed to delete match:', error);
+      addLog('SYSTEM', '⚠️ Failed to delete match. Please try again.');
+      // Rollback
+      if (deletedMatch) {
+        setMatches(prev => [...prev, deletedMatch].sort((a, b) => a.timestamp - b.timestamp));
+        const restoredPlayers = recalculatePlayerStats(players, [...matches]);
+        setPlayers(restoredPlayers);
+      }
+      throw error;
     }
   };
 

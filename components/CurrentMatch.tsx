@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Trophy, CheckCircle, RefreshCw } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { Trophy, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
 export const CurrentMatch: React.FC = () => {
   const { activeMatch, players, finishMatch, createNextMatch } = useApp();
+  const { showToast } = useToast();
   const [scoreA, setScoreA] = useState(6);
   const [scoreB, setScoreB] = useState(0);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   if (!activeMatch) {
     const activeCount = players.filter(p => p.active).length;
@@ -29,11 +32,25 @@ export const CurrentMatch: React.FC = () => {
 
   const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
 
-  const handleFinish = () => {
-    finishMatch(activeMatch.id, scoreA, scoreB);
-    // Reset local state for next match defaults
-    setScoreA(6);
-    setScoreB(0);
+  const handleFinishClick = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmFinish = async () => {
+    try {
+      await finishMatch(activeMatch.id, scoreA, scoreB);
+      setShowConfirm(false);
+      // Reset local state for next match defaults
+      setScoreA(6);
+      setScoreB(0);
+      showToast('Match finished successfully!', 'success');
+    } catch (error) {
+      showToast('Failed to save match result. Please try again.', 'error');
+    }
+  };
+
+  const handleCancelFinish = () => {
+    setShowConfirm(false);
   };
 
   return (
@@ -73,7 +90,7 @@ export const CurrentMatch: React.FC = () => {
           </div>
 
           <button
-            onClick={handleFinish}
+            onClick={handleFinishClick}
             className="w-full bg-white text-slate-900 font-bold text-lg py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-200 active:scale-95 transition-transform"
           >
             <CheckCircle size={24} /> Finish Match
@@ -81,13 +98,60 @@ export const CurrentMatch: React.FC = () => {
         </div>
       </div>
 
+      {/* Confirmation Dialog */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-slate-800 border-2 border-tennis-green rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle size={28} className="text-tennis-green" />
+              <h3 className="text-xl font-bold text-white">Confirm Match Result</h3>
+            </div>
+
+            <div className="bg-slate-900 rounded-xl p-4 mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-slate-300 text-sm">
+                  {getPlayerName(activeMatch.teamA.player1Id)} & {getPlayerName(activeMatch.teamA.player2Id)}
+                </span>
+                <span className="text-tennis-green text-2xl font-bold font-mono">{scoreA}</span>
+              </div>
+              <div className="border-t border-slate-700 my-2"></div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300 text-sm">
+                  {getPlayerName(activeMatch.teamB.player1Id)} & {getPlayerName(activeMatch.teamB.player2Id)}
+                </span>
+                <span className="text-tennis-clay text-2xl font-bold font-mono">{scoreB}</span>
+              </div>
+            </div>
+
+            <p className="text-slate-400 text-sm mb-6">
+              This will save the result and update player statistics. Continue?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelFinish}
+                className="flex-1 bg-slate-700 text-white font-bold py-3 rounded-xl hover:bg-slate-600 active:scale-95 transition-transform"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmFinish}
+                className="flex-1 bg-tennis-green text-slate-900 font-bold py-3 rounded-xl hover:bg-tennis-green/90 active:scale-95 transition-transform flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={20} /> Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-800 p-4 rounded-xl">
         <h3 className="text-slate-400 text-sm font-bold uppercase mb-2">Resting Players</h3>
         <div className="flex flex-wrap gap-2">
-          {players.filter(p => p.active && 
-            p.id !== activeMatch.teamA.player1Id && 
-            p.id !== activeMatch.teamA.player2Id && 
-            p.id !== activeMatch.teamB.player1Id && 
+          {players.filter(p => p.active &&
+            p.id !== activeMatch.teamA.player1Id &&
+            p.id !== activeMatch.teamA.player2Id &&
+            p.id !== activeMatch.teamB.player1Id &&
             p.id !== activeMatch.teamB.player2Id
           ).map(p => (
             <span key={p.id} className="bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-sm">

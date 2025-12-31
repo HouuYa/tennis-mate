@@ -3,11 +3,13 @@ import { Player, Match } from "../types";
 import { AI_INSTRUCTION } from "../constants";
 
 export const generateAIAnalysis = async (players: Player[], matches: Match[]): Promise<string> => {
-  if (!process.env.API_KEY) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+  if (!apiKey) {
     return "API Key is missing. Cannot generate AI analysis.";
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   
   // Prepare data summary for the model
   const dataSummary = {
