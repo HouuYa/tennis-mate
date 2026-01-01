@@ -66,3 +66,15 @@ export interface SessionSummary {
   location?: string;
   status: string;
 }
+
+// Supabase session record types
+export interface SessionRecord {
+  id: string;
+  played_at: string;
+  location: string | null;
+  status: string;
+}
+
+export interface SessionLocationRecord {
+  location: string | null;
+}

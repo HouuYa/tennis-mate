@@ -1,41 +1,110 @@
-# 📝 Project To-Do List
+# Tennis Mate - TODO List
 
-## Phase 1: MVP (Completed)
-- [x] **Core**: Player Add/Remove, 5-Person Rotation (Reverse Index).
-- [x] **UI**: Dark Mode, Mobile Layout.
-- [x] **Sharing**: URL-based state sharing.
-- [x] **Match Schedule**: Unified view showing Past Results -> Current Score -> Future Preview.
-- [x] **Reordering**: Manual "Edit Mode" with Up/Down arrows (Fixed Safari DnD issues).
-- [x] **Chat**: Select author identity.
-- [x] **Undo Function**: Revert "Finish Match" and stats if pressed by mistake.
-- [x] **Schedule Safety**: Confirmation warning before overwriting queued matches.
+## 📍 한글 주소 지원 (Korean Address Support)
 
-## Phase 2: Usability Improvements (Next)
-- [ ] **Tie-break Support**: Allow entering '7-6 (4)' style scores.
-- [ ] **Player Avatars**: Allow uploading simple photos or choosing colors.
-- [ ] **Multiple Courts**: Logic for 8-10 players on 2 courts simultaneously.
+**현재 상태**: OpenStreetMap Nominatim 사용 (영어 주소 반환)
+**목표**: 한글 주소 지원
 
-## Phase 3: Backend & Persistence (Completed)
-- [x] **Cloud Sync**: Supabase integration for multi-device sync (Dual Mode).
-- [x] **Stats Dashboard**: Recharts integration (Win Rate, Game Diff icons).
-- [x] **Database Schema**: Players, Sessions, Matches tables set up.
+### 옵션 1: Kakao Map API (추천)
 
-## Phase 4: Social & Advanced (Next)
-- [ ] **Auth**: Simple admin login / Row Level Security hardening.
-- [ ] **Tournament Mode**: Bracket generation.
-- [ ] **Notification**: Push notifications for match start.
-- [ ] **Tennis Rules RAG**: 테니스 규칙 답변 챗봇 구현 (RAG).
-	- [ITF Rules & Regulations](https://www.itftennis.com/en/about-us/governance/rules-and-regulations/)
-		- [2025 Rules of Tennis (English)](https://www.itftennis.com/media/7221/2025-rules-of-tennis-english.pdf)
-		- [2025 Code of Conduct for Officials](https://www.itftennis.com/media/2511/2025-code-of-conduct-for-officials.pdf)
-		- [2025 Duties and Procedures for Officials](https://www.itftennis.com/media/2509/2025-duties-procedures-for-officials.pdf)
+**무료 범위**: 일 300,000건
+**장점**: 완벽한 한글 지원, 간단한 REST API
 
-## Known Issues
-- URL length limit is reached quickly if Match Feed is very long.
+#### 1. API 키 발급
+1. https://developers.kakao.com 회원가입
+2. 내 애플리케이션 > 앱 만들기
+3. REST API 키 복사
 
-## etc
-- [ ] 현재 components 폴더에 모든 UI가 모여 있는데, 이를 기능 단위로 쪼개는 연습.
-  `features/match/components/...`
-  `features/player/components/...`
-- [ ] 핵심 로직 단위 테스트 (Unit Test) 구현
-  - 로테이션 공식을 검증하는 코드
+#### 2. 환경 변수 설정
+```bash
+# .env 파일 생성
+VITE_KAKAO_REST_API_KEY=your_rest_api_key_here
+```
+
+#### 3. 코드 수정 (CloudSessionManager.tsx)
+```typescript
+const handleGetLocation = () => {
+  setGettingLocation(true);
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        const response = await fetch(
+          `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${position.coords.longitude}&y=${position.coords.latitude}`,
+          {
+            headers: {
+              Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_API_KEY}`
+            }
+          }
+        );
+        const data = await response.json();
+
+        // 한글 주소: "서울특별시 강남구 역삼동"
+        const address = data.documents[0]?.address?.address_name
+          || data.documents[0]?.road_address?.address_name
+          || `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+
+        setLocation(address);
+        showToast('위치 감지 완료', 'success');
+      } catch (error) {
+        setLocation(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+        showToast('Location detected (coordinates)', 'success');
+      }
+      setGettingLocation(false);
+    },
+    (error) => {
+      showToast('위치 감지 실패', 'error');
+      setGettingLocation(false);
+    }
+  );
+};
+```
+
+---
+
+### 옵션 2: Naver Map API
+
+**무료 범위**: 일 100,000건 (Mobile), 50,000건 (Web)
+**장점**: 한글 지원, 상세한 한국 지도 데이터
+
+#### 1. API 키 발급
+1. https://www.ncloud.com 회원가입
+2. Console > Services > Maps > Reverse Geocoding
+3. Client ID 복사
+
+#### 2. 환경 변수 설정
+```bash
+# .env
+VITE_NAVER_CLIENT_ID=your_client_id_here
+```
+
+#### 3. 코드 수정
+```typescript
+const response = await fetch(
+  `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${position.coords.longitude},${position.coords.latitude}&output=json`,
+  {
+    headers: {
+      'X-NCP-APIGW-API-KEY-ID': import.meta.env.VITE_NAVER_CLIENT_ID
+    }
+  }
+);
+const data = await response.json();
+const address = data.results[0]?.region?.area1?.name + ' ' +
+                data.results[0]?.region?.area2?.name + ' ' +
+                data.results[0]?.region?.area3?.name;
+```
+
+---
+
+## 🔄 기타 개선 사항
+
+- [ ] 한글 주소 API 통합
+- [ ] 환경 변수 관리 (.env.example 파일 추가)
+- [ ] API 에러 핸들링 개선
+- [ ] 좌표 → 주소 캐싱 (동일 위치 중복 요청 방지)
+
+---
+
+## 📝 참고 문서
+
+- [Kakao Developers](https://developers.kakao.com/docs/latest/ko/local/dev-guide#coord-to-address)
+- [Naver Cloud Platform](https://api.ncloud-docs.com/docs/ai-naver-mapsreversegeocoding-gc)

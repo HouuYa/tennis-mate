@@ -8,8 +8,8 @@ export const generateNextMatch = (
   matchHistory: Match[],
   nextMatchIndexOverride?: number
 ): { teamA: string[]; teamB: string[]; restingPlayerName?: string } | null => {
-  
-  const activePlayers = allPlayers.filter(p => p.active);
+
+  const activePlayers = allPlayers;
   const totalActive = activePlayers.length;
 
   if (totalActive < 4) return null;
@@ -50,10 +50,10 @@ export const generateSessionSchedule = (
   existingMatches: Match[],
   count: number
 ): Array<{ teamA: string[]; teamB: string[]; restingPlayerName?: string }> => {
-  
-  const activePlayers = allPlayers.filter(p => p.active);
+
+  const activePlayers = allPlayers;
   const totalActive = activePlayers.length;
-  
+
   if (totalActive < 4) return [];
 
   const schedule: Array<{ teamA: string[]; teamB: string[]; restingPlayerName?: string }> = [];
