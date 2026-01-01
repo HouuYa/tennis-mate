@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { MapPin, Play, Clock, ChevronRight, Loader2, Locate } from 'lucide-react';
-import { SessionSummary } from '../types';
+import { SessionSummary, SessionRecord, SessionLocationRecord } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { API_ENDPOINTS } from '../constants';
 
 interface CloudSessionManagerProps {
     onSessionReady?: () => void;
@@ -39,10 +40,10 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
         if (error) {
             showToast("Failed to load sessions", "error");
         } else {
-            const mapped = data.map((s: any) => ({
+            const mapped: SessionSummary[] = (data as SessionRecord[]).map(s => ({
                 id: s.id,
                 playedAt: new Date(s.played_at).getTime(),
-                location: s.location,
+                location: s.location ?? undefined,
                 status: s.status
             }));
             setSessions(mapped);
@@ -59,7 +60,10 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
             .limit(10);
 
         if (!error && data) {
-            const uniqueLocations = Array.from(new Set(data.map((s: any) => s.location).filter(Boolean)));
+            const locations = (data as SessionLocationRecord[])
+                .map(s => s.location)
+                .filter((loc): loc is string => loc !== null);
+            const uniqueLocations = Array.from(new Set(locations));
             setPreviousLocations(uniqueLocations);
         }
     };
@@ -77,16 +81,18 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                     // TODO: Replace with Kakao or Naver API for Korean address support
                     // See TODO.md for implementation guide
                     // Current: OpenStreetMap Nominatim (returns English addresses)
+                    const { latitude, longitude } = position.coords;
                     const response = await fetch(
-                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`
+                        `${API_ENDPOINTS.NOMINATIM_REVERSE}?format=json&lat=${latitude}&lon=${longitude}`
                     );
                     const data = await response.json();
-                    const address = data.display_name || `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                    const address = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
                     setLocation(address);
                     showToast('Location detected', 'success');
                 } catch (error) {
                     // Fallback to coordinates
-                    setLocation(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+                    const { latitude, longitude } = position.coords;
+                    setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
                     showToast('Location detected (coordinates)', 'success');
                 }
                 setGettingLocation(false);

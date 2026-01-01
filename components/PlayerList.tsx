@@ -111,9 +111,13 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
 
   const handleConfirmDelete = () => {
     if (playerToDelete) {
-      deletePlayer(playerToDelete);
+      const success = deletePlayer(playerToDelete);
       setPlayerToDelete(null);
-      showToast("Player deleted", "success");
+      if (success) {
+        showToast("Player deleted successfully", "success");
+      } else {
+        showToast("Cannot delete player - in active/queued matches", "error");
+      }
     }
   };
 

@@ -24,7 +24,7 @@ interface AppContextType {
   reorderPlayers: (fromIndex: number, toIndex: number) => void;
   shufflePlayers: () => void;
   togglePlayerActive: (id: string) => void;
-  deletePlayer: (id: string) => void;
+  deletePlayer: (id: string) => boolean;
   createNextMatch: () => boolean;
   generateSchedule: (count: number, overwrite?: boolean) => void;
   finishMatch: (matchId: string, scoreA: number, scoreB: number) => void;
@@ -294,12 +294,31 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p));
   };
 
-  const deletePlayer = (id: string) => {
+  const deletePlayer = (id: string): boolean => {
     const player = players.find(p => p.id === id);
-    if (player) {
-      setPlayers(prev => prev.filter(p => p.id !== id));
-      addLog('SYSTEM', `${player.name} has been removed from the roster.`);
+    if (!player) return false;
+
+    // Check if player is in any unfinished matches
+    const isInUnfinishedMatch = matches.some(m => {
+      if (m.isFinished) return false;
+      const playerIds = [
+        m.teamA.player1Id,
+        m.teamA.player2Id,
+        m.teamB.player1Id,
+        m.teamB.player2Id
+      ];
+      return playerIds.includes(id);
+    });
+
+    if (isInUnfinishedMatch) {
+      addLog('ERROR', `Cannot delete ${player.name} - player is in active or queued matches.`);
+      return false;
     }
+
+    // Safe to delete
+    setPlayers(prev => prev.filter(p => p.id !== id));
+    addLog('SYSTEM', `${player.name} has been removed from the roster.`);
+    return true;
   };
 
   const createNextMatch = (): boolean => {
