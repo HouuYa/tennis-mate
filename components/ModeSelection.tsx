@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Database, User } from 'lucide-react';
+import { Database, User, Sheet } from 'lucide-react';
 
 export const ModeSelection = () => {
     const { switchMode } = useApp();
@@ -25,6 +25,19 @@ export const ModeSelection = () => {
                     <div className="text-left">
                         <h3 className="font-bold text-lg">Guest Mode</h3>
                         <p className="text-sm text-slate-400">No backend required. Data is saved on this device only.</p>
+                    </div>
+                </button>
+
+                <button
+                    onClick={() => switchMode('GOOGLE_SHEETS')}
+                    className="flex items-center p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-tennis-green hover:bg-slate-800 transition-all group"
+                >
+                    <div className="p-3 mr-4 rounded-full bg-slate-800 text-emerald-400 group-hover:bg-emerald-400 group-hover:text-slate-900 transition-colors">
+                        <Sheet size={24} />
+                    </div>
+                    <div className="text-left">
+                        <h3 className="font-bold text-lg">Google Sheets Mode</h3>
+                        <p className="text-sm text-slate-400">Use your own Google Sheets. Free and you own your data.</p>
                     </div>
                 </button>
 

@@ -11,13 +11,15 @@ import { Tab } from './types';
 import { useApp } from './context/AppContext';
 import { ModeSelection } from './components/ModeSelection';
 import { CloudSessionManager } from './components/CloudSessionManager';
+import { GoogleSheetsSessionManager } from './components/GoogleSheetsSessionManager';
 
 const MainLayout = () => {
   const { mode, players } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.PLAYERS);
 
   // Show Session Manager modal when in Cloud mode with no session
-  const showSessionManager = mode === 'CLOUD' && players.length === 0;
+  const showCloudSessionManager = mode === 'CLOUD' && players.length === 0;
+  const showGoogleSheetsSessionManager = mode === 'GOOGLE_SHEETS' && players.length === 0;
 
   if (!mode) {
     return <ModeSelection />;
@@ -40,7 +42,7 @@ const MainLayout = () => {
             onClick={() => window.location.reload()}
             className="absolute right-4 text-[10px] uppercase font-bold text-slate-500 hover:text-white border border-slate-700 rounded px-2 py-1"
           >
-            {mode === 'LOCAL' ? 'Guest' : 'Cloud'} Mode
+            {mode === 'LOCAL' ? 'Guest' : mode === 'GOOGLE_SHEETS' ? 'Sheets' : 'Cloud'} Mode
           </button>
         )}
       </header>
@@ -55,13 +57,16 @@ const MainLayout = () => {
       <BottomNav activeTab={activeTab} setTab={setActiveTab} />
 
       {/* Cloud Session Manager Modal */}
-      {showSessionManager && (
+      {showCloudSessionManager && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800 animate-in zoom-in-95 duration-200">
             <CloudSessionManager onSessionReady={handleSessionReady} />
           </div>
         </div>
       )}
+
+      {/* Google Sheets Session Manager Modal */}
+      {showGoogleSheetsSessionManager && <GoogleSheetsSessionManager />}
     </div>
   );
 };

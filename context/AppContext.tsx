@@ -7,16 +7,23 @@ import { recalculatePlayerStats } from '../utils/statsUtils';
 import { DataService } from '../services/DataService';
 import { LocalDataService } from '../services/LocalDataService';
 import { SupabaseDataService } from '../services/SupabaseDataService';
+import { GoogleSheetsDataService } from '../services/GoogleSheetsDataService';
 
 interface AppContextType {
   players: Player[];
   matches: Match[];
   feed: FeedMessage[];
   activeMatch: Match | null;
-  mode: 'LOCAL' | 'CLOUD' | null;
-  switchMode: (mode: 'LOCAL' | 'CLOUD') => void;
+  mode: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS' | null;
+  switchMode: (mode: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS') => void;
   startCloudSession: (location?: string) => Promise<void>;
   loadCloudSession: (sessionId: string) => Promise<void>;
+
+  // Google Sheets specific methods
+  setGoogleSheetsUrl: (url: string) => Promise<void>;
+  testGoogleSheetsConnection: () => Promise<boolean>;
+  loadGoogleSheetsData: () => Promise<void>;
+  getGoogleSheetsUrl: () => string | null;
 
   addPlayer: (name: string, fromDB?: Player) => Promise<void>;
   getAllPlayers: () => Promise<Player[]>;
@@ -41,7 +48,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
-  const [mode, setMode] = useState<'LOCAL' | 'CLOUD' | null>(null);
+  const [mode, setMode] = useState<'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS' | null>(null);
   const [dataService, setDataService] = useState<DataService>(new LocalDataService());
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -93,7 +100,38 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     }
   }, [players, matches, feed, mode, dataService]);
 
-  const switchMode = (newMode: 'LOCAL' | 'CLOUD') => {
+  // Google Sheets specific methods
+  const setGoogleSheetsUrl = async (url: string): Promise<void> => {
+    if (mode !== 'GOOGLE_SHEETS') return;
+    const service = dataService as GoogleSheetsDataService;
+    service.setWebAppUrl(url);
+  };
+
+  const testGoogleSheetsConnection = async (): Promise<boolean> => {
+    if (mode !== 'GOOGLE_SHEETS') return false;
+    const service = dataService as GoogleSheetsDataService;
+    return await service.testConnection();
+  };
+
+  const loadGoogleSheetsData = async (): Promise<void> => {
+    if (mode !== 'GOOGLE_SHEETS') return;
+    const service = dataService as GoogleSheetsDataService;
+    const state = await service.loadSession();
+    if (state) {
+      setPlayers(state.players);
+      setMatches(state.matches);
+      setFeed(state.feed);
+      addLog('SYSTEM', 'Data loaded from Google Sheets successfully.');
+    }
+  };
+
+  const getGoogleSheetsUrl = (): string | null => {
+    if (mode !== 'GOOGLE_SHEETS') return null;
+    const service = dataService as GoogleSheetsDataService;
+    return service.getWebAppUrl();
+  };
+
+  const switchMode = (newMode: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS') => {
     setMode(newMode);
 
     // Helper function to reset session state
@@ -116,6 +154,33 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
           initializeDefaults();
         }
       });
+    } else if (newMode === 'GOOGLE_SHEETS') {
+      const sheetsService = new GoogleSheetsDataService();
+      setDataService(sheetsService);
+
+      // Check if there's a saved Web App URL
+      const savedUrl = sheetsService.getWebAppUrl();
+
+      if (savedUrl) {
+        // Try to load data
+        addLog('SYSTEM', 'Connecting to Google Sheets...');
+        sheetsService.loadSession().then(state => {
+          if (state) {
+            setPlayers(state.players);
+            setMatches(state.matches);
+            setFeed(state.feed);
+            addLog('SYSTEM', 'Data loaded from Google Sheets successfully.');
+          }
+        }).catch(err => {
+          console.error('Failed to load from Google Sheets:', err);
+          addLog('SYSTEM', '⚠️ Failed to load from Google Sheets. Please check your setup.');
+          resetSessionState();
+        });
+      } else {
+        // No saved URL - show GoogleSheetsSessionManager UI
+        addLog('SYSTEM', 'Switched to Google Sheets Mode. Please configure your Google Sheets URL.');
+        resetSessionState();
+      }
     } else {
       const cloudService = new SupabaseDataService();
       setDataService(cloudService);
@@ -410,6 +475,10 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
       if (mode === 'CLOUD') {
         await dataService.saveMatch?.(updatedMatch);
+      } else if (mode === 'GOOGLE_SHEETS') {
+        // For Google Sheets, use the special method with player names
+        const service = dataService as GoogleSheetsDataService;
+        await service.saveMatchWithNames(updatedMatch, players);
       }
     } catch (error) {
       console.error('Failed to finish match:', error);
@@ -568,6 +637,10 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       switchMode,
       startCloudSession,
       loadCloudSession,
+      setGoogleSheetsUrl,
+      testGoogleSheetsConnection,
+      loadGoogleSheetsData,
+      getGoogleSheetsUrl,
       addPlayer,
       getAllPlayers,
       updatePlayerName,

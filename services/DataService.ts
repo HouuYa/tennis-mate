@@ -1,7 +1,7 @@
 import { AppState, Player, Match, FeedMessage, SessionSummary } from '../types';
 
 export interface DataService {
-    type: 'LOCAL' | 'CLOUD';
+    type: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS';
 
     // Initialization
     listSessions?(): Promise<SessionSummary[]>;
