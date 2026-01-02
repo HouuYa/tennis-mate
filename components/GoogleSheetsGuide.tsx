@@ -213,17 +213,13 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                         <p className="text-sm font-semibold text-blue-400 mb-2">
                             💡 코트에서 모바일로 사용하는 법
                         </p>
-                        <div className="space-y-2 text-xs text-blue-300/80">
-                            <p>
-                                <strong>1.</strong> PC에서 위 단계를 완료하고 Web App URL을 생성합니다
-                            </p>
-                            <p>
-                                <strong>2.</strong> URL을 카카오톡/메일/메모로 자신에게 전송합니다
-                            </p>
-                            <p>
-                                <strong>3.</strong> 코트에서는 URL을 복사해서 Tennis Mate에 붙여넣기만 하면 됩니다
-                            </p>
-                            <p className="text-blue-400 mt-2">
+                        <div className="text-xs text-blue-300/80">
+                            <ol className="list-decimal list-inside space-y-2">
+                                <li>PC에서 위 단계를 완료하고 Web App URL을 생성합니다</li>
+                                <li>URL을 카카오톡/메일/메모로 자신에게 전송합니다</li>
+                                <li>코트에서는 URL을 복사해서 Tennis Mate에 붙여넣기만 하면 됩니다</li>
+                            </ol>
+                            <p className="text-blue-400 mt-4">
                                 → <em>한 번만 설정하면 평생 사용 가능합니다!</em>
                             </p>
                         </div>
