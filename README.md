@@ -2,14 +2,15 @@
 
 <div align="center">
 
-![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)
+![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
+![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**모바일 환경에 최적화된 서버리스 테니스 매치 매니저**
+**모바일 환경에 최적화된 테니스 매치 매니저**
 <br/>
-공정한 로테이션, 직관적인 매치 큐(Queue), 그리고 AI 코칭을 제공합니다.
+공정한 로테이션, 직관적인 매치 큐(Queue), AI 코칭, 그리고 3가지 저장소 옵션을 제공합니다.
 
 [데모 보기](https://github.com/HouuYa/tennis-mate) | [변경 내역](./HISTORY.md) | [아키텍처](./ARCHITECTURE.md) | [로드맵](./TODO.md)
 
@@ -21,38 +22,60 @@
 
 **Tennis Mate**는 테니스 클럽 모임에서 복잡한 경기 순서와 점수 기록을 간편하게 관리하기 위해 만들어진 웹 애플리케이션입니다.
 
-백엔드 서버 없이 URL 공유만으로 상태를 동기화하며, 
+**v1.0.0 MVP**에서는 3가지 저장소 모드를 제공하여 사용자가 원하는 방식으로 데이터를 관리할 수 있습니다:
+- **Guest Mode**: 로컬 스토리지 (서버 없음)
+- **Google Sheets Mode** (NEW!): 내 구글 시트를 DB로 사용 (BYODB)
+- **Cloud Mode**: Supabase 클라우드 저장소
+
 라운드 로빈 로직을 통해 4인부터 8인까지 플레이어의 공정한 파트너 매칭을 해줍니다.
 
 ---
 
 ## 🚀 주요 기능 (Key Features)
 
-### 1. 📅 스마트 세션 플래닝 & 로테이션
-- **자동 대진표 생성 (Session Planner):** 플레이어 수(4~5명)에 맞춰 가장 이상적인 파트너 조합(Round Robin)을 자동으로 생성합니다.
-- **공정한 휴식 로직:** `(총 인원 - 1) - (경기 수 % 총 인원)` 공식을 통해 누구도 연속으로 쉬거나 불공평하게 경기를 하지 않도록 관리합니다.
-- **순서 편집 (Edit Order):** 드래그 앤 드롭 또는 화살표 버튼을 이용해 대기 순서를 수동으로 직관적으로 변경할 수 있습니다 (모바일 터치 최적화).
+### 1. 💾 3가지 저장소 모드
 
-### 2. 🎾 통합 매치 스케줄링 (Unified View)
-- **타임라인 뷰:** [과거 경기 결과] -> [현재 진행 중인 경기] -> [대기 중인 경기(Queue)]를 한 화면에서 연속적으로 확인합니다.
-- **실행 취소 (Undo):** 실수로 경기를 종료했더라도, 다시 활성 상태로 되돌려 점수를 수정할 수 있습니다.
-- **스케줄 보호:** 대기 중인 경기가 있을 때 새로운 일정을 생성하려 하면 경고 팝업을 띄워 데이터 유실을 방지합니다.
+#### 🧑 Guest Mode (Local Storage)
+- **특징**: 서버 없이 브라우저에 저장
+- **장점**: 즉시 시작, 설정 불필요
+- **적합**: 개인 사용, 단일 디바이스
 
-### 3. ☁️ 클라우드 동기화 (Cloud Mode)
-- **Supabase 연동:** 로컬 저장소 외에 클라우드 데이터베이스 모드를 지원합니다.
-- **Session Manager Modal:** Cloud Mode 선택 시 즉시 전체 화면 모달로 세션 선택 UI 표시
-- **자동 플레이어 생성:** 새 세션 시작 시 5명의 기본 플레이어 자동 추가 (병렬 처리)
-- **멀티 디바이스:** 여러 기기에서 같은 세션을 불러와 실시간으로 결과를 공유할 수 있습니다.
-- **글로벌 플레이어:** DB에 저장된 플레이어 목록을 불러와 빠르게 세션을 시작할 수 있습니다.
-- **스마트 워크플로우:** Session 생성 → 자동 Player 탭 이동 → 선수 관리 → Match 생성
+#### 📊 Google Sheets Mode (BYODB - NEW in v1.0.0!)
+- **특징**: 내 구글 시트를 데이터베이스로 사용
+- **장점**:
+  - 완전한 데이터 소유권
+  - 무료 무제한 저장
+  - Excel/CSV 언제든지 내보내기
+  - 최근 100경기 자동 동기화
+- **설정**: 단계별 가이드 제공 (Google Apps Script 배포)
+- **적합**: 데이터 통제가 중요한 사용자
+
+#### ☁️ Cloud Mode (Supabase)
+- **특징**: Supabase 클라우드 DB 사용
+- **장점**: 멀티 디바이스 동기화, 세션 관리
+- **적합**: 팀 공유, 다중 디바이스 사용
+
+### 2. 📅 스마트 세션 플래닝 & 로테이션
+- **자동 대진표 생성**: 플레이어 수(4~8명)에 맞춰 Round Robin 조합 자동 생성
+- **공정한 휴식 로직**: 누구도 연속으로 쉬거나 불공평하게 경기하지 않도록 관리
+- **순서 편집**: 드래그 앤 드롭으로 대기 순서 수동 조정 (모바일 최적화)
+
+### 3. 🎾 통합 매치 스케줄링
+- **타임라인 뷰**: [과거 경기] → [현재 경기] → [대기 큐]를 한 화면에서 확인
+- **실행 취소 (Undo)**: 실수로 종료한 경기를 되돌려 점수 수정 가능
+- **스케줄 보호**: 대기 중인 경기 덮어쓰기 방지 경고
 
 ### 4. 📊 고급 통계 및 분석
-- **시각화:** Recharts를 이용한 승률 그래프, 게임 득실 추이 등을 시각적으로 제공합니다.
-- **Best Partner:** 가장 호흡이 잘 맞는 파트너 조합을 자동으로 분석해 추천합니다.
+- **리더보드**: 승률, 포인트, 게임 득실 등 상세 통계
+- **Best Partnerships**: 승률이 높은 파트너 조합 자동 분석
+- **Head-to-Head Analysis** (NEW in v1.0.0!):
+  - 두 선수 간 직접 대결 전적 비교
+  - 승/무/패 통계 및 승률 시각화
+  - 라이벌 관계 분석
 
 ### 5. 🤖 AI 코치 (Powered by Gemini)
-- **매치 분석:** Google Gemini API를 활용하여 누적된 경기 데이터를 분석합니다.
-- **인사이트 제공:** 오늘의 MVP, 최고의 파트너 조합, 승률 분석 등을 자연어 형태로 브리핑해줍니다.
+- **매치 분석**: Google Gemini API로 경기 데이터 분석
+- **인사이트 제공**: MVP, 최고 파트너, 승률 분석을 자연어로 브리핑
 
 ---
 
@@ -60,10 +83,11 @@
 
 | 분류 | 기술 |
 |------|------|
-| **Frontend** | React 18, TypeScript, Vite |
-| **Styling** | Tailwind CSS, Recharts |
-| **State** | Context API, LocalStorage (Guest Mode) |
-| **Backend** | Supabase (Cloud Mode) - Postgres, RLS |
+| **Frontend** | React 19, TypeScript 5.8, Vite 6 |
+| **Styling** | Tailwind CSS, Lucide Icons |
+| **State** | Context API |
+| **Storage** | LocalStorage (Guest) / Google Sheets (BYODB) / Supabase (Cloud) |
+| **Backend** | Google Apps Script (Sheets Mode), Supabase Postgres (Cloud Mode) |
 | **AI** | Google Gemini API (@google/genai) |
 | **Deploy** | GitHub Pages / Vercel (Static Hosting) |
 
@@ -71,14 +95,17 @@
 
 ## 🏗 아키텍처 (Architecture)
 
-Tennis Mate는 **Serverless & Local-First** 철학을 따릅니다.
+Tennis Mate는 **Multi-Backend Architecture**를 채택했습니다.
 
-*   **상태 관리 (State Management):**
-    *   모든 데이터는 `Context API`와 `LocalStorage`로 관리되어 새로고침 후에도 유지됩니다.
-    *   공유 시 데이터는 JSON 문자열로 압축되어 URL Query Parameter(`?data=...`)로 전달됩니다.
-*   **매치메이킹 알고리즘:**
-    *   가능한 모든 파트너 조합 중, 과거에 가장 적게 팀을 이뤘던 조합을 우선순위로 두어 다양성을 보장합니다.
-    *   미래의 매치(Queue)를 미리 계산하여 UI에 보여줍니다.
+### 핵심 패턴
+- **DataService Interface**: 3가지 모드 모두 동일한 인터페이스 구현
+- **Mode Switching**: 앱 시작 시 사용자가 모드 선택
+- **Client-Side Analytics**: 모든 통계는 클라이언트에서 계산
+
+### 데이터 흐름
+```
+User Action → AppContext → DataService (Local/Sheets/Cloud) → Storage
+```
 
 자세한 구조는 [ARCHITECTURE.md](./ARCHITECTURE.md)를 참고하세요.
 
@@ -86,48 +113,116 @@ Tennis Mate는 **Serverless & Local-First** 철학을 따릅니다.
 
 ## ⚡ 시작하기 (Getting Started)
 
-이 프로젝트는 **Serverless (Guest Mode)** 를 기본으로 지원합니다.
-백엔드 설정 없이도 즉시 모든 기능을 로컬에서 사용할 수 있습니다.
-옵션으로 Supabase를 연결하여 클라우드 동기화를 활성화할 수 있습니다.
+### 1. 설치
+```bash
+git clone https://github.com/HouuYa/tennis-mate.git
+cd tennis-mate
+npm install
+```
 
-1.  **설치**
-    ```bash
-    git clone https://github.com/HouuYa/tennis-mate.git
-    cd tennis-mate
-    npm install
-    ```
+### 2. 환경 변수 설정 (선택 사항)
 
-2.  **환경 변수 설정** (AI 기능 사용 시)
-    `.env` 파일을 생성하고 Gemini API 키를 입력합니다.
-    ```bash
-    VITE_GEMINI_API_KEY=your_api_key_here
-    ```
+#### AI 기능 사용 시
+`.env` 파일을 생성하고 Gemini API 키를 입력합니다.
+```bash
+VITE_GEMINI_API_KEY=your_api_key_here
+```
 
-3.  **실행**
-    ```bash
-    npm run dev
-    ```
-    브라우저에서 `http://localhost:3000` 접속
+#### Cloud Mode 사용 시
+Supabase 프로젝트 설정이 필요합니다.
+```bash
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. 실행
+```bash
+npm run dev
+```
+브라우저에서 `http://localhost:5173` 접속
 
 ---
 
-## 📝 로드맵 및 이슈
+## 📊 Google Sheets Mode 설정 가이드
 
-현재 **Phase 1 (MVP)** 가 완료되었으며, 사용성 개선을 위한 Phase 2가 진행 중입니다.
+### 준비물
+- Google 계정
+- 5분의 시간
 
-- [x] 4인부터 8인까지 로테이션 및 순서 변경 기능
-- [x] 매치 실행 취소(Undo) 기능
-- [x] **Supabase 연동:** 히스토리 관리 및 클라우드 동기화 (Dual Mode)
-- [x] **고급 통계:** 승률 그래프 및 파트너십 분석
-- [ ] **Tie-break 지원:** '7-6 (4)' 형태의 스코어 입력
-- [ ] **다중 코트 지원:** 8~10명 인원을 위한 2코트 로직
-- [ ] **Auth:** 관리자 로그인 및 보안 강화 (RLS)
-- [ ] **플레이어 아바타:** 사진 업로드 또는 색상 선택
+### 설정 방법
+1. **앱에서 "Google Sheets Mode" 선택**
+2. **"설정 가이드 보기" 버튼 클릭**
+3. **6단계 가이드 따라하기**:
+   - 새 Google Sheet 생성
+   - Apps Script 에디터 열기
+   - 제공된 코드 복사 & 붙여넣기
+   - Web App으로 배포
+   - Web App URL 복사
+   - Tennis Mate에 URL 입력 & 연결 테스트
+
+### 데이터 구조
+Google Sheet에는 다음 열이 자동으로 생성됩니다:
+```
+timestamp | date | duration | winner1 | winner2 | loser1 | loser2 | score | location
+```
+
+---
+
+## 📝 로드맵
+
+### ✅ v1.0.0 MVP (완료)
+- [x] 3가지 저장소 모드 (Guest/Sheets/Cloud)
+- [x] Google Sheets Mode 전체 구현
+- [x] Head-to-Head 라이벌 분석
+- [x] Best Partnerships 분석
+- [x] 4~8인 로테이션 및 매치메이킹
+- [x] AI 코치 (Gemini)
+- [x] 클라우드 세션 관리
+
+### 🔜 v1.1.0 (예정)
+- [ ] 다중 코트 지원 (2개 코트 동시 진행)
+- [ ] Tie-break 스코어 지원 (7-6 (4) 형식)
+- [ ] 플레이어 아바타 업로드
+- [ ] 한글 주소 지원 (Kakao/Naver Map API)
+
+### 🔮 v2.0.0 (미래)
+- [ ] 실시간 동기화 (WebSocket)
+- [ ] 팀 대항전 모드
+- [ ] 토너먼트 브라켓 생성
+- [ ] 모바일 앱 (React Native)
 
 더 자세한 계획은 [TODO.md](./TODO.md)에서 확인하세요.
 
 ---
 
+## 🤝 기여하기 (Contributing)
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 라이선스 (License)
+
+MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
+
+---
+
+## 📧 문의 (Contact)
+
+프로젝트 링크: [https://github.com/HouuYa/tennis-mate](https://github.com/HouuYa/tennis-mate)
+
+이슈 및 버그 리포트: [Issues](https://github.com/HouuYa/tennis-mate/issues)
+
+---
+
 <div align="center">
-Made with ❤️ by <a href="https://github.com/HouuYa">HouuYa</a>
+
+**Tennis Mate v1.0.0**
+
+Made with ❤️ & 🎾 by [HouuYa](https://github.com/HouuYa)
+
 </div>
