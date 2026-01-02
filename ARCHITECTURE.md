@@ -64,7 +64,8 @@ The app implements a **Repository/Adapter Pattern** via the `DataService` interf
     - **Re-calculation**: New utility `recalculatePlayerStats` ensures stats are always computed from the match history log, guaranteeing consistency.
 - **Mode-Specific Handling**:
     - **LOCAL**: Direct localStorage read/write
-    - **GOOGLE_SHEETS**: HTTP POST for saves, GET for loading (uses `saveMatchWithNames()` to send player names instead of IDs)
+    - **GOOGLE_SHEETS**: HTTP POST for batch saves, GET for loading.
+    - **Note**: Batch saving (implemented v1.0.1) sends all finished matches in parallel when the session ends, improving performance and avoiding race conditions.
     - **CLOUD**: Supabase SQL queries with session management
 
 ### B. Matchmaking Algorithm (`utils/matchmaking.ts`)
@@ -138,14 +139,16 @@ The app implements a **Repository/Adapter Pattern** via the `DataService` interf
 | Column | Type | Description |
 |--------|------|-------------|
 | `timestamp` | Date | 경기 기록 시각 (Apps Script가 자동 삽입) |
-| `date` | String | 경기 날짜 (ISO format: YYYY-MM-DD) |
+| `date` | String | 경기 날짜 (ISO format: YYYY-MM-DD HH:mm) |
 | `duration` | Number | 경기 시간 (분 단위) |
 | `winner1` | String | 승리팀 플레이어 1 이름 |
 | `winner2` | String | 승리팀 플레이어 2 이름 |
 | `loser1` | String | 패배팀 플레이어 1 이름 |
 | `loser2` | String | 패배팀 플레이어 2 이름 |
 | `score` | String | 점수 (형식: "6-4") |
-| `location` | String | 경기 장소 (현재 빈 문자열) |
+| `winner_score` | Number | 승자 점수 (숫자) |
+| `loser_score` | Number | 패자 점수 (숫자) |
+| `location` | String | 경기 장소 |
 
 **데이터 흐름:**
 
@@ -170,7 +173,7 @@ function getOrCreateMatchesSheet() {
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet('Matches');
-    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'location']);
+    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'winner_score', 'loser_score', 'location']);
   }
   return sheet;
 }
@@ -178,8 +181,8 @@ function getOrCreateMatchesSheet() {
 function doGet(e) {
   const sheet = getOrCreateMatchesSheet();
   const data = sheet.getDataRange().getValues();
-  const rows = data.slice(1); // 헤더 제외
-  const recentRows = rows.slice(-100).reverse(); // 최근 100경기
+  const rows = data.slice(1);
+  const recentRows = rows.slice(-100).reverse();
 
   return ContentService.createTextOutput(JSON.stringify(recentRows))
     .setMimeType(ContentService.MimeType.JSON);
@@ -190,7 +193,7 @@ function doPost(e) {
   const params = JSON.parse(e.postData.contents);
 
   sheet.appendRow([
-    new Date(), // timestamp
+    new Date(),
     params.date,
     params.duration,
     params.winner1,
@@ -198,6 +201,8 @@ function doPost(e) {
     params.loser1,
     params.loser2,
     params.score,
+    params.winner_score,
+    params.loser_score,
     params.location
   ]);
 
@@ -289,7 +294,7 @@ function doPost(e) {
    ↓
 3. Player 탭에서 선수 관리
    ↓
-4. Match 종료 시 자동으로 Google Sheets에 저장
+4. "End Session" 클릭 시 `saveAllToSheets` 호출 (모든 경기 일괄 저장)
 
 ┌─────────────────────────────────────────────────────────┐
 │ CLOUD MODE (세션 기반)                                   │
@@ -420,11 +425,10 @@ const finishMatch = async (matchId, scoreA, scoreB) => {
 - **URL Input Bug Fix**: Proper state management for saved URLs
 
 **4. Complete Documentation Suite**
-- `README.md`: 전체 프로젝트 개요 및 Google Sheets 가이드
-- `CHANGELOG.md`: Keep a Changelog 표준 형식 체인지로그
-- `HISTORY.md`: 버전별 릴리스 노트 (한글)
-- `TODO.md`: 로드맵 및 우선순위 (v1.1.0+)
-- `ARCHITECTURE.md`: Multi-Backend 아키텍처 설명 (본 문서)
+- [README.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/README.md): 전체 프로젝트 개요 및 Google Sheets 가이드
+- [HISTORY.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/HISTORY.md): 버전별 릴리스 노트 및 전체 변경 이력 (한글)
+- [TODO.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/TODO.md): 로드맵 및 우선순위 (v1.1.0+)
+- [ARCHITECTURE.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/ARCHITECTURE.md): Multi-Backend 아키텍처 설명 (본 문서)
 
 **5. Version Management**
 - **Semantic Versioning**: MAJOR.MINOR.PATCH 규칙 적용
@@ -446,6 +450,6 @@ const finishMatch = async (matchId, scoreA, scoreB) => {
 - Utilities: camelCase (e.g., `playerUtils.ts`)
 - Constants: UPPER_SNAKE_CASE (e.g., `APP_STORAGE_KEY`)
 
-**에러 문서화:**
-- `ERRORS.md`: 모든 버그와 해결 방법 기록
+**### 에러 문서화:**
+- [HISTORY.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/HISTORY.md): 모든 버그와 해결 방법 기록이 통합되었습니다.
 - Commit 메시지에 명확한 문제-해결 설명

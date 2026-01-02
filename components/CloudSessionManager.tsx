@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { MapPin, Play, Clock, ChevronRight, Loader2, Locate } from 'lucide-react';
+import { Play, Clock, ChevronRight, Loader2, MapPin } from 'lucide-react';
+import { LocationPicker } from './LocationPicker';
 import { SessionSummary, SessionRecord, SessionLocationRecord } from '../types';
 import { supabase } from '../services/supabaseClient';
-import { API_ENDPOINTS } from '../constants';
 
 interface CloudSessionManagerProps {
     onSessionReady?: () => void;
@@ -18,15 +18,15 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
     const [location, setLocation] = useState('');
     const [sessions, setSessions] = useState<SessionSummary[]>([]);
     const [loading, setLoading] = useState(false);
-    const [gettingLocation, setGettingLocation] = useState(false);
-    const [previousLocations, setPreviousLocations] = useState<string[]>([]);
+
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
     useEffect(() => {
         if (activeTab === 'LOAD') {
             fetchSessions();
         } else if (activeTab === 'NEW') {
-            fetchPreviousLocations();
+            // fetchPreviousLocations(); // Handled by LocationPicker
+
         }
     }, [activeTab]);
 
@@ -51,58 +51,9 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
         setLoading(false);
     };
 
-    const fetchPreviousLocations = async () => {
-        const { data, error } = await supabase
-            .from('sessions')
-            .select('location')
-            .not('location', 'is', null)
-            .order('played_at', { ascending: false })
-            .limit(10);
 
-        if (!error && data) {
-            const locations = (data as SessionLocationRecord[])
-                .map(s => s.location)
-                .filter((loc): loc is string => loc !== null);
-            const uniqueLocations = Array.from(new Set(locations));
-            setPreviousLocations(uniqueLocations);
-        }
-    };
 
-    const handleGetLocation = () => {
-        if (!navigator.geolocation) {
-            showToast('Geolocation is not supported by your browser', 'error');
-            return;
-        }
 
-        setGettingLocation(true);
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                try {
-                    // TODO: Replace with Kakao or Naver API for Korean address support
-                    // See TODO.md for implementation guide
-                    // Current: OpenStreetMap Nominatim (returns English addresses)
-                    const { latitude, longitude } = position.coords;
-                    const response = await fetch(
-                        `${API_ENDPOINTS.NOMINATIM_REVERSE}?format=json&lat=${latitude}&lon=${longitude}`
-                    );
-                    const data = await response.json();
-                    const address = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-                    setLocation(address);
-                    showToast('Location detected', 'success');
-                } catch (error) {
-                    // Fallback to coordinates
-                    const { latitude, longitude } = position.coords;
-                    setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-                    showToast('Location detected (coordinates)', 'success');
-                }
-                setGettingLocation(false);
-            },
-            (error) => {
-                showToast('Failed to get location', 'error');
-                setGettingLocation(false);
-            }
-        );
-    };
 
     const handleStartClick = () => {
         setShowConfirmDialog(true);
@@ -165,42 +116,11 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase">Location (Optional)</label>
-                            <div className="flex items-center gap-2 bg-slate-800 px-3 rounded-lg border border-slate-700 focus-within:border-tennis-green transition-colors">
-                                <MapPin size={16} className="text-tennis-green" />
-                                <input
-                                    type="text"
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
-                                    placeholder="e.g. Center Court"
-                                    className="bg-transparent py-3 text-white placeholder-slate-500 text-sm w-full outline-none"
-                                />
-                                <button
-                                    onClick={handleGetLocation}
-                                    disabled={gettingLocation}
-                                    className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors disabled:opacity-50"
-                                    title="Use my location"
-                                >
-                                    {gettingLocation ? <Loader2 size={16} className="animate-spin text-tennis-green" /> : <Locate size={16} className="text-tennis-green" />}
-                                </button>
-                            </div>
-
-                            {previousLocations.length > 0 && (
-                                <div className="space-y-1">
-                                    <p className="text-[10px] text-slate-500">Recent locations:</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {previousLocations.slice(0, 5).map((loc, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => setLocation(loc)}
-                                                className="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-tennis-green rounded border border-slate-700 hover:border-tennis-green transition-colors"
-                                            >
-                                                {loc}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            <LocationPicker
+                                value={location}
+                                onChange={setLocation}
+                                loadHistory={true}
+                            />
                         </div>
 
                         <button

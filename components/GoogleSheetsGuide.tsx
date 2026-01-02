@@ -15,7 +15,7 @@ function getOrCreateMatchesSheet() {
   // If sheet doesn't exist, create it with headers
   if (!sheet) {
     sheet = spreadsheet.insertSheet('Matches');
-    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'location']);
+    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'winner_score', 'loser_score', 'location']);
   }
   return sheet;
 }
@@ -47,6 +47,8 @@ function doPost(e) {
     params.loser1,
     params.loser2,
     params.score,
+    params.winner_score,
+    params.loser_score,
     params.location
   ]);
 
@@ -114,7 +116,7 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                     </p>
                     <div className="relative mt-4">
                         <pre className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 overflow-x-auto max-h-64">
-{APPS_SCRIPT_CODE}
+                            {APPS_SCRIPT_CODE}
                         </pre>
                         <button
                             onClick={handleCopyCode}
@@ -304,13 +306,12 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                                 <button
                                     key={index}
                                     onClick={() => setCurrentStep(index + 1)}
-                                    className={`w-2 h-2 rounded-full transition-colors ${
-                                        index + 1 === currentStep
+                                    className={`w-2 h-2 rounded-full transition-colors ${index + 1 === currentStep
                                             ? 'bg-emerald-500'
                                             : index + 1 < currentStep
-                                            ? 'bg-emerald-500/50'
-                                            : 'bg-slate-700'
-                                    }`}
+                                                ? 'bg-emerald-500/50'
+                                                : 'bg-slate-700'
+                                        }`}
                                 />
                             ))}
                         </div>

@@ -43,6 +43,13 @@ interface AppContextType {
   exportData: () => string;
   importData: (jsonString: string) => boolean;
   getShareableLink: () => string;
+  sessionLocation: string;
+  setSessionLocation: (loc: string) => void;
+  sessionDate: string;
+  setSessionDate: (date: string) => void;
+  getRecentLocations: () => Promise<string[]>;
+  exitMode: () => void;
+  saveAllToSheets: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -53,6 +60,14 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [feed, setFeed] = useState<FeedMessage[]>([]);
+  const [sessionLocation, setSessionLocation] = useState<string>('');
+  const [sessionDate, setSessionDate] = useState<string>('');
+
+  // Helper function to reset session state
+  const resetSessionState = () => {
+    setPlayers([]);
+    setMatches([]);
+  };
 
   // Load from local storage or URL params on mount
   useEffect(() => {
@@ -134,12 +149,6 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
   const switchMode = (newMode: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS') => {
     setMode(newMode);
 
-    // Helper function to reset session state
-    const resetSessionState = () => {
-      setPlayers([]);
-      setMatches([]);
-    };
-
     if (newMode === 'LOCAL') {
       setDataService(new LocalDataService());
       // Reload local data? Or keep current?
@@ -161,25 +170,15 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       // Check if there's a saved Web App URL
       const savedUrl = sheetsService.getWebAppUrl();
 
-      if (savedUrl) {
-        // Try to load data
-        addLog('SYSTEM', 'Connecting to Google Sheets...');
-        sheetsService.loadSession().then(state => {
-          if (state) {
-            setPlayers(state.players);
-            setMatches(state.matches);
-            setFeed(state.feed);
-            addLog('SYSTEM', 'Data loaded from Google Sheets successfully.');
-          }
-        }).catch(err => {
-          console.error('Failed to load from Google Sheets:', err);
-          addLog('SYSTEM', '⚠️ Failed to load from Google Sheets. Please check your setup.');
-          resetSessionState();
-        });
-      } else {
-        // No saved URL - show GoogleSheetsSessionManager UI
+      // Always reset session state when switching to Google Sheets
+      // This ensures players.length === 0, triggering the GoogleSheetsSessionManager modal
+      // The modal (via 'LANDING' mode) will offer "Use Current Sheet" or "Connect New"
+      resetSessionState();
+
+      if (!savedUrl) {
         addLog('SYSTEM', 'Switched to Google Sheets Mode. Please configure your Google Sheets URL.');
-        resetSessionState();
+      } else {
+        addLog('SYSTEM', 'Switched to Google Sheets Mode.');
       }
     } else {
       const cloudService = new SupabaseDataService();
@@ -215,10 +214,17 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     }
   };
 
+  const exitMode = () => {
+    setMode(null);
+    localStorage.removeItem('tennis-mate-mode');
+    resetSessionState();
+  };
+
   const startCloudSession = async (location?: string) => {
     if (mode !== 'CLOUD') return;
     try {
       const id = await dataService.createSession?.(location);
+      if (location) setSessionLocation(location);
       addLog('SYSTEM', `New Cloud Session Started (ID: ${id})`);
 
       // Add default players automatically for better UX
@@ -326,6 +332,13 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     return [];
   };
 
+  const getRecentLocations = async (): Promise<string[]> => {
+    if (dataService.getRecentLocations) {
+      return await dataService.getRecentLocations();
+    }
+    return [];
+  };
+
   const updatePlayerName = (id: string, name: string) => {
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, name } : p));
     if (mode === 'CLOUD') {
@@ -376,7 +389,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     });
 
     if (isInUnfinishedMatch) {
-      addLog('ERROR', `Cannot delete ${player.name} - player is in active or queued matches.`);
+      addLog('SYSTEM', `Cannot delete ${player.name} - player is in active or queued matches.`);
       return false;
     }
 
@@ -475,11 +488,8 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
       if (mode === 'CLOUD') {
         await dataService.saveMatch?.(updatedMatch);
-      } else if (mode === 'GOOGLE_SHEETS' && dataService.type === 'GOOGLE_SHEETS') {
-        // For Google Sheets, use the special method with player names
-        const service = dataService as GoogleSheetsDataService;
-        await service.saveMatchWithNames(updatedMatch, players);
       }
+      // Removed auto-save for GOOGLE_SHEETS - user wants batch save at the end.
     } catch (error) {
       console.error('Failed to finish match:', error);
       addLog('SYSTEM', '⚠️ Failed to save match result. Please try again.');
@@ -584,6 +594,8 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     localStorage.removeItem(APP_STORAGE_KEY);
     setMatches([]);
     setFeed([]);
+    setSessionLocation('');
+    setSessionDate('');
 
     // In Cloud mode, clear everything and show SessionManager
     // In Local mode, initialize with default players
@@ -658,7 +670,33 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       resetData,
       exportData,
       importData,
-      getShareableLink
+      getShareableLink,
+      sessionLocation,
+      setSessionLocation,
+      sessionDate,
+      setSessionDate,
+      getRecentLocations,
+      exitMode,
+      saveAllToSheets: async () => {
+        if (mode !== 'GOOGLE_SHEETS' || dataService.type !== 'GOOGLE_SHEETS') return;
+
+        const finishedMatchesInSession = matches.filter(m => m.isFinished);
+        if (finishedMatchesInSession.length === 0) return;
+
+        const service = dataService as GoogleSheetsDataService;
+
+        try {
+          addLog('SYSTEM', `Saving matches to Google Sheets (Location: ${sessionLocation || 'None Specified'})...`);
+          // Use batch save or loop? User said "batch save" (한꺼번에 저장하자).
+          // We will implement batch save in the service.
+          await service.saveBatchWithNames(finishedMatchesInSession, players, sessionLocation, sessionDate);
+          addLog('SYSTEM', '✅ Successfully saved all matches to Google Sheets.');
+        } catch (error) {
+          console.error('Failed to save to Google Sheets:', error);
+          addLog('SYSTEM', '⚠️ Failed to save to Google Sheets. Please check your connection.');
+          throw error;
+        }
+      }
     }}>
       {children}
     </AppContext.Provider>

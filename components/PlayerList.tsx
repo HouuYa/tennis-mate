@@ -27,12 +27,12 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
   const activeDragIndex = useRef<number | null>(null);
 
   React.useEffect(() => {
-    if (mode === 'CLOUD' && showDbPicker) {
+    if ((mode === 'CLOUD' || mode === 'GOOGLE_SHEETS') && showDbPicker) {
       getAllPlayers()
         .then(p => setDbPlayers(p))
         .catch(err => console.error("Failed to load players", err));
     }
-  }, [mode, showDbPicker]);
+  }, [mode, showDbPicker, getAllPlayers]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,20 +182,20 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
         <div className="bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700 space-y-3">
           <h2 className="text-xl font-bold text-tennis-green mb-4 flex items-center justify-between">
             <span className="flex items-center"><UserPlus className="mr-2" size={24} /> Add Player</span>
-            {mode === 'CLOUD' && (
+            {(mode === 'CLOUD' || mode === 'GOOGLE_SHEETS') && (
               <button
                 onClick={() => setShowDbPicker(!showDbPicker)}
                 className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300 hover:text-white"
               >
-                {showDbPicker ? 'Close Global List' : 'From Global List'}
+                {showDbPicker ? 'Close List' : (mode === 'CLOUD' ? 'From Global List' : 'From Sheet History')}
               </button>
             )}
           </h2>
 
           {/* Global DB Picker */}
-          {mode === 'CLOUD' && showDbPicker && (
+          {(mode === 'CLOUD' || mode === 'GOOGLE_SHEETS') && showDbPicker && (
             <div className="bg-slate-900 rounded-lg p-2 max-h-40 overflow-y-auto mb-2 border border-slate-700">
-              <p className="text-xs text-slate-500 mb-2 px-1">Select from database:</p>
+              <p className="text-xs text-slate-500 mb-2 px-1">Select from history:</p>
               <div className="flex flex-wrap gap-2">
                 {dbPlayers
                   .filter(dp => !players.some(p => p.id === dp.id || p.name.toLowerCase() === dp.name.toLowerCase()))
@@ -216,7 +216,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
                       + {dp.name}
                     </button>
                   ))}
-                {dbPlayers.length === 0 && <span className="text-xs text-slate-500 pl-1">Loading...</span>}
+                {dbPlayers.length === 0 && <span className="text-xs text-slate-500 pl-1">No history found or loading...</span>}
               </div>
             </div>
           )}

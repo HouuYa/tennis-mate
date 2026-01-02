@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle, Edit3, RotateCcw, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Trophy, CheckCircle, Trash2, Clock, CalendarDays, PlusCircle, PlayCircle, Edit3, RotateCcw, AlertTriangle, TrendingUp, Loader2 } from 'lucide-react';
 import { generateNextMatch } from '../utils/matchmaking';
 import { Match, Tab } from '../types';
 import { getNameWithNumber, getRestingPlayerNames } from '../utils/playerUtils';
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
-  const { matches, activeMatch, players, finishMatch, undoFinishMatch, createNextMatch, generateSchedule, deleteMatch, updateMatchScore } = useApp();
+  const { matches, activeMatch, players, finishMatch, undoFinishMatch, createNextMatch, generateSchedule, deleteMatch, updateMatchScore, saveAllToSheets, mode } = useApp();
   const { showToast } = useToast();
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -20,9 +20,15 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
   const [editScoreA, setEditScoreA] = useState(0);
   const [editScoreB, setEditScoreB] = useState(0);
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const finishedMatches = matches.filter(m => m.isFinished).sort((a, b) => (a.endTime || a.timestamp) - (b.endTime || b.timestamp));
   const queuedMatches = matches.filter(m => !m.isFinished && m.id !== activeMatch?.id);
+
+  // ... (useEffect lines)
+
+
 
   const activePlayers = players;
   const activeCount = activePlayers.length;
@@ -32,6 +38,17 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
     else if (activeCount > 4) setPlanCount(activeCount);
     else setPlanCount(1);
   }, [activeCount]);
+
+  // Fix: Reset/Sync scores when the active match changes
+  useEffect(() => {
+    if (activeMatch) {
+      setScoreA(activeMatch.scoreA || 0);
+      setScoreB(activeMatch.scoreB || 0);
+    } else {
+      setScoreA(0);
+      setScoreB(0);
+    }
+  }, [activeMatch?.id]);
 
   const startEditMatch = (match: Match) => {
     setEditingMatch(match.id);
@@ -48,14 +65,17 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
 
   const handleFinish = async () => {
     if (activeMatch) {
+      if (isFinishing) return;
+      setIsFinishing(true);
       try {
         await finishMatch(activeMatch.id, scoreA, scoreB);
-        setScoreA(0);
-        setScoreB(0);
+        // Scores are reset via useEffect when activeMatch changes
         showToast('Match finished successfully!', 'success');
       } catch (error) {
         showToast('Failed to save match result. Please try again.', 'error');
         console.error('Failed to finish match:', error);
+      } finally {
+        setIsFinishing(false);
       }
     }
   };
@@ -66,8 +86,20 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
     }
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     setShowEndSessionDialog(false);
+
+    if (mode === 'GOOGLE_SHEETS') {
+      setIsSavingSession(true);
+      try {
+        await saveAllToSheets();
+      } catch (e) {
+        setIsSavingSession(false);
+        return;
+      }
+      setIsSavingSession(false);
+    }
+
     showToast('Session completed! Viewing results...', 'success');
     setTab(Tab.STATS);
   };
@@ -144,6 +176,25 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
       </div>
 
       {/* 3. Current Match (Active) */}
+      {allMatchesFinished && (
+        <div className="mb-6 bg-gradient-to-br from-tennis-green/10 to-tennis-green/5 p-6 rounded-xl border-2 border-tennis-green/30 space-y-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-tennis-green/20 rounded-full flex items-center justify-center">
+              <Trophy size={24} className="text-tennis-green" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">All Matches Completed!</h3>
+              <p className="text-sm text-slate-400">Ready to end the session and view stats?</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowEndSessionDialog(true)}
+            className="w-full py-4 bg-tennis-green text-slate-900 font-black text-lg rounded-xl shadow-lg hover:bg-[#c0ce4e] active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            <TrendingUp size={24} /> End Session & View Stats
+          </button>
+        </div>
+      )}
       <div className="flex gap-4 items-start">
         <div className="flex flex-col items-center min-w-[32px]">
           <div className="w-8 h-8 rounded-full bg-tennis-green flex items-center justify-center text-xs font-bold text-slate-900 shadow-[0_0_10px_rgba(212,225,87,0.5)]">
@@ -165,8 +216,8 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
                       {getNameWithNumber(activeMatch.teamA.player2Id, players, activePlayers)}
                     </div>
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => setScoreA(Math.max(0, scoreA - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white">-</button>
-                      <button onClick={() => setScoreA(scoreA + 1)} className="w-8 h-8 rounded-full bg-slate-700 text-white">+</button>
+                      <button disabled={isFinishing} onClick={() => setScoreA(Math.max(0, scoreA - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white disabled:opacity-50">-</button>
+                      <button disabled={isFinishing} onClick={() => setScoreA(scoreA + 1)} className="w-8 h-8 rounded-full bg-slate-700 text-white disabled:opacity-50">+</button>
                     </div>
                   </div>
 
@@ -179,17 +230,18 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
                       {getNameWithNumber(activeMatch.teamB.player2Id, players, activePlayers)}
                     </div>
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => setScoreB(Math.max(0, scoreB - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white">-</button>
-                      <button onClick={() => setScoreB(scoreB + 1)} className="w-8 h-8 rounded-full bg-slate-700 text-white">+</button>
+                      <button disabled={isFinishing} onClick={() => setScoreB(Math.max(0, scoreB - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-white disabled:opacity-50">-</button>
+                      <button disabled={isFinishing} onClick={() => setScoreB(scoreB + 1)} className="w-8 h-8 rounded-full bg-slate-700 text-white disabled:opacity-50">+</button>
                     </div>
                   </div>
                 </div>
 
                 <button
                   onClick={handleFinish}
-                  className="w-full bg-white text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-200 active:scale-95 transition-transform"
+                  disabled={isFinishing}
+                  className="w-full bg-white text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-200 active:scale-95 transition-transform disabled:opacity-70 disabled:scale-100"
                 >
-                  <CheckCircle size={20} /> Finish Set
+                  {isFinishing ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />} {isFinishing ? 'Saving...' : 'Finish Set'}
                 </button>
               </div>
             </div>
@@ -294,26 +346,7 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
         </div>
       )}
 
-      {/* 6. End Session Button */}
-      {allMatchesFinished && (
-        <div className="mt-8 bg-gradient-to-br from-tennis-green/10 to-tennis-green/5 p-6 rounded-xl border-2 border-tennis-green/30 space-y-4 animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-tennis-green/20 rounded-full flex items-center justify-center">
-              <Trophy size={24} className="text-tennis-green" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white">All Matches Completed!</h3>
-              <p className="text-sm text-slate-400">Ready to end the session and view stats?</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowEndSessionDialog(true)}
-            className="w-full py-4 bg-tennis-green text-slate-900 font-black text-lg rounded-xl shadow-lg hover:bg-[#c0ce4e] active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <TrendingUp size={24} /> End Session & View Stats
-          </button>
-        </div>
-      )}
+
 
       {/* End Session Confirmation Dialog */}
       {showEndSessionDialog && (
@@ -352,6 +385,22 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
                   View Stats
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saving Overlay */}
+      {isSavingSession && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 text-center max-w-[280px]">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-4 border-slate-800 border-t-tennis-green animate-spin" />
+              <Loader2 className="absolute inset-0 m-auto text-tennis-green animate-pulse" size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white mb-1">Saving to Sheets</h3>
+              <p className="text-sm text-slate-400">Please wait while we record the session results...</p>
             </div>
           </div>
         </div>

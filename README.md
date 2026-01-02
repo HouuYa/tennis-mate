@@ -46,7 +46,9 @@
   - 완전한 데이터 소유권
   - 무료 무제한 저장
   - Excel/CSV 언제든지 내보내기
+  - Excel/CSV 언제든지 내보내기
   - 최근 100경기 자동 동기화
+  - **Batch Save**: 세션 종료 시 모든 경기를 한 번에 저장 (속도 & 안정성 개선)
 - **설정**: 단계별 가이드 제공 (Google Apps Script 배포)
 - **적합**: 데이터 통제가 중요한 사용자
 
@@ -159,6 +161,60 @@ npm run dev
    - Web App으로 배포
    - Web App URL 복사
    - Tennis Mate에 URL 입력 & 연결 테스트
+4. "End Session" 클릭 시 모든 데이터가 Google Sheets에 일괄 저장 (Batch Save)
+
+## 🛠 Google Sheets Backend Setup (Google Apps Script)
+
+PC에서 수동으로 설정하려면 아래 코드를 사용하세요:
+
+```javascript
+// Tennis Mate - Google Sheets Backend
+function getOrCreateMatchesSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = spreadsheet.getSheetByName('Matches');
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('Matches');
+    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'winner_score', 'loser_score', 'location']);
+  }
+  return sheet;
+}
+
+function doGet(e) {
+  const sheet = getOrCreateMatchesSheet();
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1);
+  const recentRows = rows.slice(-100).reverse();
+  return ContentService.createTextOutput(JSON.stringify(recentRows)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const sheet = getOrCreateMatchesSheet();
+  const params = JSON.parse(e.postData.contents);
+  sheet.appendRow([
+    new Date(),
+    params.date,
+    params.duration,
+    params.winner1,
+    params.winner2,
+    params.loser1,
+    params.loser2,
+    params.score,
+    params.winner_score,
+    params.loser_score,
+    params.location
+  ]);
+  return ContentService.createTextOutput(JSON.stringify({result: 'success'})).setMimeType(ContentService.MimeType.JSON);
+}
+```
+
+### 배포 방법 (Deployment)
+1. **Google Sheet** 생성 및 이름 연동.
+2. **Extensions > Apps Script** 클릭.
+3. 위 코드를 붙여넣고 저장.
+4. **Deploy > New deployment** 클릭.
+5. 타입 선택: **Web app**.
+6. 설정: **Execute as: Me**, **Who has access: Anyone**.
+7. 배포 후 생성된 **Web App URL**을 Tennis Mate 앱에 입력.
 
 ### 데이터 구조
 Google Sheet에는 다음 열이 자동으로 생성됩니다:

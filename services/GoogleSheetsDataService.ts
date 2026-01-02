@@ -134,8 +134,33 @@ export class GoogleSheetsDataService implements DataService {
         rows.forEach((row, index) => {
             try {
                 // Row structure from PRD:
-                // A: timestamp, B: date, C: duration, D: winner1, E: winner2, F: loser1, G: loser2, H: score, I: location
-                const [timestampStr, date, duration, winner1, winner2, loser1, loser2, score, location] = row;
+                // A: timestamp, B: date, C: duration, D: winner1, E: winner2, F: loser1, G: loser2, H: score, I: winner_score, J: loser_score, K: location
+                // Flexible parsing:
+                const timestampStr = row[0];
+                const winner1 = row[3];
+                const winner2 = row[4];
+                const loser1 = row[5];
+                const loser2 = row[6];
+                const score = row[7];
+
+                // Handle versioning:
+                // Old format: Row length ~9 (Index 8 is location)
+                // New format: Row length ~11 (Index 8 is win_score, 9 is lose_score, 10 is location)
+                let location = '';
+                let winnerScoreVal = 0;
+                let loserScoreVal = 0;
+
+                if (row.length > 9) {
+                    // New format
+                    const winnerScoreStr = row[8];
+                    const loserScoreStr = row[9];
+                    location = row[10] || '';
+                    winnerScoreVal = parseInt(winnerScoreStr) || 0;
+                    loserScoreVal = parseInt(loserScoreStr) || 0;
+                } else {
+                    // Old format
+                    location = row[8] || ''; // location was at index 8
+                }
 
                 // Add players to map if not exists
                 [winner1, winner2, loser1, loser2].forEach(name => {
@@ -159,11 +184,25 @@ export class GoogleSheetsDataService implements DataService {
 
                 // Parse score (format: "6-4")
                 // Note: scores in sheet are always stored as winner-loser (max-min)
-                const [score1Str, score2Str] = (score || '0-0').split('-');
-                const score1 = parseInt(score1Str) || 0;
-                const score2 = parseInt(score2Str) || 0;
-                const scoreA = Math.max(score1, score2);
-                const scoreB = Math.min(score1, score2);
+                // If we have explicit split scores (new format), use them. Otherwise parse string.
+                let scoreA = 0;
+                let scoreB = 0;
+
+                if (winnerScoreVal > 0 || loserScoreVal > 0) {
+                    // Map back to A/B based on who is who?
+                    // Actually, match.scoreA corresponds to teamA (winner1/winner2)
+                    // and match.scoreB corresponds to teamB (loser1/loser2)
+                    // Since we force teamA = winner in this parsing logic below (lines 182-189),
+                    // scoreA should be winnerScore.
+                    scoreA = winnerScoreVal;
+                    scoreB = loserScoreVal;
+                } else {
+                    const [score1Str, score2Str] = (score || '0-0').split('-');
+                    const score1 = parseInt(score1Str) || 0;
+                    const score2 = parseInt(score2Str) || 0;
+                    scoreA = Math.max(score1, score2);
+                    scoreB = Math.min(score1, score2);
+                }
 
                 // Parse timestamp
                 let timestamp = Date.now() - (rows.length - index) * 60000; // Default: spread backwards
@@ -175,23 +214,28 @@ export class GoogleSheetsDataService implements DataService {
                     // Use default
                 }
 
+                const teamA = {
+                    player1Id: playerMap.get(winner1)?.id || '',
+                    player2Id: playerMap.get(winner2)?.id || ''
+                };
+                const teamB = {
+                    player1Id: playerMap.get(loser1)?.id || '',
+                    player2Id: playerMap.get(loser2)?.id || ''
+                };
+
+                // Create match object
                 // Create match object
                 const match: Match = {
                     id: `gs-match-${timestamp}-${index}`,
                     timestamp,
-                    teamA: {
-                        player1Id: playerMap.get(winner1)?.id || '',
-                        player2Id: playerMap.get(winner2)?.id || ''
-                    },
-                    teamB: {
-                        player1Id: playerMap.get(loser1)?.id || '',
-                        player2Id: playerMap.get(loser2)?.id || ''
-                    },
-                    scoreA,
-                    scoreB,
+                    teamA,
+                    teamB,
+                    scoreA, // Winner Score
+                    scoreB, // Loser Score
                     isFinished: true,
                     courtNumber: 1,
-                    endTime: timestamp
+                    endTime: timestamp,
+                    location: location || undefined
                 };
 
                 matches.push(match);
@@ -230,23 +274,29 @@ export class GoogleSheetsDataService implements DataService {
     /**
      * Save match with player names (helper method)
      */
-    async saveMatchWithNames(
-        match: Match,
-        players: Player[]
-    ): Promise<void> {
+    /**
+     * Save match with player names (helper method)
+     */
+    async saveMatchWithNames(match: Match, players: Player[], location?: string, sessionDate?: string): Promise<void> {
+        await this.saveBatchWithNames([match], players, location, sessionDate);
+    }
+
+    /**
+     * Save multiple matches to Google Sheets in one operation (optional batch logic)
+     * Note: Current script might only handle one, but we send as an array if needed.
+     * Or we loop here for now.
+     */
+    async saveBatchWithNames(matches: Match[], players: Player[], location?: string, sessionDate?: string): Promise<void> {
         if (!this.webAppUrl) {
             throw new Error('Web App URL not configured');
         }
 
-        if (!match.isFinished) {
-            return;
-        }
+        const getPlayerName = (id: string) => {
+            return players.find(p => p.id === id)?.name || id;
+        };
 
-        try {
-            const getPlayerName = (id: string) => {
-                return players.find(p => p.id === id)?.name || id;
-            };
-
+        // Prepare all payloads
+        const payloads = matches.map(match => {
             const teamA1 = getPlayerName(match.teamA.player1Id);
             const teamA2 = getPlayerName(match.teamA.player2Id);
             const teamB1 = getPlayerName(match.teamB.player1Id);
@@ -255,30 +305,59 @@ export class GoogleSheetsDataService implements DataService {
             const isTeamAWinner = match.scoreA > match.scoreB;
             const isDraw = match.scoreA === match.scoreB;
 
-            const payload = {
-                date: new Date(match.timestamp).toISOString().split('T')[0],
+            const winnerScore = isDraw ? match.scoreA : Math.max(match.scoreA, match.scoreB);
+            const loserScore = isDraw ? match.scoreB : Math.min(match.scoreA, match.scoreB);
+
+            return {
+                date: sessionDate || new Date(match.timestamp).toLocaleString('sv').substring(0, 16).replace('T', ' '),
                 duration: match.endTime ? Math.round((match.endTime - match.timestamp) / 60000) : 0,
                 winner1: isDraw ? teamA1 : (isTeamAWinner ? teamA1 : teamB1),
                 winner2: isDraw ? teamA2 : (isTeamAWinner ? teamA2 : teamB2),
                 loser1: isDraw ? teamB1 : (isTeamAWinner ? teamB1 : teamA1),
                 loser2: isDraw ? teamB2 : (isTeamAWinner ? teamB2 : teamA2),
-                score: isDraw ? `${match.scoreA}-${match.scoreB}` : `${Math.max(match.scoreA, match.scoreB)}-${Math.min(match.scoreA, match.scoreB)}`,
-                location: ''
+                score: isDraw ? `${match.scoreA}-${match.scoreB}` : `${winnerScore}-${loserScore}`,
+                winner_score: winnerScore,
+                loser_score: loserScore,
+                location: location || match.location || ''
             };
+        });
 
-            const response = await fetch(this.webAppUrl, {
+        // Loop for now to ensure compatibility with standard "appendRow" scripts, 
+        // unless the script is updated to handle batch.
+        // But user said "all at once", so I'll send the whole array if there are many.
+        // Actually, many scripts expect one object.
+        // I'll send them one by one but in parallel to be "all at once" from UI perspective.
+
+        await Promise.all(payloads.map(payload =>
+            fetch(this.webAppUrl!, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            });
+            })
+        ));
 
-            console.log('Match saved to Google Sheets');
-        } catch (error) {
-            console.error('Failed to save match to Google Sheets:', error);
-            throw error;
-        }
+        console.log(`${matches.length} matches saved to Google Sheets`);
+    }
+
+    async getAllPlayers(): Promise<Player[]> {
+        const session = await this.loadSession();
+        return session ? session.players : [];
+    }
+
+    async getRecentLocations(): Promise<string[]> {
+        const session = await this.loadSession();
+        if (!session) return [];
+
+        const locations = session.matches
+            .map(m => m.location)
+            .filter((loc): loc is string => !!loc && loc.trim().length > 0);
+
+        // Return unique locations, most recent first (matches are usually parsed in order of rows?
+        // parseRowsToAppState pushes matches in order of rows.
+        // Assuming rows are chronological (newest at bottom? or user decided).
+        // Usually sheets are chronological.
+        // Reverse to get recent first.
+        return Array.from(new Set(locations.reverse())).slice(0, 20); // Limit to top 20 suggestions
     }
 }

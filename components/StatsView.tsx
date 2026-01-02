@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { generateAIAnalysis } from '../services/geminiService';
 import { sortPlayers, calculatePoints } from '../utils/playerUtils';
-import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2, Users, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2, PieChart } from 'lucide-react';
+import { AnalyticsView } from './AnalyticsView';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData } = useApp();
@@ -13,75 +15,9 @@ export const StatsView: React.FC = () => {
   const [importText, setImportText] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [showPartnerships, setShowPartnerships] = useState(false);
-  const [showRivalAnalysis, setShowRivalAnalysis] = useState(false);
-  const [selectedRivalId, setSelectedRivalId] = useState<string>('');
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const sortedPlayers = sortPlayers(players);
-
-  // Best Pairs Logic
-  const pairStats: Record<string, { p1: string, p2: string, wins: number, total: number }> = {};
-  matches.filter(m => m.isFinished).forEach(m => {
-    const teams = [m.teamA, m.teamB];
-    const winners = m.scoreA > m.scoreB ? m.teamA : (m.scoreB > m.scoreA ? m.teamB : null);
-
-    teams.forEach(t => {
-      const player1 = players.find(p => p.id === t.player1Id);
-      const player2 = players.find(p => p.id === t.player2Id);
-
-      // Skip if either player is not found (deleted or missing)
-      if (!player1 || !player2) return;
-
-      const p1 = player1.name;
-      const p2 = player2.name;
-      // Ensure consistent key
-      const names = [p1, p2].sort().join(' & ');
-
-      if (!pairStats[names]) pairStats[names] = { p1, p2, wins: 0, total: 0 };
-      pairStats[names].total += 1;
-      if (winners && (winners.player1Id === t.player1Id || winners.player2Id === t.player1Id)) { // If this team won
-        pairStats[names].wins += 1;
-      }
-    });
-  });
-
-  const sortedPairs = Object.entries(pairStats)
-    .map(([name, stats]) => ({ name, ...stats, rate: (stats.wins / stats.total) * 100 }))
-    .filter(s => s.total >= 2) // Min 2 matches together
-    .sort((a, b) => b.rate - a.rate || b.total - a.total);
-
-  // Head-to-Head Analysis (User vs Selected Rival)
-  const calculateHeadToHead = (userId: string, rivalId: string) => {
-    if (!userId || !rivalId) return null;
-
-    let userWins = 0;
-    let userLosses = 0;
-    let draws = 0;
-
-    matches.filter(m => m.isFinished).forEach(m => {
-      const isUserInTeamA = m.teamA.player1Id === userId || m.teamA.player2Id === userId;
-      const isUserInTeamB = m.teamB.player1Id === userId || m.teamB.player2Id === userId;
-      const isRivalInTeamA = m.teamA.player1Id === rivalId || m.teamA.player2Id === rivalId;
-      const isRivalInTeamB = m.teamB.player1Id === rivalId || m.teamB.player2Id === rivalId;
-
-      // Only count matches where user and rival were on opposite teams
-      if ((isUserInTeamA && isRivalInTeamB) || (isUserInTeamB && isRivalInTeamA)) {
-        if (m.scoreA === m.scoreB) {
-          draws++;
-        } else if ((isUserInTeamA && m.scoreA > m.scoreB) || (isUserInTeamB && m.scoreB > m.scoreA)) {
-          userWins++;
-        } else {
-          userLosses++;
-        }
-      }
-    });
-
-    const total = userWins + userLosses + draws;
-    if (total === 0) return null;
-
-    return { userWins, userLosses, draws, total, winRate: (userWins / total) * 100 };
-  };
-
 
   const handleAskAI = async () => {
     setLoading(true);
@@ -113,11 +49,11 @@ export const StatsView: React.FC = () => {
     text += "--------------------------------\n";
     sortedPlayers.forEach(p => {
       const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
-      const gameDiffStr = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
+      const gameDiffStr = gameDiff > 0 ? `+ ${gameDiff} ` : `${gameDiff} `;
       const name = p.name.length > 6 ? p.name.substring(0, 5) + '.' : p.name;
       const draws = p.stats.draws || 0;
 
-      text += `${name.padEnd(6)} | ${p.stats.matchesPlayed} | ${p.stats.wins} | ${draws} | ${p.stats.losses} | ${gameDiffStr}\n`;
+      text += `${name.padEnd(6)} | ${p.stats.matchesPlayed} | ${p.stats.wins} | ${draws} | ${p.stats.losses} | ${gameDiffStr} \n`;
     });
     navigator.clipboard.writeText(text).then(() => {
       showToast("Stats text copied to clipboard!", "success");
@@ -167,162 +103,23 @@ export const StatsView: React.FC = () => {
         )}
       </div>
 
+      {showAnalytics && <AnalyticsView onClose={() => setShowAnalytics(false)} />}
 
-      {/* Best Partnerships Section (Collapsible) */}
-      {sortedPairs.length > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-          <button
-            onClick={() => setShowPartnerships(!showPartnerships)}
-            className="w-full p-4 flex items-center justify-between text-left text-white font-bold hover:bg-slate-700 transition-colors"
-          >
-            <span className="flex items-center gap-2 text-sm">
-              <Users size={16} className="text-purple-400" /> Best Partnerships (Min 2 Matches)
-            </span>
-            {showPartnerships ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          </button>
-
-          {showPartnerships && (
-            <div className="p-4 pt-0 space-y-3 border-t border-slate-700 mt-2">
-              {sortedPairs.map((pair, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-                  <div className="flex items-center gap-3">
-                    <span className="text-purple-400 font-bold font-mono text-sm">#{idx + 1}</span>
-                    <span className="font-bold text-slate-200 text-sm">{pair.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-tennis-green font-bold text-sm">{Math.round(pair.rate)}% Win</div>
-                    <div className="text-xs text-slate-500">{pair.wins}W - {pair.total - pair.wins}L</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      <button
+        onClick={() => setShowAnalytics(true)}
+        className="w-full bg-slate-800 hover:bg-slate-700 hover:border-purple-400 border border-slate-700 p-4 rounded-xl flex items-center justify-between group transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-900/30 p-2 rounded-lg text-purple-400 group-hover:bg-purple-900/50 transition-colors">
+            <PieChart size={24} />
+          </div>
+          <div className="text-left">
+            <h3 className="font-bold text-slate-200 group-hover:text-purple-300">Advanced Analytics</h3>
+            <p className="text-xs text-slate-500">View Win Rates, Partner Stats & Rivals</p>
+          </div>
         </div>
-      )}
-
-      {/* Head-to-Head Rival Analysis Section */}
-      {players.length >= 2 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-          <button
-            onClick={() => setShowRivalAnalysis(!showRivalAnalysis)}
-            className="w-full p-4 flex items-center justify-between text-left text-white font-bold hover:bg-slate-700 transition-colors"
-          >
-            <span className="flex items-center gap-2 text-sm">
-              <Target size={16} className="text-orange-400" /> Head-to-Head Analysis
-            </span>
-            {showRivalAnalysis ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          </button>
-
-          {showRivalAnalysis && (
-            <div className="p-4 pt-0 space-y-4 border-t border-slate-700 mt-2">
-              <div className="space-y-2">
-                <label className="text-xs text-slate-400 font-semibold">Select Player 1</label>
-                <select
-                  value={selectedRivalId.split('vs')[0] || ''}
-                  onChange={(e) => {
-                    const player2 = selectedRivalId.split('vs')[1] || '';
-                    setSelectedRivalId(e.target.value ? `${e.target.value}vs${player2}` : '');
-                  }}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-sm"
-                >
-                  <option value="">Choose player...</option>
-                  {players.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs text-slate-400 font-semibold">vs Player 2</label>
-                <select
-                  value={selectedRivalId.split('vs')[1] || ''}
-                  onChange={(e) => {
-                    const player1 = selectedRivalId.split('vs')[0] || '';
-                    setSelectedRivalId(player1 ? `${player1}vs${e.target.value}` : '');
-                  }}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-sm"
-                >
-                  <option value="">Choose player...</option>
-                  {players.filter(p => p.id !== selectedRivalId.split('vs')[0]).map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {(() => {
-                const [userId, rivalId] = selectedRivalId.split('vs');
-                const h2h = userId && rivalId ? calculateHeadToHead(userId, rivalId) : null;
-                const user = players.find(p => p.id === userId);
-                const rival = players.find(p => p.id === rivalId);
-
-                if (h2h && user && rival) {
-                  return (
-                    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 space-y-3">
-                      <div className="text-center">
-                        <h4 className="text-sm font-bold text-white mb-1">
-                          {user.name} vs {rival.name}
-                        </h4>
-                        <p className="text-xs text-slate-400">{h2h.total} matches played</p>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-tennis-green">{h2h.userWins}</div>
-                          <div className="text-xs text-slate-400">Wins</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-blue-400">{h2h.draws}</div>
-                          <div className="text-xs text-slate-400">Draws</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-red-400">{h2h.userLosses}</div>
-                          <div className="text-xs text-slate-400">Losses</div>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-700">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-slate-400">Win Rate</span>
-                          <span className="text-sm font-bold text-tennis-green">
-                            {Math.round(h2h.winRate)}%
-                          </span>
-                        </div>
-                        <div className="mt-2 bg-slate-800 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-tennis-green h-full transition-all duration-300"
-                            style={{ width: `${h2h.winRate}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {h2h.userWins > h2h.userLosses ? (
-                        <p className="text-xs text-center text-tennis-green font-semibold">
-                          💪 {user.name} dominates this matchup!
-                        </p>
-                      ) : h2h.userLosses > h2h.userWins ? (
-                        <p className="text-xs text-center text-orange-400 font-semibold">
-                          🔥 {rival.name} has the edge!
-                        </p>
-                      ) : (
-                        <p className="text-xs text-center text-blue-400 font-semibold">
-                          🤝 Evenly matched rivals!
-                        </p>
-                      )}
-                    </div>
-                  );
-                } else if (userId && rivalId) {
-                  return (
-                    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 text-center text-sm text-slate-400">
-                      No matches found between these players
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-          )}
-        </div>
-      )}
+        <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
+      </button>
 
       {/* Leaderboard Table */}
       <div className="bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-700">
@@ -336,18 +133,18 @@ export const StatsView: React.FC = () => {
               <tr>
                 <th className="p-3">#</th>
                 <th className="p-3">Name</th>
-                <th className="p-3 text-center" title="Matches Played">M</th>
-                <th className="p-3 text-center text-tennis-green" title="Wins (2 pts)">W</th>
-                <th className="p-3 text-center text-blue-400" title="Draws (1 pt)">D</th>
-                <th className="p-3 text-center text-red-400" title="Losses (0 pt)">L</th>
-                <th className="p-3 text-center font-bold text-yellow-400" title="Total Points (W×2 + D×1)">PTS</th>
-                <th className="p-3 text-center font-bold text-white" title="Game Difference">Game +/-</th>
+                <th className="p-3">M</th>
+                <th className="p-3 text-tennis-green">W</th>
+                <th className="p-3 text-blue-400">D</th>
+                <th className="p-3 text-red-400">L</th>
+                <th className="p-3 text-yellow-400 font-bold">PTS</th>
+                <th className="p-3 font-bold text-white">+/-</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
               {sortedPlayers.map((p, idx) => {
                 const gameDiff = p.stats.gamesWon - p.stats.gamesLost;
-                const gameDiffText = gameDiff > 0 ? `+${gameDiff}` : `${gameDiff}`;
+                const gameDiffText = gameDiff > 0 ? `+ ${gameDiff} ` : `${gameDiff} `;
                 const draws = p.stats.draws || 0;
                 const points = calculatePoints(p);
 
@@ -360,7 +157,7 @@ export const StatsView: React.FC = () => {
                     <td className="p-3 text-center text-blue-400">{draws}</td>
                     <td className="p-3 text-center text-red-400">{p.stats.losses}</td>
                     <td className="p-3 text-center text-yellow-400 font-bold font-mono">{points}</td>
-                    <td className={`p-3 text-center font-bold font-mono ${gameDiff > 0 ? 'text-tennis-green' : gameDiff < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                    <td className={`p - 3 text - center font - bold font - mono ${gameDiff > 0 ? 'text-tennis-green' : gameDiff < 0 ? 'text-red-400' : 'text-slate-400'} `}>
                       {gameDiffText}
                     </td>
                   </tr>

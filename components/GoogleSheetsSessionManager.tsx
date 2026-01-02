@@ -1,205 +1,259 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Check, AlertCircle, BookOpen } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { Play, BookOpen, Check, AlertCircle, Settings, Clock, Loader2, RotateCcw } from 'lucide-react';
 import { GoogleSheetsGuide } from './GoogleSheetsGuide';
+import { LocationPicker } from './LocationPicker';
 
-export const GoogleSheetsSessionManager = () => {
-    const { setGoogleSheetsUrl, testGoogleSheetsConnection, loadGoogleSheetsData, getGoogleSheetsUrl } = useApp();
+interface Props {
+    onSessionReady: () => void;
+}
 
-    const [url, setUrl] = useState(getGoogleSheetsUrl() || '');
+export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
+    // 1. AppContext
+    const {
+        setGoogleSheetsUrl,
+        testGoogleSheetsConnection,
+        loadGoogleSheetsData,
+        getGoogleSheetsUrl,
+        addPlayer,
+        getAllPlayers,
+        resetData,
+        sessionLocation,
+        setSessionLocation,
+        getRecentLocations,
+        sessionDate,
+        setSessionDate
+    } = useApp();
+    const { showToast } = useToast();
+
+    // 2. State
+    const [url, setUrl] = useState('');
+    const [savedUrl, setSavedUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
+    const [mode, setMode] = useState<'LANDING' | 'SETUP'>('LANDING'); // Internal mode
+    const [suggestions, setSuggestions] = useState<string[]>([]);
 
-    const handleTestConnection = async () => {
-        if (!url.trim()) {
-            setError('Please enter a Web App URL');
-            return;
-        }
-
-        setIsLoading(true);
-        setError(null);
-        setSuccess(false);
-
-        try {
-            // Set the URL first
-            await setGoogleSheetsUrl(url);
-
-            // Test the connection
-            const isConnected = await testGoogleSheetsConnection();
-
-            if (isConnected) {
-                setSuccess(true);
-                setError(null);
-
-                // Load data automatically after successful connection
-                setTimeout(async () => {
-                    try {
-                        await loadGoogleSheetsData();
-                    } catch (e) {
-                        console.warn('Failed to load initial data:', e);
-                    }
-                }, 500);
+    useEffect(() => {
+        const saved = getGoogleSheetsUrl();
+        if (saved) {
+            setSavedUrl(saved);
+            setMode('LANDING');
+            // Fetch recent locations for suggestions
+            getRecentLocations().then(locs => {
+                setSuggestions(locs);
+            });
+            // Initialize Date if empty
+            if (!sessionDate) {
+                // Correct local time for datetime-local
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                setSessionDate(now.toISOString().slice(0, 16));
             }
-        } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : 'Connection failed. Please check your URL and try again.';
-            setError(message);
-            setSuccess(false);
-        } finally {
-            setIsLoading(false);
+        } else {
+            setMode('SETUP');
         }
-    };
+    }, [getGoogleSheetsUrl, getRecentLocations, sessionDate, setSessionDate]);
 
-    const handleLoadData = async () => {
+    // 3. Handlers
+
+    const handleConnect = async () => {
+        if (!url.trim()) return;
         setIsLoading(true);
         setError(null);
-
         try {
+            // Validation
+            if (!url.includes('script.google.com')) {
+                throw new Error('Invalid URL. Must be a Google Apps Script Web App URL.');
+            }
+
+            // Save URL first
+            await setGoogleSheetsUrl(url.trim());
+
+            // Test connection
+            await testGoogleSheetsConnection(); // This usually verifies Get request
+
+            // If success
+            showToast('Connected to Google Sheets!', 'success');
+
+            // Auto-load data and setup defaults
             await loadGoogleSheetsData();
-            setSuccess(true);
-        } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : 'Failed to load data from Google Sheets';
-            setError(message);
+            await ensurePlayersExist();
+
+            // Setup complete
+            onSessionReady();
+        } catch (e) {
+            console.error(e);
+            setError(e instanceof Error ? e.message : 'Connection failed');
         } finally {
             setIsLoading(false);
         }
     };
 
-    if (showGuide) {
-        return <GoogleSheetsGuide onClose={() => setShowGuide(false)} />;
-    }
+    const handleUseCurrent = async () => {
+        setIsLoading(true);
+        try {
+            // User requested: Start FRESH session but keep connection.
+            // Do NOT load past matches into active session.
+            // resetData() will clear matches and restore default players.
+            // BUG FIX: resetData() clears sessionLocation and sessionDate, so we preserve them.
+            const savedLocation = sessionLocation;
+            const savedDate = sessionDate;
 
-    const savedUrl = getGoogleSheetsUrl();
-    const isConnected = success || savedUrl;
+            resetData();
+
+            // Restore session metadata
+            if (savedLocation) setSessionLocation(savedLocation);
+            if (savedDate) setSessionDate(savedDate);
+
+            showToast('Started new session', 'success');
+            onSessionReady();
+        } catch (e) {
+            setError('Failed to start session.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleExit = () => {
+        if (confirm("Go back to main menu? Current session data will be cleared.")) {
+            window.location.reload();
+        }
+    };
+
+    // Helper to ensure we have players (Deadlock prevention)
+    const ensurePlayersExist = async () => {
+        const currentPlayers = await getAllPlayers();
+        if (currentPlayers.length === 0) {
+            showToast('Sheet is empty. Adding default players...', 'info');
+            const defaultNames = ['Nadal', 'Federer', 'Djokovic', 'Murray', 'Alcaraz'];
+            for (const name of defaultNames) {
+                await addPlayer(name);
+            }
+        }
+    };
+
+    const navToSetup = () => {
+        setMode('SETUP');
+        setUrl('');
+    };
+
+    if (showGuide) return <GoogleSheetsGuide onClose={() => setShowGuide(false)} />;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                {/* Header */}
-                <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-100">Google Sheets Setup</h2>
-                            <p className="text-sm text-slate-400 mt-1">Connect your Google Sheets to save match data</p>
-                        </div>
-                    </div>
-                </div>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
 
-                {/* Content */}
-                <div className="p-6 space-y-6">
-                    {/* Setup Guide Button */}
-                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 bg-blue-500/10 rounded-lg">
-                                <BookOpen className="text-blue-400" size={20} />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="font-semibold text-slate-100">First time setup?</h3>
-                                <p className="text-sm text-slate-400 mt-1">
-                                    Follow our step-by-step guide to create and deploy your Google Sheets backend.
-                                </p>
-                                <button
-                                    onClick={() => setShowGuide(true)}
-                                    className="mt-3 text-sm text-blue-400 hover:text-blue-300 font-medium"
-                                >
-                                    View Setup Guide →
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* URL Input */}
-                    <div className="space-y-3">
-                        <label className="block text-sm font-medium text-slate-300">
-                            Google Apps Script Web App URL
-                        </label>
-                        <input
-                            type="url"
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
-                            placeholder="https://script.google.com/macros/s/..."
-                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                            disabled={isLoading}
-                        />
-                        <p className="text-xs text-slate-500">
-                            Paste the Web App URL from your deployed Google Apps Script
-                        </p>
-                    </div>
-
-                    {/* Status Messages */}
-                    {error && (
-                        <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                            <AlertCircle className="text-red-400 flex-shrink-0" size={20} />
-                            <div className="flex-1">
-                                <p className="text-sm text-red-400">{error}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {success && (
-                        <div className="flex items-start gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                            <Check className="text-emerald-400 flex-shrink-0" size={20} />
-                            <div className="flex-1">
-                                <p className="text-sm text-emerald-400">
-                                    Connection successful! You can now start using Google Sheets Mode.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Connection Status */}
-                    {isConnected && !success && (
-                        <div className="flex items-center gap-2 text-sm">
-                            <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                            <span className="text-slate-400">Connected to Google Sheets</span>
-                        </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                        <button
-                            onClick={handleTestConnection}
-                            disabled={isLoading || !url.trim()}
-                            className="flex-1 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-xl font-medium transition-colors"
-                        >
-                            {isLoading ? 'Testing...' : 'Test & Connect'}
-                        </button>
-
-                        {isConnected && (
-                            <button
-                                onClick={handleLoadData}
-                                disabled={isLoading}
-                                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-xl font-medium transition-colors"
-                            >
-                                Refresh Data
+                {/* Mode: LANDING (Choice) */}
+                {mode === 'LANDING' && (
+                    <div className="p-6 space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-300">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-slate-100">Google Sheets Connected</h2>
+                            <button onClick={handleExit} className="text-slate-500 hover:text-red-400 p-1" title="Exit Mode">
+                                <RotateCcw size={16} />
                             </button>
-                        )}
-                    </div>
+                        </div>
+                        <p className="text-sm text-slate-400 -mt-4">Ready to sync with your spreadsheet.</p>
 
-                    {/* Info Section */}
-                    <div className="pt-4 border-t border-slate-800">
-                        <h3 className="font-semibold text-slate-300 mb-3">How it works</h3>
-                        <ul className="space-y-2 text-sm text-slate-400">
-                            <li className="flex items-start gap-2">
-                                <span className="text-emerald-400">•</span>
-                                <span>Your match data is saved to YOUR Google Sheets</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-emerald-400">•</span>
-                                <span>Recent 100 matches are loaded for statistics</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-emerald-400">•</span>
-                                <span>You have full control and ownership of your data</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-emerald-400">•</span>
-                                <span>Export to Excel/CSV anytime directly from Google Sheets</span>
-                            </li>
-                        </ul>
+                        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] uppercase font-bold text-slate-500">Location</label>
+                                <LocationPicker
+                                    value={sessionLocation}
+                                    onChange={setSessionLocation}
+                                    suggestions={suggestions}
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] uppercase font-bold text-slate-500">Date & Time</label>
+                                <div className="relative">
+                                    <input
+                                        type="datetime-local"
+                                        value={sessionDate}
+                                        onChange={(e) => setSessionDate(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none font-mono"
+                                    />
+                                    <Clock size={16} className="absolute right-3 top-3.5 text-slate-500 pointer-events-none" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleUseCurrent}
+                                disabled={isLoading}
+                                className="w-full bg-tennis-green hover:bg-[#d4e157] text-slate-900 font-bold p-4 rounded-xl text-left transition-all group relative overflow-hidden"
+                            >
+                                <div className="flex items-center justify-between z-10 relative">
+                                    <span className="flex items-center gap-2">
+                                        {isLoading ? <Loader2 className="animate-spin" /> : <Play size={20} />}
+                                        Start New Session
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-800/80 font-mono mt-1 font-medium truncate z-10 relative">
+                                    Link: {savedUrl}
+                                </p>
+                            </button>
+
+                            <button
+                                onClick={navToSetup}
+                                disabled={isLoading}
+                                className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-400 p-4 rounded-xl text-left transition-all group"
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="font-bold text-slate-200 group-hover:text-blue-400 transition-colors">Connect New Sheet</span>
+                                    <Settings size={16} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <p className="text-xs text-slate-500">Enter a different URL</p>
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Mode: SETUP */}
+                {mode === 'SETUP' && (
+                    <div className="p-6 space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-slate-100">Connect Sheet</h2>
+                            {savedUrl && (
+                                <button onClick={() => setMode('LANDING')} className="text-xs text-slate-500 hover:text-white">
+                                    Cancel
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Web App URL</label>
+                            <input
+                                value={url}
+                                onChange={e => setUrl(e.target.value)}
+                                placeholder="https://script.google.com/..."
+                                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-tennis-green outline-none font-mono"
+                            />
+                            <button onClick={() => setShowGuide(true)} className="text-xs text-blue-400 font-medium flex items-center gap-1 hover:underline">
+                                <BookOpen size={14} /> View Setup Guide
+                            </button>
+                        </div>
+
+                        {error && (
+                            <div className="flex bg-red-500/10 p-3 rounded-lg gap-2 text-red-400 text-xs items-start">
+                                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                                <span>{error}</span>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleConnect}
+                            disabled={isLoading || !url}
+                            className="w-full bg-tennis-green text-slate-900 font-bold py-3 rounded-xl disabled:opacity-50 hover:bg-[#d4e157] transition-colors flex justify-center"
+                        >
+                            {isLoading ? <Loader2 className="animate-spin" /> : 'Connect & Load'}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

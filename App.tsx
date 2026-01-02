@@ -14,7 +14,7 @@ import { CloudSessionManager } from './components/CloudSessionManager';
 import { GoogleSheetsSessionManager } from './components/GoogleSheetsSessionManager';
 
 const MainLayout = () => {
-  const { mode, players } = useApp();
+  const { mode, players, matches, exitMode } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.PLAYERS);
 
   // Show Session Manager modal when in Cloud mode with no session
@@ -30,6 +30,10 @@ const MainLayout = () => {
     setActiveTab(Tab.PLAYERS);
   };
 
+  const handleSwitchMode = () => {
+    exitMode();
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-tennis-green selection:text-slate-900">
       <header className="p-4 flex items-center justify-center bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-10">
@@ -39,7 +43,7 @@ const MainLayout = () => {
         </h1>
         {mode && (
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleSwitchMode}
             className="absolute right-4 text-[10px] uppercase font-bold text-slate-500 hover:text-white border border-slate-700 rounded px-2 py-1"
           >
             {mode === 'LOCAL' ? 'Guest' : mode === 'GOOGLE_SHEETS' ? 'Sheets' : 'Cloud'} Mode
@@ -66,7 +70,7 @@ const MainLayout = () => {
       )}
 
       {/* Google Sheets Session Manager Modal */}
-      {showGoogleSheetsSessionManager && <GoogleSheetsSessionManager />}
+      {showGoogleSheetsSessionManager && <GoogleSheetsSessionManager onSessionReady={handleSessionReady} />}
     </div>
   );
 };
