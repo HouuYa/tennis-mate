@@ -82,11 +82,16 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
             )
         },
         {
-            title: 'Open Apps Script Editor',
+            title: 'Open Apps Script Editor (PC Only)',
             content: (
                 <div className="space-y-3">
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-3">
+                        <p className="text-xs text-amber-300">
+                            <strong>⚠️ 모바일에서는 불가능:</strong> Google Sheets 모바일 앱에는 Extensions 메뉴가 없습니다.
+                        </p>
+                    </div>
                     <p className="text-slate-300">
-                        1. In your Google Sheet, click <strong className="text-slate-100">Extensions</strong> in the top menu
+                        1. In your Google Sheet (PC browser), click <strong className="text-slate-100">Extensions</strong> in the top menu
                     </p>
                     <p className="text-slate-300">
                         2. Select <strong className="text-slate-100">Apps Script</strong>
@@ -202,6 +207,28 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                     <p className="text-slate-300">
                         4. If successful, you're all set! Match data will now be saved to your Google Sheet.
                     </p>
+
+                    {/* Mobile Usage Tip */}
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mt-4">
+                        <p className="text-sm font-semibold text-blue-400 mb-2">
+                            💡 코트에서 모바일로 사용하는 법
+                        </p>
+                        <div className="space-y-2 text-xs text-blue-300/80">
+                            <p>
+                                <strong>1.</strong> PC에서 위 단계를 완료하고 Web App URL을 생성합니다
+                            </p>
+                            <p>
+                                <strong>2.</strong> URL을 카카오톡/메일/메모로 자신에게 전송합니다
+                            </p>
+                            <p>
+                                <strong>3.</strong> 코트에서는 URL을 복사해서 Tennis Mate에 붙여넣기만 하면 됩니다
+                            </p>
+                            <p className="text-blue-400 mt-2">
+                                → <em>한 번만 설정하면 평생 사용 가능합니다!</em>
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 mt-4">
                         <p className="text-sm text-emerald-400">
                             <strong>✓ Done!</strong> Your Google Sheets backend is ready to use.
@@ -243,6 +270,20 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
 
                 {/* Content */}
                 <div className="p-6">
+                    {/* Mobile Warning */}
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
+                        <div className="flex items-start gap-3">
+                            <span className="text-amber-500 text-xl">⚠️</span>
+                            <div>
+                                <p className="text-sm font-semibold text-amber-400 mb-1">PC에서 설정하세요</p>
+                                <p className="text-xs text-amber-300/80">
+                                    모바일 Google Sheets 앱에는 <strong>Extensions &gt; Apps Script</strong> 메뉴가 없습니다.
+                                    PC에서 설정 후 URL만 휴대폰으로 전송하면 됩니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-slate-100 mb-4">
                             {steps[currentStep - 1].title}
