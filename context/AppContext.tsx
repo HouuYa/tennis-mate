@@ -102,19 +102,19 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
   // Google Sheets specific methods
   const setGoogleSheetsUrl = async (url: string): Promise<void> => {
-    if (mode !== 'GOOGLE_SHEETS') return;
+    if (mode !== 'GOOGLE_SHEETS' || dataService.type !== 'GOOGLE_SHEETS') return;
     const service = dataService as GoogleSheetsDataService;
     service.setWebAppUrl(url);
   };
 
   const testGoogleSheetsConnection = async (): Promise<boolean> => {
-    if (mode !== 'GOOGLE_SHEETS') return false;
+    if (mode !== 'GOOGLE_SHEETS' || dataService.type !== 'GOOGLE_SHEETS') return false;
     const service = dataService as GoogleSheetsDataService;
     return await service.testConnection();
   };
 
   const loadGoogleSheetsData = async (): Promise<void> => {
-    if (mode !== 'GOOGLE_SHEETS') return;
+    if (mode !== 'GOOGLE_SHEETS' || dataService.type !== 'GOOGLE_SHEETS') return;
     const service = dataService as GoogleSheetsDataService;
     const state = await service.loadSession();
     if (state) {
@@ -126,7 +126,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
   };
 
   const getGoogleSheetsUrl = (): string | null => {
-    if (mode !== 'GOOGLE_SHEETS') return null;
+    if (mode !== 'GOOGLE_SHEETS' || dataService.type !== 'GOOGLE_SHEETS') return null;
     const service = dataService as GoogleSheetsDataService;
     return service.getWebAppUrl();
   };
@@ -475,7 +475,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
       if (mode === 'CLOUD') {
         await dataService.saveMatch?.(updatedMatch);
-      } else if (mode === 'GOOGLE_SHEETS') {
+      } else if (mode === 'GOOGLE_SHEETS' && dataService.type === 'GOOGLE_SHEETS') {
         // For Google Sheets, use the special method with player names
         const service = dataService as GoogleSheetsDataService;
         await service.saveMatchWithNames(updatedMatch, players);

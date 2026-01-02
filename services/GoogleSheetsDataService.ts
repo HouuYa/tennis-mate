@@ -158,9 +158,12 @@ export class GoogleSheetsDataService implements DataService {
                 });
 
                 // Parse score (format: "6-4")
-                const [scoreAStr, scoreBStr] = (score || '0-0').split('-');
-                const scoreA = parseInt(scoreAStr) || 0;
-                const scoreB = parseInt(scoreBStr) || 0;
+                // Note: scores in sheet are always stored as winner-loser (max-min)
+                const [score1Str, score2Str] = (score || '0-0').split('-');
+                const score1 = parseInt(score1Str) || 0;
+                const score2 = parseInt(score2Str) || 0;
+                const scoreA = Math.max(score1, score2);
+                const scoreB = Math.min(score1, score2);
 
                 // Parse timestamp
                 let timestamp = Date.now() - (rows.length - index) * 60000; // Default: spread backwards
@@ -216,54 +219,12 @@ export class GoogleSheetsDataService implements DataService {
 
     /**
      * Save a single match to Google Sheets
+     *
+     * NOTE: This method is not intended for direct use with GoogleSheetsDataService,
+     * as it requires player names, not just IDs. Use saveMatchWithNames from AppContext instead.
      */
     async saveMatch(match: Match): Promise<void> {
-        if (!this.webAppUrl) {
-            throw new Error('Web App URL not configured');
-        }
-
-        // Only save finished matches
-        if (!match.isFinished) {
-            return;
-        }
-
-        try {
-            // Need to resolve player names from IDs
-            // This requires access to current player state
-            // For now, we'll use the IDs as placeholders
-            // The caller should pass player names through a different mechanism
-
-            // Actually, we need to handle this differently
-            // Let's accept player names in the match saving flow
-            // For now, skip - will be called from AppContext with proper data
-
-            const payload = {
-                date: new Date(match.timestamp).toISOString().split('T')[0],
-                duration: match.endTime ? Math.round((match.endTime - match.timestamp) / 60000) : 0,
-                winner1: match.scoreA > match.scoreB ? match.teamA.player1Id : match.teamB.player1Id,
-                winner2: match.scoreA > match.scoreB ? match.teamA.player2Id : match.teamB.player2Id,
-                loser1: match.scoreA > match.scoreB ? match.teamB.player1Id : match.teamA.player1Id,
-                loser2: match.scoreA > match.scoreB ? match.teamB.player2Id : match.teamA.player2Id,
-                score: `${Math.max(match.scoreA, match.scoreB)}-${Math.min(match.scoreA, match.scoreB)}`,
-                location: ''
-            };
-
-            const response = await fetch(this.webAppUrl, {
-                method: 'POST',
-                mode: 'no-cors', // Required for Apps Script
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
-
-            // Note: With no-cors mode, we can't read the response
-            // We assume success if no error is thrown
-            console.log('Match saved to Google Sheets (no-cors mode)');
-        } catch (error) {
-            console.error('Failed to save match to Google Sheets:', error);
-            throw error;
-        }
+        throw new Error('saveMatch is not supported for GoogleSheetsDataService. Use saveMatchWithNames instead, which is called from AppContext with player information.');
     }
 
     /**

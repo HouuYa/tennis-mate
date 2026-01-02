@@ -8,36 +8,35 @@ interface GoogleSheetsGuideProps {
 const APPS_SCRIPT_CODE = `// Tennis Mate - Google Sheets Backend
 // Copy this entire code to your Google Apps Script editor
 
-function doGet(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Matches');
+function getOrCreateMatchesSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = spreadsheet.getSheetByName('Matches');
 
   // If sheet doesn't exist, create it with headers
   if (!sheet) {
-    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Matches');
+    sheet = spreadsheet.insertSheet('Matches');
     sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'location']);
   }
+  return sheet;
+}
+
+function doGet(e) {
+  const sheet = getOrCreateMatchesSheet();
 
   // Get all data excluding header
-  var data = sheet.getDataRange().getValues();
-  var rows = data.slice(1);
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1);
 
   // Return recent 100 matches (newest first)
-  var recentRows = rows.slice(-100).reverse();
+  const recentRows = rows.slice(-100).reverse();
 
   return ContentService.createTextOutput(JSON.stringify(recentRows))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Matches');
-
-  // If sheet doesn't exist, create it with headers
-  if (!sheet) {
-    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Matches');
-    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'location']);
-  }
-
-  var params = JSON.parse(e.postData.contents);
+  const sheet = getOrCreateMatchesSheet();
+  const params = JSON.parse(e.postData.contents);
 
   sheet.appendRow([
     new Date(), // timestamp

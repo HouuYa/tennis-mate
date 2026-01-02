@@ -6,7 +6,7 @@ import { GoogleSheetsGuide } from './GoogleSheetsGuide';
 export const GoogleSheetsSessionManager = () => {
     const { setGoogleSheetsUrl, testGoogleSheetsConnection, loadGoogleSheetsData, getGoogleSheetsUrl } = useApp();
 
-    const [url, setUrl] = useState('');
+    const [url, setUrl] = useState(getGoogleSheetsUrl() || '');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -42,8 +42,9 @@ export const GoogleSheetsSessionManager = () => {
                     }
                 }, 500);
             }
-        } catch (e: any) {
-            setError(e.message || 'Connection failed. Please check your URL and try again.');
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Connection failed. Please check your URL and try again.';
+            setError(message);
             setSuccess(false);
         } finally {
             setIsLoading(false);
@@ -57,8 +58,9 @@ export const GoogleSheetsSessionManager = () => {
         try {
             await loadGoogleSheetsData();
             setSuccess(true);
-        } catch (e: any) {
-            setError(e.message || 'Failed to load data from Google Sheets');
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Failed to load data from Google Sheets';
+            setError(message);
         } finally {
             setIsLoading(false);
         }
@@ -114,7 +116,7 @@ export const GoogleSheetsSessionManager = () => {
                         </label>
                         <input
                             type="url"
-                            value={url || savedUrl || ''}
+                            value={url}
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder="https://script.google.com/macros/s/..."
                             className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
