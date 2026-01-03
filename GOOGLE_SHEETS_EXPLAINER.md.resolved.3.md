@@ -55,81 +55,42 @@ To support the new **Location** and **Split Score** features, you MUST replace y
 Copy this entire block and paste it into your `Code.gs` file in the Apps Script editor.
 
 ```javascript
-/*
-  Tennis Mate Google Sheets Backend
-  Handles GET (Read) and POST (Write) requests from the web app.
-*/
-
-// CONSTANTS - Column Indices (0-based)
-const COLS = {
-  TIMESTAMP: 0, // A
-  DATE: 1,      // B
-  DURATION: 2,  // C
-  WINNER1: 3,   // D
-  WINNER2: 4,   // E
-  LOSER1: 5,    // F
-  LOSER2: 6,    // G
-  SCORE: 7,     // H (Legacy format "6-4")
-  WINNER_SCORE: 8, // I (New)
-  LOSER_SCORE: 9,  // J (New)
-  LOCATION: 10     // K (New)
-};
+// Tennis Mate - Google Sheets Backend
+function getOrCreateMatchesSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = spreadsheet.getSheetByName('Matches');
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('Matches');
+    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'winner_score', 'loser_score', 'location']);
+  }
+  return sheet;
+}
 
 function doGet(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const sheet = getOrCreateMatchesSheet();
   const data = sheet.getDataRange().getValues();
-  
-  // Remove header row if exists (assuming row 1 is header)
-  if (data.length > 1) {
-    data.shift(); 
-  }
-
-  // Format response for the app
-  // output: Raw array of rows [[...], [...]]
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  const rows = data.slice(1);
+  const recentRows = rows.slice(-100).reverse();
+  return ContentService.createTextOutput(JSON.stringify(recentRows)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
-  const lock = LockService.getScriptLock();
-  lock.tryLock(10000);
-  
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    const params = JSON.parse(e.postData.contents);
-    
-    // Validate required fields (optional but recommended)
-    // if (!params.winner1 || !params.loser1) ...
-
-    const newRow = [];
-    newRow[COLS.TIMESTAMP] = new Date();
-    newRow[COLS.DATE] = params.date || '';
-    newRow[COLS.DURATION] = params.duration || 0;
-    newRow[COLS.WINNER1] = params.winner1 || '';
-    newRow[COLS.WINNER2] = params.winner2 || '';
-    newRow[COLS.LOSER1] = params.loser1 || '';
-    newRow[COLS.LOSER2] = params.loser2 || '';
-    newRow[COLS.SCORE] = params.score || ''; // Legacy
-    newRow[COLS.WINNER_SCORE] = params.winner_score || 0; // New
-    newRow[COLS.LOSER_SCORE] = params.loser_score || 0;   // New
-    newRow[COLS.LOCATION] = params.location || '';        // New
-    
-    sheet.appendRow(newRow);
-    
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'success', 
-      message: 'Match saved successfully'
-    })).setMimeType(ContentService.MimeType.JSON);
-    
-  } catch (e) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'error', 
-      message: e.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-    
-  } finally {
-    lock.releaseLock();
-  }
+  const sheet = getOrCreateMatchesSheet();
+  const params = JSON.parse(e.postData.contents);
+  sheet.appendRow([
+    new Date(),
+    params.date,
+    params.duration,
+    params.winner1,
+    params.winner2,
+    params.loser1,
+    params.loser2,
+    params.score,
+    params.winner_score,
+    params.loser_score,
+    params.location
+  ]);
+  return ContentService.createTextOutput(JSON.stringify({result: 'success'})).setMimeType(ContentService.MimeType.JSON);
 }
 ```
 
@@ -145,4 +106,5 @@ function doPost(e) {
 8.  Paste this new URL into Tennis Mate's **Reference Setup**.
 
 > **Note**: Even if the URL looks the same, you MUST do "New deployment" for code changes to take effect!
+
 
