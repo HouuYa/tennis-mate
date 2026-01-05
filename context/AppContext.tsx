@@ -705,9 +705,17 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
           addLog('SYSTEM', `Saving matches to Cloud (Location: ${sessionLocation || 'None Specified'})...`);
 
           // Save all finished matches to Supabase in parallel for better performance
-          await Promise.all(
+          // Use allSettled to handle partial failures gracefully
+          const results = await Promise.allSettled(
             finishedMatchesInSession.map(match => dataService.saveMatch?.(match))
           );
+
+          const failedResults = results.filter(result => result.status === 'rejected');
+          if (failedResults.length > 0) {
+            // Provide detailed error information about partial failures
+            const firstReason = (failedResults[0] as PromiseRejectedResult).reason;
+            throw new Error(`Failed to save ${failedResults.length} of ${results.length} matches. First error: ${firstReason}`);
+          }
 
           addLog('SYSTEM', '✅ Successfully saved all matches to Supabase.');
         } catch (error) {
