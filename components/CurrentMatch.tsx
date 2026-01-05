@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Trophy, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
+import { Trophy, CheckCircle, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 
 export const CurrentMatch: React.FC = () => {
   const { activeMatch, players, finishMatch, createNextMatch } = useApp();
@@ -9,6 +9,15 @@ export const CurrentMatch: React.FC = () => {
   const [scoreA, setScoreA] = useState(6);
   const [scoreB, setScoreB] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showSaving, setShowSaving] = useState(false);
+
+  // Reset scores when activeMatch changes (new match starts)
+  React.useEffect(() => {
+    if (activeMatch) {
+      setScoreA(6);
+      setScoreB(0);
+    }
+  }, [activeMatch?.id]); // Only trigger when match ID changes
 
   if (!activeMatch) {
     const activeCount = players.length;
@@ -37,14 +46,17 @@ export const CurrentMatch: React.FC = () => {
   };
 
   const handleConfirmFinish = async () => {
+    setShowConfirm(false);
+    setShowSaving(true);
+
     try {
       await finishMatch(activeMatch.id, scoreA, scoreB);
-      setShowConfirm(false);
-      // Reset local state for next match defaults
-      setScoreA(6);
-      setScoreB(0);
+      // Small delay to show saving message
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setShowSaving(false);
       showToast('Match finished successfully!', 'success');
     } catch (error) {
+      setShowSaving(false);
       showToast('Failed to save match result. Please try again.', 'error');
     }
   };
@@ -141,6 +153,17 @@ export const CurrentMatch: React.FC = () => {
                 <CheckCircle size={20} /> Confirm
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saving Dialog */}
+      {showSaving && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border-2 border-tennis-green rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
+            <Loader2 size={48} className="animate-spin text-tennis-green mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Saving...</h3>
+            <p className="text-slate-400 text-sm">Please wait while we save your match result</p>
           </div>
         </div>
       )}

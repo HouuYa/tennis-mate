@@ -6,7 +6,7 @@ export interface DataService {
     // Initialization
     listSessions?(): Promise<SessionSummary[]>;
     loadSession(sessionId?: string): Promise<AppState | null>;
-    createSession?(location?: string): Promise<string>; // Returns session ID
+    createSession?(location?: string, playedAt?: string): Promise<string>; // Returns session ID
     getAllPlayers?(): Promise<Player[]>;
 
     // Core Actions
