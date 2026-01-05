@@ -94,19 +94,19 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
       try {
         await saveAllToSheets();
       } catch (e) {
-        setIsSavingSession(false);
         return;
+      } finally {
+        setIsSavingSession(false);
       }
-      setIsSavingSession(false);
     } else if (mode === 'CLOUD') {
       setIsSavingSession(true);
       try {
         await saveAllToCloud();
       } catch (e) {
-        setIsSavingSession(false);
         return;
+      } finally {
+        setIsSavingSession(false);
       }
-      setIsSavingSession(false);
     }
 
     showToast('Session completed! Viewing results...', 'success');

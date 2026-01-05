@@ -51,8 +51,6 @@ export const CurrentMatch: React.FC = () => {
 
     try {
       await finishMatch(activeMatch.id, scoreA, scoreB);
-      // Small delay to show saving message
-      await new Promise(resolve => setTimeout(resolve, 500));
       setShowSaving(false);
       showToast('Match finished successfully!', 'success');
     } catch (error) {
