@@ -11,7 +11,7 @@ interface CloudSessionManagerProps {
 }
 
 export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSessionReady }) => {
-    const { startCloudSession, loadCloudSession } = useApp();
+    const { startCloudSession, loadCloudSession, sessionDate, setSessionDate } = useApp();
     const { showToast } = useToast();
 
     const [activeTab, setActiveTab] = useState<'NEW' | 'LOAD'>('NEW');
@@ -25,10 +25,15 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
         if (activeTab === 'LOAD') {
             fetchSessions();
         } else if (activeTab === 'NEW') {
-            // fetchPreviousLocations(); // Handled by LocationPicker
-
+            // Initialize Date if empty
+            if (!sessionDate) {
+                // Correct local time for datetime-local
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                setSessionDate(now.toISOString().slice(0, 16));
+            }
         }
-    }, [activeTab]);
+    }, [activeTab, sessionDate, setSessionDate]);
 
     const fetchSessions = async () => {
         setLoading(true);
@@ -63,7 +68,7 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
         setShowConfirmDialog(false);
         setLoading(true);
         try {
-            await startCloudSession(location || 'Unknown Location');
+            await startCloudSession(location || 'Unknown Location', sessionDate);
             onSessionReady?.(); // Notify parent that session is ready
         } catch (error) {
             console.error('Failed to start session:', error);
@@ -108,11 +113,15 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase">Date & Time</label>
-                            <div className="flex items-center gap-2 bg-slate-800 p-3 rounded-lg border border-slate-700 text-slate-300">
-                                <Clock size={16} className="text-tennis-green" />
-                                <span>{new Date().toLocaleString()}</span>
+                            <div className="relative">
+                                <input
+                                    type="datetime-local"
+                                    value={sessionDate}
+                                    onChange={(e) => setSessionDate(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none font-mono"
+                                />
+                                <Clock size={16} className="absolute right-3 top-3.5 text-tennis-green pointer-events-none" />
                             </div>
-                            <p className="text-[10px] text-slate-500">* Defaults to current time</p>
                         </div>
 
                         <div className="space-y-2">
@@ -171,7 +180,7 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                     <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-sm w-full space-y-4">
                         <h3 className="text-xl font-bold text-tennis-green">Confirm Session Start</h3>
                         <div className="space-y-2 text-sm text-slate-300">
-                            <p><span className="text-slate-500">Date:</span> {new Date().toLocaleString()}</p>
+                            <p><span className="text-slate-500">Date:</span> {sessionDate ? new Date(sessionDate).toLocaleString() : new Date().toLocaleString()}</p>
                             <p><span className="text-slate-500">Location:</span> {location || 'Unknown Location'}</p>
                         </div>
                         <p className="text-sm text-slate-400">Do you want to start this session?</p>

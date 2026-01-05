@@ -27,8 +27,8 @@ export class LocalDataService implements DataService {
         return null;
     }
 
-    async createSession(): Promise<string> {
-        // Local mode doesn't really have explicitly ID-based sessions, 
+    async createSession(location?: string, playedAt?: string): Promise<string> {
+        // Local mode doesn't really have explicitly ID-based sessions,
         // but we return a generic ID for compatibility.
         return 'local-session';
     }

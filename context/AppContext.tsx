@@ -16,7 +16,7 @@ interface AppContextType {
   activeMatch: Match | null;
   mode: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS' | null;
   switchMode: (mode: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS') => void;
-  startCloudSession: (location?: string) => Promise<void>;
+  startCloudSession: (location?: string, playedAt?: string) => Promise<void>;
   loadCloudSession: (sessionId: string) => Promise<void>;
 
   // Google Sheets specific methods
@@ -50,6 +50,7 @@ interface AppContextType {
   getRecentLocations: () => Promise<string[]>;
   exitMode: () => void;
   saveAllToSheets: () => Promise<void>;
+  saveAllToCloud: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -220,10 +221,10 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     resetSessionState();
   };
 
-  const startCloudSession = async (location?: string) => {
+  const startCloudSession = async (location?: string, playedAt?: string) => {
     if (mode !== 'CLOUD') return;
     try {
-      const id = await dataService.createSession?.(location);
+      const id = await dataService.createSession?.(location, playedAt || sessionDate);
       if (location) setSessionLocation(location);
       addLog('SYSTEM', `New Cloud Session Started (ID: ${id})`);
 
@@ -486,10 +487,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       const updatedPlayers = recalculatePlayerStats(players, updatedMatches); // players (current list)
       setPlayers(updatedPlayers);
 
-      if (mode === 'CLOUD') {
-        await dataService.saveMatch?.(updatedMatch);
-      }
-      // Removed auto-save for GOOGLE_SHEETS - user wants batch save at the end.
+      // Removed auto-save for both CLOUD and GOOGLE_SHEETS - user wants batch save at the end.
     } catch (error) {
       console.error('Failed to finish match:', error);
       addLog('SYSTEM', '⚠️ Failed to save match result. Please try again.');
@@ -694,6 +692,27 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
         } catch (error) {
           console.error('Failed to save to Google Sheets:', error);
           addLog('SYSTEM', '⚠️ Failed to save to Google Sheets. Please check your connection.');
+          throw error;
+        }
+      },
+      saveAllToCloud: async () => {
+        if (mode !== 'CLOUD' || dataService.type !== 'CLOUD') return;
+
+        const finishedMatchesInSession = matches.filter(m => m.isFinished);
+        if (finishedMatchesInSession.length === 0) return;
+
+        try {
+          addLog('SYSTEM', `Saving matches to Cloud (Location: ${sessionLocation || 'None Specified'})...`);
+
+          // Save all finished matches to Supabase
+          for (const match of finishedMatchesInSession) {
+            await dataService.saveMatch?.(match);
+          }
+
+          addLog('SYSTEM', '✅ Successfully saved all matches to Supabase.');
+        } catch (error) {
+          console.error('Failed to save to Supabase:', error);
+          addLog('SYSTEM', '⚠️ Failed to save to Supabase. Please check your connection.');
           throw error;
         }
       }
