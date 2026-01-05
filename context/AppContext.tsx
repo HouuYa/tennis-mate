@@ -705,11 +705,25 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
           addLog('SYSTEM', `Saving matches to Cloud (Location: ${sessionLocation || 'None Specified'})...`);
 
           // Save all finished matches to Supabase in parallel for better performance
-          await Promise.all(
+          // Use allSettled to handle partial failures gracefully
+          const results = await Promise.allSettled(
             finishedMatchesInSession.map(match => dataService.saveMatch?.(match))
           );
 
-          addLog('SYSTEM', '✅ Successfully saved all matches to Supabase.');
+          const rejectedResults = results.filter(
+            (result): result is PromiseRejectedResult => result.status === 'rejected'
+          );
+          const fulfilledCount = results.length - rejectedResults.length;
+
+          if (fulfilledCount > 0) {
+            addLog('SYSTEM', `✅ Successfully saved ${fulfilledCount} of ${results.length} matches to Supabase.`);
+          }
+
+          if (rejectedResults.length > 0) {
+            console.error('Failures during batch save:');
+            rejectedResults.forEach(r => console.error('-', r.reason));
+            throw new Error(`Failed to save ${rejectedResults.length} of ${results.length} matches. First error: ${rejectedResults[0].reason}`);
+          }
         } catch (error) {
           console.error('Failed to save to Supabase:', error);
           addLog('SYSTEM', '⚠️ Failed to save to Supabase. Please check your connection.');
