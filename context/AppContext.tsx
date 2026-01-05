@@ -710,14 +710,20 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
             finishedMatchesInSession.map(match => dataService.saveMatch?.(match))
           );
 
-          const failedResults = results.filter(result => result.status === 'rejected');
-          if (failedResults.length > 0) {
-            // Provide detailed error information about partial failures
-            const firstReason = (failedResults[0] as PromiseRejectedResult).reason;
-            throw new Error(`Failed to save ${failedResults.length} of ${results.length} matches. First error: ${firstReason}`);
+          const rejectedResults = results.filter(
+            (result): result is PromiseRejectedResult => result.status === 'rejected'
+          );
+          const fulfilledCount = results.length - rejectedResults.length;
+
+          if (fulfilledCount > 0) {
+            addLog('SYSTEM', `✅ Successfully saved ${fulfilledCount} of ${results.length} matches to Supabase.`);
           }
 
-          addLog('SYSTEM', '✅ Successfully saved all matches to Supabase.');
+          if (rejectedResults.length > 0) {
+            console.error('Failures during batch save:');
+            rejectedResults.forEach(r => console.error('-', r.reason));
+            throw new Error(`Failed to save ${rejectedResults.length} of ${results.length} matches. First error: ${rejectedResults[0].reason}`);
+          }
         } catch (error) {
           console.error('Failed to save to Supabase:', error);
           addLog('SYSTEM', '⚠️ Failed to save to Supabase. Please check your connection.');
