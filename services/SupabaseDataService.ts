@@ -76,7 +76,7 @@ export class SupabaseDataService implements DataService {
     }
 
     async createSession(location?: string, playedAt?: string): Promise<string> {
-        const sessionData: any = {
+        const sessionData: { location?: string; status: string; played_at?: string } = {
             location,
             status: 'active'
         };

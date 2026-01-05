@@ -704,10 +704,10 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
         try {
           addLog('SYSTEM', `Saving matches to Cloud (Location: ${sessionLocation || 'None Specified'})...`);
 
-          // Save all finished matches to Supabase
-          for (const match of finishedMatchesInSession) {
-            await dataService.saveMatch?.(match);
-          }
+          // Save all finished matches to Supabase in parallel for better performance
+          await Promise.all(
+            finishedMatchesInSession.map(match => dataService.saveMatch?.(match))
+          );
 
           addLog('SYSTEM', '✅ Successfully saved all matches to Supabase.');
         } catch (error) {
