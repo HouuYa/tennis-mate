@@ -147,80 +147,33 @@ npm run dev
 
 ## 📊 Google Sheets Mode 설정 가이드
 
-### 준비물
-- Google 계정
-- 5분의 시간
+### 🚀 빠른 시작
 
-### 설정 방법
+**초보자도 쉽게 따라할 수 있는 완벽 가이드를 준비했습니다!**
+
+👉 **[상세 설정 가이드 보기 (GOOGLE_SHEETS_SETUP_GUIDE.md)](./GOOGLE_SHEETS_SETUP_GUIDE.md)**
+
+### ⏱️ 간단 요약 (5분 완성)
+
 1. **앱에서 "Google Sheets Mode" 선택**
-2. **"설정 가이드 보기" 버튼 클릭**
-3. **6단계 가이드 따라하기**:
-   - 새 Google Sheet 생성
-   - Apps Script 에디터 열기
-   - 제공된 코드 복사 & 붙여넣기
-   - Web App으로 배포
-   - Web App URL 복사
-   - Tennis Mate에 URL 입력 & 연결 테스트
-4. "End Session" 클릭 시 모든 데이터가 Google Sheets에 일괄 저장 (Batch Save)
+2. **새 Google Sheet 생성** → Extensions > Apps Script
+3. **제공된 코드 복사 & 붙여넣기** ([전체 코드 보기](./GOOGLE_SHEETS_SETUP_GUIDE.md#2단계-코드-복사--붙여넣기))
+4. **Web App으로 배포** (액세스 권한: "모든 사람" ⚠️)
+5. **Web App URL 복사** → Tennis Mate에 입력
+6. **연결 테스트** 완료! 🎉
 
-## 🛠 Google Sheets Backend Setup (Google Apps Script)
+### ✨ 주요 기능
 
-PC에서 수동으로 설정하려면 아래 코드를 사용하세요:
+- ✅ **영구 보관**: Google 서버에 안전하게 저장
+- ✅ **Batch Save**: 세션 종료 시 모든 경기 일괄 저장
+- ✅ **Excel/CSV 내보내기**: 언제든 다운로드 가능
+- ✅ **완전한 데이터 소유권**: 내 Google 계정에만 저장
 
-```javascript
-// Tennis Mate - Google Sheets Backend
-function getOrCreateMatchesSheet() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = spreadsheet.getSheetByName('Matches');
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet('Matches');
-    sheet.appendRow(['timestamp', 'date', 'duration', 'winner1', 'winner2', 'loser1', 'loser2', 'score', 'winner_score', 'loser_score', 'location']);
-  }
-  return sheet;
-}
+### 📚 관련 문서
 
-function doGet(e) {
-  const sheet = getOrCreateMatchesSheet();
-  const data = sheet.getDataRange().getValues();
-  const rows = data.slice(1);
-  const recentRows = rows.slice(-100).reverse();
-  return ContentService.createTextOutput(JSON.stringify(recentRows)).setMimeType(ContentService.MimeType.JSON);
-}
-
-function doPost(e) {
-  const sheet = getOrCreateMatchesSheet();
-  const params = JSON.parse(e.postData.contents);
-  sheet.appendRow([
-    new Date(),
-    params.date,
-    params.duration,
-    params.winner1,
-    params.winner2,
-    params.loser1,
-    params.loser2,
-    params.score,
-    params.winner_score,
-    params.loser_score,
-    params.location
-  ]);
-  return ContentService.createTextOutput(JSON.stringify({result: 'success'})).setMimeType(ContentService.MimeType.JSON);
-}
-```
-
-### 배포 방법 (Deployment)
-1. **Google Sheet** 생성 및 이름 연동.
-2. **Extensions > Apps Script** 클릭.
-3. 위 코드를 붙여넣고 저장.
-4. **Deploy > New deployment** 클릭.
-5. 타입 선택: **Web app**.
-6. 설정: **Execute as: Me**, **Who has access: Anyone**.
-7. 배포 후 생성된 **Web App URL**을 Tennis Mate 앱에 입력.
-
-### 데이터 구조
-Google Sheet에는 다음 열이 자동으로 생성됩니다:
-```
-timestamp | date | duration | winner1 | winner2 | loser1 | loser2 | score | location
-```
+- [📖 초보자를 위한 상세 설정 가이드](./GOOGLE_SHEETS_SETUP_GUIDE.md) - **권장!**
+- [🏗 아키텍처 - Google Sheets 데이터 구조](./ARCHITECTURE.md#e-2-google-sheets-data-structure)
+- [❓ 문제 해결 (FAQ)](./GOOGLE_SHEETS_SETUP_GUIDE.md#5-문제-해결-faq)
 
 ---
 

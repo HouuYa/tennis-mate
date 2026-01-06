@@ -1,3 +1,19 @@
+# ⚠️ DEPRECATED - This document is no longer maintained
+
+> **Check out the new guide!**
+>
+> This file has been consolidated into **GOOGLE_SHEETS_SETUP_GUIDE.md** and is no longer updated.
+>
+> 👉 **[View New Setup Guide (GOOGLE_SHEETS_SETUP_GUIDE.md)](./GOOGLE_SHEETS_SETUP_GUIDE.md)**
+>
+> The new guide includes:
+> - More detailed step-by-step instructions
+> - Screenshot support
+> - Enhanced FAQ and troubleshooting
+> - Beginner-friendly explanations
+
+---
+
 # How Tennis Mate Connects to Google Sheets
 
 Here is a simple explanation of how the application talks to your Google Sheet behind the scenes.
