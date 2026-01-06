@@ -93,8 +93,7 @@ Tennis Mate 앱은 보안상 여러분의 Google Drive에 직접 접근할 권�
 1. 상단 메뉴에서 **확장 프로그램** 클릭
 2. 드롭다운에서 **Apps Script** 클릭
 
-![Apps Script 메뉴 위치](./files/step1-extensions-menu.png)
-<!-- 실제 스크린샷으로 교체 필요 -->
+![Apps Script 메뉴 위치](./files/google%20sheets%20mode%20setting%201.png)
 
 ✅ **성공 확인**: 새 탭에서 Apps Script 에디터가 열립니다.
 
@@ -256,8 +255,7 @@ function doPost(e) {
 2. 프로젝트 이름을 입력하라는 창이 뜨면 "Tennis Mate Backend"라고 입력
 3. **확인** 클릭
 
-![코드 저장 확인](./files/step2-save-code.png)
-<!-- 실제 스크린샷으로 교체 필요 -->
+![코드 저장 확인](./files/google%20sheets%20mode%20setting%202.png)
 
 > 💡 **코드를 이해할 필요는 없습니다!**
 > 이 코드는 Tennis Mate와 Google Sheets 사이의 다리 역할을 합니다.
@@ -274,16 +272,14 @@ function doPost(e) {
 1. Apps Script 에디터 **오른쪽 상단**의 **배포** 버튼 클릭
 2. 드롭다운에서 **새 배포** 선택
 
-![배포 메뉴](./files/step3-deploy-menu.png)
-<!-- 실제 스크린샷으로 교체 필요 -->
+![배포 메뉴](./files/google%20sheets%20mode%20setting%203%20배포.png)
 
 #### 3-2. 배포 유형 선택
 
 1. 배포 화면 **왼쪽 상단**의 **⚙️ 톱니바퀴 아이콘** ("유형 선택") 클릭
 2. **웹 앱** 선택
 
-![웹 앱 선택](./files/step3-select-web-app.png)
-<!-- 실제 스크린샷으로 교체 필요 -->
+![웹 앱 선택](./files/google%20sheets%20mode%20setting%204%20배포.png)
 
 #### 3-3. 중요 설정 (실수하기 쉬운 부분!)
 
@@ -293,13 +289,12 @@ function doPost(e) {
 |-----|--------|------|
 | **설명** | "Tennis Mate 연동 v1" | 배포 버전 구분용 (원하는 대로 입력) |
 | **다음 사용자로 실행** | **나 (내 이메일)** | 기본값 그대로 유지 |
-| **액세스 권한이 있는 사용자** | ⚠️ **모든 사람** | **필수! 반드시 변경하세요** |
+| **액세스 권한이 있는 사용자** | ⚠️ **모든 사람 (Anyone)** | **필수! 반드시 변경하세요** |
 
-![배포 설정](./files/step3-deployment-settings.png)
-<!-- 실제 스크린샷으로 교체 필요 -->
+![배포 설정](./files/google%20sheets%20mode%20setting%205%20배포.png)
 
 > ⚠️ **매우 중요!**
-> "액세스 권한이 있는 사용자"를 **반드시 "모든 사람"**으로 설정하세요!
+> "액세스 권한이 있는 사용자"를 **반드시 "모든 사람(Anyone)"**으로 설정하세요!
 > "나"로 설정하면 Tennis Mate 앱이 접근할 수 없습니다.
 
 #### 3-4. 권한 승인 (처음 한 번만)
@@ -312,8 +307,7 @@ function doPost(e) {
    - **Tennis Mate Backend(으)로 이동 (안전하지 않음)** 클릭
    - **허용** 클릭
 
-![권한 승인 과정](./files/step3-authorization.png)
-<!-- 실제 스크린샷으로 교체 필요 -->
+![권한 승인 과정](./files/google%20sheets%20mode%20setting%205%20배포.png)
 
 > 💡 **"안전하지 않음"이 왜 뜨나요?**
 > 이 앱은 Google의 정식 심사를 받지 않은 개인 스크립트이기 때문입니다.
@@ -332,10 +326,13 @@ https://script.google.com/macros/s/AKfycbz...xyz123/exec
 
 3. URL 옆의 **📋 복사** 버튼을 클릭하여 복사합니다
 
-![Web App URL 복사](./files/step3-copy-url.png)
-<!-- 실제 스크린샷으로 교체 필요 -->
+![Web App URL 복사](./files/google%20sheets%20mode%20setting%206%20배포.png)
 
 ✅ **성공 확인**: 클립보드에 `https://script.google.com/macros/s/...` 형식의 URL이 복사되었습니다!
+
+> 💡 **올바른 URL 형식 예시**
+> - ✅ **맞음**: `https://script.google.com/macros/s/AKfycb.../exec`
+> - ❌ **틀림**: `https://docs.google.com/spreadsheets/d/...` (시트 주소가 아님!)
 
 ---
 

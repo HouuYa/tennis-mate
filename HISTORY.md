@@ -6,6 +6,13 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-01-06 (Documentation Refinement)
+- **Google Sheets Guides**: Separated into `GOOGLE_SHEETS_SETUP_GUIDE_KO.md` and `GOOGLE_SHEETS_SETUP_GUIDE_EN.md`.
+- **UX Improvements**: Added actual screenshots for all deployment steps.
+- **Content Expansion**: Added "Digital Post Office" metaphor to the English guide, expanded deployment steps from 5 to 8, and added "Don't worry about code" messages.
+- **README Cleanup**: Removed redundant Apps Script code to prevent duplication and added clear links to language-specific guides.
+- **Runtime Verification**: Playwright 및 Supabase MCP를 사용하여 Cloud/Google Sheets 모드 런타임 검증 완료. (세션 생성 및 가이드 UI 정상 작동)
+
 ### 2026-01-03
 - **Batch Save Implementation**: Optimized Google Sheets saving. Matches are now saved in parallel when clicking "End Session".
 - **Location Save Fix**: Unified Apps Script template and data service parser to 11 columns, fixing the issue where `location` was not saved.
@@ -26,7 +33,15 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ---
 
-## 🚀 الكامل Changelog
+## 🚀 전체 Changelog
+
+### [1.1.0] - 2026-01-06
+**✨ Documentation & UX Overhaul**
+- **Google Sheets Guide**: 완전한 한글/영어 분리 및 전문 안내서 업로드 (`_KO.md`, `_EN.md`).
+- **Visual Setup**: 8단계 상세 설정 스크린샷 및 가이드 UI 통합.
+- **Batch Save Fix**: 세션 종료 시 모든 경기를 Google Sheets에 병렬로 저장하는 최적화 로직 적용.
+- **Location Save Fix**: Google Sheets 11컬럼 스키마 통일로 `location` 저장 오류 해결.
+- **Mobile UX**: 모바일에서의 드래그 앤 드롭 및 터치 인터페이스 안정성 향상.
 
 ### [1.0.0] - 2026-01-02
 **🎉 MVP Release**
@@ -69,7 +84,7 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 🛠 Google Sheets Technical Explainer
 
-### Spreadsheet Schema (v1.1.0)
+### Spreadsheet Schema (v1.1.1)
 | Column | Name | Description |
 |---|---|---|
 | A | timestamp | Record creation time in Script |

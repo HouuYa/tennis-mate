@@ -426,7 +426,8 @@ const finishMatch = async (matchId, scoreA, scoreB) => {
 
 **4. Complete Documentation Suite**
 - [README.md](./README.md): 전체 프로젝트 개요 및 Google Sheets 가이드
-- [GOOGLE_SHEETS_SETUP_GUIDE.md](./GOOGLE_SHEETS_SETUP_GUIDE.md): 초보자를 위한 Google Sheets 설정 가이드 (상세)
+- [GOOGLE_SHEETS_SETUP_GUIDE_KO.md](./GOOGLE_SHEETS_SETUP_GUIDE_KO.md): 초보자를 위한 Google Sheets 설정 가이드 (한국어)
+- [GOOGLE_SHEETS_SETUP_GUIDE_EN.md](./GOOGLE_SHEETS_SETUP_GUIDE_EN.md): Google Sheets Setup Guide for Beginners (English)
 - [HISTORY.md](./HISTORY.md): 버전별 릴리스 노트 및 전체 변경 이력 (한글)
 - [TODO.md](./TODO.md): 로드맵 및 우선순위 (v1.1.0+)
 - [ARCHITECTURE.md](./ARCHITECTURE.md): Multi-Backend 아키텍처 설명 (본 문서)

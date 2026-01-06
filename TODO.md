@@ -28,7 +28,19 @@
 
 ---
 
-## 🔜 v1.1.0 - UX & Feature Enhancement (예정)
+## ✅ v1.1.0 - Documentation & UX Overhaul (완료 - 2026-01-06)
+- [x] **Google Sheets 가이드 개선**
+    - [x] 한글/영어 상세 가이드 분리
+    - [x] 8단계 상세 스크린샷 가이드
+    - [x] URL 검증 예시 및 "Post Office" 메타포 도입
+- [x] **UX & 버그 수정**
+    - [x] Location 저장 오류 (11컬럼 스키마) 해결
+    - [x] 세션 종료 시 일괄 저장 (Batch Save) 안정화
+    - [x] 모바일 터치 드래그 앤 드롭 최적화
+
+---
+
+## 🔜 v1.2.0 - Core Features Enhancement (예정)
 
 ### 우선순위: HIGH
 
