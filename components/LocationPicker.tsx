@@ -8,7 +8,6 @@ interface LocationPickerProps {
     value: string;
     onChange: (value: string) => void;
     className?: string;
-    className?: string;
     loadHistory?: boolean; // Whether to load recent locations from Supabase (Cloud mode only)
     suggestions?: string[]; // External suggestions (e.g. from Google Sheets)
 }
@@ -58,7 +57,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
     const handleGetLocation = () => {
         if (!navigator.geolocation) {
-            showToast('Geolocation is not supported by your browser', 'error');
+            showToast('Location services not available in this browser. Please enter location manually.', 'error');
+            return;
+        }
+
+        // Check if site is accessed via HTTPS (required for iOS Safari)
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            showToast('Location access requires HTTPS. Please enter location manually.', 'warning');
             return;
         }
 
@@ -97,13 +102,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 let errorMessage = 'Failed to get location';
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMessage = 'Location permission denied. Please enable it in settings.';
+                        errorMessage = 'Location access denied. Please check browser settings and allow location access for this site.';
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        errorMessage = 'Location information is unavailable.';
+                        errorMessage = 'Unable to determine location. Please try again or enter manually.';
                         break;
                     case error.TIMEOUT:
-                        errorMessage = 'Location request timed out.';
+                        errorMessage = 'Location request timed out. Please try again or enter manually.';
                         break;
                 }
                 showToast(errorMessage, 'error');

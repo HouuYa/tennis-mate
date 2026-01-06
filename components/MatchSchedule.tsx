@@ -11,7 +11,7 @@ interface Props {
 }
 
 export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
-  const { matches, activeMatch, players, finishMatch, undoFinishMatch, createNextMatch, generateSchedule, deleteMatch, updateMatchScore, saveAllToSheets, mode } = useApp();
+  const { matches, activeMatch, players, finishMatch, undoFinishMatch, createNextMatch, generateSchedule, deleteMatch, updateMatchScore, saveAllToSheets, saveAllToCloud, mode } = useApp();
   const { showToast } = useToast();
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -94,10 +94,19 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
       try {
         await saveAllToSheets();
       } catch (e) {
-        setIsSavingSession(false);
         return;
+      } finally {
+        setIsSavingSession(false);
       }
-      setIsSavingSession(false);
+    } else if (mode === 'CLOUD') {
+      setIsSavingSession(true);
+      try {
+        await saveAllToCloud();
+      } catch (e) {
+        return;
+      } finally {
+        setIsSavingSession(false);
+      }
     }
 
     showToast('Session completed! Viewing results...', 'success');
@@ -399,7 +408,9 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
               <Loader2 className="absolute inset-0 m-auto text-tennis-green animate-pulse" size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white mb-1">Saving to Sheets</h3>
+              <h3 className="text-xl font-bold text-white mb-1">
+                {mode === 'CLOUD' ? 'Saving to Cloud' : 'Saving to Sheets'}
+              </h3>
               <p className="text-sm text-slate-400">Please wait while we record the session results...</p>
             </div>
           </div>

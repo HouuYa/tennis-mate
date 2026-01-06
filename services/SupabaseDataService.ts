@@ -75,11 +75,21 @@ export class SupabaseDataService implements DataService {
         }));
     }
 
-    async createSession(location?: string): Promise<string> {
+    async createSession(location?: string, playedAt?: string): Promise<string> {
+        const sessionData: { location?: string; status: string; played_at?: string } = {
+            location,
+            status: 'active'
+        };
+
+        // If playedAt is provided, use it; otherwise Supabase will use default now()
+        if (playedAt) {
+            sessionData.played_at = new Date(playedAt).toISOString();
+        }
+
         const data = await executeSupabaseQuery(
             supabase
                 .from('sessions')
-                .insert({ location, status: 'active' })
+                .insert(sessionData)
                 .select('id')
                 .single(),
             'Failed to create session:'
