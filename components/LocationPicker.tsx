@@ -8,7 +8,6 @@ interface LocationPickerProps {
     value: string;
     onChange: (value: string) => void;
     className?: string;
-    className?: string;
     loadHistory?: boolean; // Whether to load recent locations from Supabase (Cloud mode only)
     suggestions?: string[]; // External suggestions (e.g. from Google Sheets)
 }
