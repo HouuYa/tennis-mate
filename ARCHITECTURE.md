@@ -425,10 +425,11 @@ const finishMatch = async (matchId, scoreA, scoreB) => {
 - **URL Input Bug Fix**: Proper state management for saved URLs
 
 **4. Complete Documentation Suite**
-- [README.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/README.md): 전체 프로젝트 개요 및 Google Sheets 가이드
-- [HISTORY.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/HISTORY.md): 버전별 릴리스 노트 및 전체 변경 이력 (한글)
-- [TODO.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/TODO.md): 로드맵 및 우선순위 (v1.1.0+)
-- [ARCHITECTURE.md](file:///c:/Users/user/Desktop/Bae/coding/tennis-mate/ARCHITECTURE.md): Multi-Backend 아키텍처 설명 (본 문서)
+- [README.md](./README.md): 전체 프로젝트 개요 및 Google Sheets 가이드
+- [GOOGLE_SHEETS_SETUP_GUIDE.md](./GOOGLE_SHEETS_SETUP_GUIDE.md): 초보자를 위한 Google Sheets 설정 가이드 (상세)
+- [HISTORY.md](./HISTORY.md): 버전별 릴리스 노트 및 전체 변경 이력 (한글)
+- [TODO.md](./TODO.md): 로드맵 및 우선순위 (v1.1.0+)
+- [ARCHITECTURE.md](./ARCHITECTURE.md): Multi-Backend 아키텍처 설명 (본 문서)
 
 **5. Version Management**
 - **Semantic Versioning**: MAJOR.MINOR.PATCH 규칙 적용
