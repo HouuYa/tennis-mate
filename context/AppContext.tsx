@@ -55,8 +55,17 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const MODE_STORAGE_KEY = 'tennis-mate-mode';
+
 export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
-  const [mode, setMode] = useState<'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS' | null>(null);
+  const [mode, setMode] = useState<'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS' | null>(() => {
+    // Restore mode from localStorage on initial load
+    const savedMode = localStorage.getItem(MODE_STORAGE_KEY);
+    if (savedMode === 'LOCAL' || savedMode === 'CLOUD' || savedMode === 'GOOGLE_SHEETS') {
+      return savedMode;
+    }
+    return null;
+  });
   const [dataService, setDataService] = useState<DataService>(new LocalDataService());
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -108,6 +117,50 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     }
   }, []);
 
+  // Initialize data service based on restored mode
+  useEffect(() => {
+    const savedMode = localStorage.getItem(MODE_STORAGE_KEY);
+    if (savedMode && savedMode !== 'null') {
+      // If mode was restored from localStorage, initialize the correct data service
+      if (savedMode === 'LOCAL') {
+        const localService = new LocalDataService();
+        setDataService(localService);
+        localService.loadSession().then(state => {
+          if (state) {
+            setPlayers(state.players);
+            setMatches(state.matches);
+            setFeed(state.feed);
+          }
+        });
+      } else if (savedMode === 'GOOGLE_SHEETS') {
+        const sheetsService = new GoogleSheetsDataService();
+        setDataService(sheetsService);
+        // Session manager will handle loading data
+      } else if (savedMode === 'CLOUD') {
+        const cloudService = new SupabaseDataService();
+        setDataService(cloudService);
+        // Check for saved session
+        const savedSessionId = cloudService.getCurrentSessionId();
+        if (savedSessionId) {
+          cloudService.loadSession(savedSessionId).then(state => {
+            if (state) {
+              setPlayers(state.players);
+              setMatches(state.matches);
+              setFeed(state.feed);
+            }
+          }).catch(err => {
+            console.error('Failed to restore session:', err);
+            try {
+              localStorage.removeItem('tennis-mate-current-session-id');
+            } catch (e) {
+              console.warn('Failed to clear invalid session ID:', e);
+            }
+          });
+        }
+      }
+    }
+  }, []); // Only run once on mount
+
   // Save to local storage on change (ONLY IN LOCAL MODE)
   useEffect(() => {
     if (mode === 'LOCAL' && (players.length > 0 || feed.length > 0)) {
@@ -149,6 +202,8 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
   const switchMode = (newMode: 'LOCAL' | 'CLOUD' | 'GOOGLE_SHEETS') => {
     setMode(newMode);
+    // Persist mode to localStorage
+    localStorage.setItem(MODE_STORAGE_KEY, newMode);
 
     if (newMode === 'LOCAL') {
       setDataService(new LocalDataService());
@@ -217,7 +272,8 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
 
   const exitMode = () => {
     setMode(null);
-    localStorage.removeItem('tennis-mate-mode');
+    localStorage.removeItem(MODE_STORAGE_KEY);
+    localStorage.removeItem('tennis-mate-guest-session-ready');
     resetSessionState();
   };
 

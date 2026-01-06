@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Play, Clock, ChevronRight, Loader2, MapPin } from 'lucide-react';
+import { Play, Clock, ChevronRight, Loader2, MapPin, Home, AlertTriangle, RefreshCw } from 'lucide-react';
 import { LocationPicker } from './LocationPicker';
 import { SessionSummary, SessionRecord, SessionLocationRecord } from '../types';
 import { supabase } from '../services/supabaseClient';
@@ -11,7 +11,7 @@ interface CloudSessionManagerProps {
 }
 
 export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSessionReady }) => {
-    const { startCloudSession, loadCloudSession, sessionDate, setSessionDate } = useApp();
+    const { startCloudSession, loadCloudSession, sessionDate, setSessionDate, exitMode } = useApp();
     const { showToast } = useToast();
 
     const [activeTab, setActiveTab] = useState<'NEW' | 'LOAD'>('NEW');
@@ -89,11 +89,25 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
         }
     };
 
+    const handleBackToModeSelection = () => {
+        if (confirm("모드 선택 화면으로 돌아가시겠습니까?")) {
+            exitMode();
+        }
+    };
+
     return (
         <div className="flex flex-col items-center justify-center py-10 px-4 space-y-6 max-w-sm mx-auto">
             <h2 className="text-2xl font-black text-tennis-green italic">SESSION MANAGER</h2>
 
+            {/* Tab navigation with Home button */}
             <div className="flex bg-slate-800 p-1 rounded-lg w-full">
+                <button
+                    onClick={handleBackToModeSelection}
+                    className="px-3 py-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+                    title="Back to Mode Selection"
+                >
+                    <Home size={18} />
+                </button>
                 <button
                     onClick={() => setActiveTab('NEW')}
                     className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${activeTab === 'NEW' ? 'bg-tennis-green text-slate-900' : 'text-slate-400 hover:text-white'}`}
