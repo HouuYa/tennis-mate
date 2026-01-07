@@ -40,6 +40,25 @@
 
 ---
 
+## ✅ v1.1.1 - Session Management & UX (완료 - 2026-01-07)
+- [x] **Session Manager 통합**
+    - [x] GuestSessionManager 컴포넌트 추가 (날짜/위치 선택)
+    - [x] 모든 모드에서 "Back to Mode Selection" 버튼 하단 통일
+    - [x] Session Ready Flags 시스템 도입 (guestSessionReady, cloudSessionReady, sheetsSessionReady)
+- [x] **Mode Persistence**
+    - [x] 페이지 새로고침 시에도 선택한 모드 유지
+    - [x] 뒤로가기 시 경고 메시지 표시
+- [x] **Korean UI 개선**
+    - [x] ModeSelection 페이지에 각 모드별 한국어 설명 추가
+    - [x] GitHub 링크 하단 추가
+    - [x] Location Picker 한국어 에러 메시지
+- [x] **UX 개선**
+    - [x] 위치 권한 거부 시 warning toast로 변경
+    - [x] Cloud Mode "이전 세션 계속하기" 옵션
+    - [x] GoogleSheetsGuide에 실제 스크린샷 이미지 추가
+
+---
+
 ## 🔜 v1.2.0 - Core Features Enhancement (예정)
 
 ### 우선순위: HIGH
