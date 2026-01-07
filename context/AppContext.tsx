@@ -125,7 +125,16 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       if (savedMode === 'LOCAL') {
         const localService = new LocalDataService();
         setDataService(localService);
-        // Local mode auto-loads from localStorage (already handled in first useEffect)
+        // Load local data or initialize defaults
+        localService.loadSession().then(state => {
+          if (state) {
+            setPlayers(state.players);
+            setMatches(state.matches);
+            setFeed(state.feed);
+          } else {
+            initializeDefaults();
+          }
+        });
       } else if (savedMode === 'GOOGLE_SHEETS') {
         const sheetsService = new GoogleSheetsDataService();
         setDataService(sheetsService);

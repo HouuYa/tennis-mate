@@ -28,11 +28,13 @@ export const GuestSessionManager: React.FC<GuestSessionManagerProps> = ({
 
     const [recentLocations, setRecentLocations] = useState<string[]>([]);
 
+    // Load recent locations only on mount
     useEffect(() => {
-        // Load recent locations from localStorage
         loadRecentLocations();
+    }, []);
 
-        // Initialize date if empty
+    // Initialize date if empty
+    useEffect(() => {
         if (!sessionDate) {
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
