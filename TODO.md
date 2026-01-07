@@ -44,7 +44,7 @@
 - [x] **Session Manager 통합**
     - [x] GuestSessionManager 컴포넌트 추가 (날짜/위치 선택)
     - [x] 모든 모드에서 "Back to Mode Selection" 버튼 하단 통일
-    - [x] Session Ready Flags 시스템 도입 (guestSessionReady, cloudSessionReady, sheetsSessionReady)
+    - [x] Session Ready Flags 시스템 도입 (`tennis-mate-guest-session-ready`, `tennis-mate-cloud-session-ready`, `tennis-mate-sheets-session-ready`)
 - [x] **Mode Persistence**
     - [x] 페이지 새로고침 시에도 선택한 모드 유지
     - [x] 뒤로가기 시 경고 메시지 표시
