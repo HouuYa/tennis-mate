@@ -9,7 +9,7 @@ This document serves as the master record for releases, daily summaries, and bug
 ### 2026-01-07 (Session Management & UX Improvements)
 - **GuestSessionManager**: Guest Mode에도 Session Manager 추가 (날짜/위치 선택, 저장된 세션 메시지)
 - **Mode Persistence**: 페이지 새로고침 시에도 모드 유지 (localStorage)
-- **Session Ready Flags**: 각 모드별 세션 준비 상태 플래그 추가 (guestSessionReady, cloudSessionReady, sheetsSessionReady)
+- **Session Ready Flags**: 각 모드별 세션 준비 상태 플래그 추가 (`tennis-mate-guest-session-ready`, `tennis-mate-cloud-session-ready`, `tennis-mate-sheets-session-ready`)
 - **Navigation Consistency**: 모든 Session Manager에서 "Back to Mode Selection" 버튼을 하단으로 통일
 - **Korean UI**: ModeSelection 페이지에 각 모드별 한국어 설명 추가
 - **GitHub Link**: ModeSelection 페이지 하단에 GitHub 링크 추가
