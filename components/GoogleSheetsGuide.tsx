@@ -101,6 +101,9 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                     <p className="text-slate-300">
                         3. A new tab will open with the Apps Script editor
                     </p>
+                    <div className="mt-4 rounded-lg overflow-hidden border border-slate-700">
+                        <img src="/guide/step2-apps-script-menu.png" alt="Apps Script 메뉴 위치" className="w-full" />
+                    </div>
                 </div>
             )
         },
@@ -148,6 +151,9 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                     <p className="text-slate-300">
                         2. Select <strong className="text-slate-100">New deployment</strong>
                     </p>
+                    <div className="my-3 rounded-lg overflow-hidden border border-slate-700">
+                        <img src="/guide/step4-deploy-menu.png" alt="배포 메뉴" className="w-full" />
+                    </div>
                     <p className="text-slate-300">
                         3. Click the gear icon next to "Select type" and choose <strong className="text-slate-100">Web app</strong>
                     </p>
@@ -165,6 +171,9 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                             • <strong className="text-slate-100">Who has access:</strong> Anyone
                         </li>
                     </ul>
+                    <div className="my-3 rounded-lg overflow-hidden border border-slate-700">
+                        <img src="/guide/step4-deploy-settings.png" alt="배포 설정" className="w-full" />
+                    </div>
                     <p className="text-slate-300">
                         5. Click <strong className="text-slate-100">Deploy</strong>
                     </p>
@@ -181,6 +190,9 @@ export const GoogleSheetsGuide: React.FC<GoogleSheetsGuideProps> = ({ onClose })
                     <p className="text-slate-300">
                         2. Click <strong className="text-slate-100">Copy</strong> to copy the URL
                     </p>
+                    <div className="my-3 rounded-lg overflow-hidden border border-slate-700">
+                        <img src="/guide/step5-copy-url.png" alt="URL 복사" className="w-full" />
+                    </div>
                     <p className="text-slate-300">
                         3. It will look something like:
                     </p>

@@ -175,8 +175,26 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
     document.body.style.overflow = ''; // Unlock scroll
   };
 
+  // Check if there's existing match data (finished matches)
+  const hasFinishedMatches = matches.some(m => m.isFinished);
+
   return (
     <div className="space-y-4 pb-24">
+      {/* Saved Session Info Banner */}
+      {hasFinishedMatches && !isEditMode && (
+        <div className="bg-blue-900/30 border border-blue-700/50 rounded-xl p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={16} className="text-blue-400 mt-0.5 shrink-0" />
+            <div className="text-sm">
+              <p className="text-blue-300 font-medium">이전 매치 기록이 저장되어 있습니다.</p>
+              <p className="text-blue-400/80 text-xs mt-1">
+                새로운 세션을 시작하려면 아래의 <span className="text-red-400 font-medium">Reset All Data</span> 버튼을 클릭하세요.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Player Box */}
       {!isEditMode && (
         <div className="bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700 space-y-3">

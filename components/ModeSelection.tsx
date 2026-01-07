@@ -1,6 +1,8 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Database, User, Sheet } from 'lucide-react';
+import { Database, User, Sheet, Github, Heart } from 'lucide-react';
+
+const GITHUB_URL = 'https://github.com/HouuYa/tennis-mate';
 
 export const ModeSelection = () => {
     const { switchMode } = useApp();
@@ -25,6 +27,7 @@ export const ModeSelection = () => {
                     <div className="text-left">
                         <h3 className="font-bold text-lg">Guest Mode</h3>
                         <p className="text-sm text-slate-400">No backend required. Data is saved on this device only.</p>
+                        <p className="text-xs text-slate-500 mt-1">백엔드 불필요. 이 기기에만 데이터 저장.</p>
                     </div>
                 </button>
 
@@ -38,6 +41,7 @@ export const ModeSelection = () => {
                     <div className="text-left">
                         <h3 className="font-bold text-lg">Google Sheets Mode</h3>
                         <p className="text-sm text-slate-400">Use your own Google Sheets. Free and you own your data.</p>
+                        <p className="text-xs text-slate-500 mt-1">내 구글 시트 연동. 무료, 데이터 직접 관리.</p>
                     </div>
                 </button>
 
@@ -51,8 +55,26 @@ export const ModeSelection = () => {
                     <div className="text-left">
                         <h3 className="font-bold text-lg">Cloud Mode</h3>
                         <p className="text-sm text-slate-400">Sync with Supabase. Save history and stats forever.</p>
+                        <p className="text-xs text-slate-500 mt-1">클라우드 동기화. 기록과 통계 영구 보관.</p>
                     </div>
                 </button>
+            </div>
+
+            {/* Footer with GitHub link */}
+            <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col items-center gap-3">
+                <a
+                    href={GITHUB_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-sm"
+                >
+                    <Github size={18} />
+                    <span>View on GitHub</span>
+                </a>
+                <p className="text-[10px] text-slate-600 flex items-center gap-1">
+                    <Heart size={10} className="text-red-500" />
+                    Made with love for tennis enthusiasts
+                </p>
             </div>
         </div>
     );

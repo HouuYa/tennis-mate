@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
 import { BottomNav } from './components/BottomNav';
@@ -12,25 +12,81 @@ import { useApp } from './context/AppContext';
 import { ModeSelection } from './components/ModeSelection';
 import { CloudSessionManager } from './components/CloudSessionManager';
 import { GoogleSheetsSessionManager } from './components/GoogleSheetsSessionManager';
+import { GuestSessionManager } from './components/GuestSessionManager';
+
+const GUEST_SESSION_READY_KEY = 'tennis-mate-guest-session-ready';
+const CLOUD_SESSION_READY_KEY = 'tennis-mate-cloud-session-ready';
+const SHEETS_SESSION_READY_KEY = 'tennis-mate-sheets-session-ready';
 
 const MainLayout = () => {
   const { mode, players, matches, exitMode } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.PLAYERS);
+  const [guestSessionReady, setGuestSessionReady] = useState<boolean>(() => {
+    return localStorage.getItem(GUEST_SESSION_READY_KEY) === 'true';
+  });
+  const [cloudSessionReady, setCloudSessionReady] = useState<boolean>(() => {
+    return localStorage.getItem(CLOUD_SESSION_READY_KEY) === 'true';
+  });
+  const [sheetsSessionReady, setSheetsSessionReady] = useState<boolean>(() => {
+    return localStorage.getItem(SHEETS_SESSION_READY_KEY) === 'true';
+  });
 
-  // Show Session Manager modal when in Cloud mode with no session
-  const showCloudSessionManager = mode === 'CLOUD' && players.length === 0;
-  const showGoogleSheetsSessionManager = mode === 'GOOGLE_SHEETS' && players.length === 0;
+  // Show Session Manager modals based on mode and session ready state
+  const showCloudSessionManager = mode === 'CLOUD' && !cloudSessionReady;
+  const showGoogleSheetsSessionManager = mode === 'GOOGLE_SHEETS' && !sheetsSessionReady;
+  const showGuestSessionManager = mode === 'LOCAL' && !guestSessionReady;
+
+  // Check if there's existing data in Guest mode
+  const hasExistingGuestData = mode === 'LOCAL' && (matches.length > 0 || players.some(p => p.stats.matchesPlayed > 0));
+
+  // Check if there are unfinished matches (warn before leaving)
+  const hasUnfinishedMatches = matches.some(m => !m.isFinished);
+
+  // Add beforeunload warning for unsaved data
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only warn if there are unfinished matches in Google Sheets or Cloud mode
+      if ((mode === 'GOOGLE_SHEETS' || mode === 'CLOUD') && hasUnfinishedMatches) {
+        e.preventDefault();
+        e.returnValue = '저장되지 않은 매치 데이터가 있습니다. 페이지를 떠나시겠습니까?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [mode, hasUnfinishedMatches]);
 
   if (!mode) {
     return <ModeSelection />;
   }
 
-  const handleSessionReady = () => {
-    // Navigate to Player tab after session is created
+  const handleCloudSessionReady = () => {
+    localStorage.setItem(CLOUD_SESSION_READY_KEY, 'true');
+    setCloudSessionReady(true);
+    setActiveTab(Tab.PLAYERS);
+  };
+
+  const handleSheetsSessionReady = () => {
+    localStorage.setItem(SHEETS_SESSION_READY_KEY, 'true');
+    setSheetsSessionReady(true);
+    setActiveTab(Tab.PLAYERS);
+  };
+
+  const handleGuestSessionReady = () => {
+    localStorage.setItem(GUEST_SESSION_READY_KEY, 'true');
+    setGuestSessionReady(true);
     setActiveTab(Tab.PLAYERS);
   };
 
   const handleSwitchMode = () => {
+    // Clear all session ready flags when switching modes
+    localStorage.removeItem(GUEST_SESSION_READY_KEY);
+    localStorage.removeItem(CLOUD_SESSION_READY_KEY);
+    localStorage.removeItem(SHEETS_SESSION_READY_KEY);
+    setGuestSessionReady(false);
+    setCloudSessionReady(false);
+    setSheetsSessionReady(false);
     exitMode();
   };
 
@@ -64,13 +120,25 @@ const MainLayout = () => {
       {showCloudSessionManager && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800 animate-in zoom-in-95 duration-200">
-            <CloudSessionManager onSessionReady={handleSessionReady} />
+            <CloudSessionManager onSessionReady={handleCloudSessionReady} />
           </div>
         </div>
       )}
 
       {/* Google Sheets Session Manager Modal */}
-      {showGoogleSheetsSessionManager && <GoogleSheetsSessionManager onSessionReady={handleSessionReady} />}
+      {showGoogleSheetsSessionManager && <GoogleSheetsSessionManager onSessionReady={handleSheetsSessionReady} />}
+
+      {/* Guest Session Manager Modal */}
+      {showGuestSessionManager && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800 animate-in zoom-in-95 duration-200">
+            <GuestSessionManager
+              onSessionReady={handleGuestSessionReady}
+              isExistingSession={hasExistingGuestData}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Play, BookOpen, Check, AlertCircle, Settings, Clock, Loader2, RotateCcw } from 'lucide-react';
+import { Play, BookOpen, AlertCircle, Settings, Clock, Loader2, Home, AlertTriangle, RefreshCw } from 'lucide-react';
 import { GoogleSheetsGuide } from './GoogleSheetsGuide';
 import { LocationPicker } from './LocationPicker';
 
@@ -23,7 +23,8 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
         setSessionLocation,
         getRecentLocations,
         sessionDate,
-        setSessionDate
+        setSessionDate,
+        exitMode
     } = useApp();
     const { showToast } = useToast();
 
@@ -41,9 +42,10 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
         if (saved) {
             setSavedUrl(saved);
             setMode('LANDING');
-            // Fetch recent locations for suggestions
+            // Fetch recent locations for suggestions, removing duplicates
             getRecentLocations().then(locs => {
-                setSuggestions(locs);
+                const uniqueLocs = Array.from(new Set(locs));
+                setSuggestions(uniqueLocs);
             });
             // Initialize Date if empty
             if (!sessionDate) {
@@ -117,9 +119,9 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
         }
     };
 
-    const handleExit = () => {
-        if (confirm("Go back to main menu? Current session data will be cleared.")) {
-            window.location.reload();
+    const handleBackToModeSelection = () => {
+        if (confirm("모드 선택 화면으로 돌아가시겠습니까?")) {
+            exitMode();
         }
     };
 
@@ -151,9 +153,6 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
                     <div className="p-6 space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-300">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold text-slate-100">Google Sheets Connected</h2>
-                            <button onClick={handleExit} className="text-slate-500 hover:text-red-400 p-1" title="Exit Mode">
-                                <RotateCcw size={16} />
-                            </button>
                         </div>
                         <p className="text-sm text-slate-400 -mt-4">Ready to sync with your spreadsheet.</p>
 
@@ -254,6 +253,15 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
                         </button>
                     </div>
                 )}
+
+                {/* Back to Mode Selection */}
+                <button
+                    onClick={handleBackToModeSelection}
+                    className="w-full py-4 flex items-center justify-center gap-2 text-slate-500 hover:text-white transition-colors text-sm border-t border-slate-800"
+                >
+                    <Home size={16} />
+                    <span>Back to Mode Selection</span>
+                </button>
             </div>
         </div>
     );

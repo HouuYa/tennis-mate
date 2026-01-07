@@ -57,13 +57,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
     const handleGetLocation = () => {
         if (!navigator.geolocation) {
-            showToast('Location services not available in this browser. Please enter location manually.', 'error');
+            showToast('이 브라우저에서 위치 서비스를 사용할 수 없습니다. 직접 입력해 주세요.', 'warning');
             return;
         }
 
         // Check if site is accessed via HTTPS (required for iOS Safari)
         if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-            showToast('Location access requires HTTPS. Please enter location manually.', 'warning');
+            showToast('위치 서비스는 HTTPS에서만 사용 가능합니다. 직접 입력해 주세요.', 'warning');
             return;
         }
 
@@ -99,19 +99,21 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 setGettingLocation(false);
             },
             (error) => {
-                let errorMessage = 'Failed to get location';
+                let errorMessage = '위치를 가져올 수 없습니다';
+                let toastType: 'error' | 'warning' = 'warning';
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMessage = 'Location access denied. Please check browser settings and allow location access for this site.';
+                        errorMessage = '위치 접근이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해 주세요.';
+                        toastType = 'warning';
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        errorMessage = 'Unable to determine location. Please try again or enter manually.';
+                        errorMessage = '위치를 확인할 수 없습니다. 다시 시도하거나 직접 입력해 주세요.';
                         break;
                     case error.TIMEOUT:
-                        errorMessage = 'Location request timed out. Please try again or enter manually.';
+                        errorMessage = '위치 요청 시간이 초과되었습니다. 다시 시도하거나 직접 입력해 주세요.';
                         break;
                 }
-                showToast(errorMessage, 'error');
+                showToast(errorMessage, toastType);
                 setGettingLocation(false);
             },
             {
