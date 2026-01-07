@@ -148,15 +148,8 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                 </div>
             )}
 
-            {/* Tab navigation with Home button */}
+            {/* Tab navigation */}
             <div className="flex bg-slate-800 p-1 rounded-lg w-full">
-                <button
-                    onClick={handleBackToModeSelection}
-                    className="px-3 py-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
-                    title="Back to Mode Selection"
-                >
-                    <Home size={18} />
-                </button>
                 <button
                     onClick={() => setActiveTab('NEW')}
                     className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${activeTab === 'NEW' ? 'bg-tennis-green text-slate-900' : 'text-slate-400 hover:text-white'}`}
@@ -236,6 +229,15 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                     </div>
                 )}
             </div>
+
+            {/* Back to Mode Selection */}
+            <button
+                onClick={handleBackToModeSelection}
+                className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-sm"
+            >
+                <Home size={16} />
+                <span>Back to Mode Selection</span>
+            </button>
 
             {/* Confirmation Dialog */}
             {showConfirmDialog && (

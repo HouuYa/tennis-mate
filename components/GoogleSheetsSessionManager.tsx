@@ -153,9 +153,6 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
                     <div className="p-6 space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-300">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold text-slate-100">Google Sheets Connected</h2>
-                            <button onClick={handleBackToModeSelection} className="text-slate-500 hover:text-white p-1 hover:bg-slate-700 rounded" title="Back to Mode Selection">
-                                <Home size={16} />
-                            </button>
                         </div>
                         <p className="text-sm text-slate-400 -mt-4">Ready to sync with your spreadsheet.</p>
 
@@ -220,16 +217,11 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
                     <div className="p-6 space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold text-slate-100">Connect Sheet</h2>
-                            <div className="flex items-center gap-2">
-                                {savedUrl && (
-                                    <button onClick={() => setMode('LANDING')} className="text-xs text-slate-500 hover:text-white">
-                                        Cancel
-                                    </button>
-                                )}
-                                <button onClick={handleBackToModeSelection} className="text-slate-500 hover:text-white p-1 hover:bg-slate-700 rounded" title="Back to Mode Selection">
-                                    <Home size={16} />
+                            {savedUrl && (
+                                <button onClick={() => setMode('LANDING')} className="text-xs text-slate-500 hover:text-white">
+                                    Cancel
                                 </button>
-                            </div>
+                            )}
                         </div>
 
                         <div className="space-y-3">
@@ -261,6 +253,15 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
                         </button>
                     </div>
                 )}
+
+                {/* Back to Mode Selection */}
+                <button
+                    onClick={handleBackToModeSelection}
+                    className="w-full py-4 flex items-center justify-center gap-2 text-slate-500 hover:text-white transition-colors text-sm border-t border-slate-800"
+                >
+                    <Home size={16} />
+                    <span>Back to Mode Selection</span>
+                </button>
             </div>
         </div>
     );
