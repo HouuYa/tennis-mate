@@ -125,13 +125,7 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       if (savedMode === 'LOCAL') {
         const localService = new LocalDataService();
         setDataService(localService);
-        localService.loadSession().then(state => {
-          if (state) {
-            setPlayers(state.players);
-            setMatches(state.matches);
-            setFeed(state.feed);
-          }
-        });
+        // Local mode auto-loads from localStorage (already handled in first useEffect)
       } else if (savedMode === 'GOOGLE_SHEETS') {
         const sheetsService = new GoogleSheetsDataService();
         setDataService(sheetsService);
@@ -139,24 +133,8 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
       } else if (savedMode === 'CLOUD') {
         const cloudService = new SupabaseDataService();
         setDataService(cloudService);
-        // Check for saved session
-        const savedSessionId = cloudService.getCurrentSessionId();
-        if (savedSessionId) {
-          cloudService.loadSession(savedSessionId).then(state => {
-            if (state) {
-              setPlayers(state.players);
-              setMatches(state.matches);
-              setFeed(state.feed);
-            }
-          }).catch(err => {
-            console.error('Failed to restore session:', err);
-            try {
-              localStorage.removeItem('tennis-mate-current-session-id');
-            } catch (e) {
-              console.warn('Failed to clear invalid session ID:', e);
-            }
-          });
-        }
+        // DO NOT auto-load cloud session - let session manager handle it
+        // This allows user to choose between continuing saved session or starting new
       }
     }
   }, []); // Only run once on mount
@@ -274,6 +252,8 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
     setMode(null);
     localStorage.removeItem(MODE_STORAGE_KEY);
     localStorage.removeItem('tennis-mate-guest-session-ready');
+    localStorage.removeItem('tennis-mate-cloud-session-ready');
+    localStorage.removeItem('tennis-mate-sheets-session-ready');
     resetSessionState();
   };
 

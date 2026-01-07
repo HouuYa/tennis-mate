@@ -220,11 +220,16 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
                     <div className="p-6 space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold text-slate-100">Connect Sheet</h2>
-                            {savedUrl && (
-                                <button onClick={() => setMode('LANDING')} className="text-xs text-slate-500 hover:text-white">
-                                    Cancel
+                            <div className="flex items-center gap-2">
+                                {savedUrl && (
+                                    <button onClick={() => setMode('LANDING')} className="text-xs text-slate-500 hover:text-white">
+                                        Cancel
+                                    </button>
+                                )}
+                                <button onClick={handleBackToModeSelection} className="text-slate-500 hover:text-white p-1 hover:bg-slate-700 rounded" title="Back to Mode Selection">
+                                    <Home size={16} />
                                 </button>
-                            )}
+                            </div>
                         </div>
 
                         <div className="space-y-3">

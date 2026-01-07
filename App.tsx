@@ -15,18 +15,25 @@ import { GoogleSheetsSessionManager } from './components/GoogleSheetsSessionMana
 import { GuestSessionManager } from './components/GuestSessionManager';
 
 const GUEST_SESSION_READY_KEY = 'tennis-mate-guest-session-ready';
+const CLOUD_SESSION_READY_KEY = 'tennis-mate-cloud-session-ready';
+const SHEETS_SESSION_READY_KEY = 'tennis-mate-sheets-session-ready';
 
 const MainLayout = () => {
   const { mode, players, matches, exitMode } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.PLAYERS);
   const [guestSessionReady, setGuestSessionReady] = useState<boolean>(() => {
-    // Check if guest session was already configured
     return localStorage.getItem(GUEST_SESSION_READY_KEY) === 'true';
   });
+  const [cloudSessionReady, setCloudSessionReady] = useState<boolean>(() => {
+    return localStorage.getItem(CLOUD_SESSION_READY_KEY) === 'true';
+  });
+  const [sheetsSessionReady, setSheetsSessionReady] = useState<boolean>(() => {
+    return localStorage.getItem(SHEETS_SESSION_READY_KEY) === 'true';
+  });
 
-  // Show Session Manager modal when in Cloud mode with no session
-  const showCloudSessionManager = mode === 'CLOUD' && players.length === 0;
-  const showGoogleSheetsSessionManager = mode === 'GOOGLE_SHEETS' && players.length === 0;
+  // Show Session Manager modals based on mode and session ready state
+  const showCloudSessionManager = mode === 'CLOUD' && !cloudSessionReady;
+  const showGoogleSheetsSessionManager = mode === 'GOOGLE_SHEETS' && !sheetsSessionReady;
   const showGuestSessionManager = mode === 'LOCAL' && !guestSessionReady;
 
   // Check if there's existing data in Guest mode
@@ -54,8 +61,15 @@ const MainLayout = () => {
     return <ModeSelection />;
   }
 
-  const handleSessionReady = () => {
-    // Navigate to Player tab after session is created
+  const handleCloudSessionReady = () => {
+    localStorage.setItem(CLOUD_SESSION_READY_KEY, 'true');
+    setCloudSessionReady(true);
+    setActiveTab(Tab.PLAYERS);
+  };
+
+  const handleSheetsSessionReady = () => {
+    localStorage.setItem(SHEETS_SESSION_READY_KEY, 'true');
+    setSheetsSessionReady(true);
     setActiveTab(Tab.PLAYERS);
   };
 
@@ -66,9 +80,13 @@ const MainLayout = () => {
   };
 
   const handleSwitchMode = () => {
-    // Clear guest session ready flag when switching modes
+    // Clear all session ready flags when switching modes
     localStorage.removeItem(GUEST_SESSION_READY_KEY);
+    localStorage.removeItem(CLOUD_SESSION_READY_KEY);
+    localStorage.removeItem(SHEETS_SESSION_READY_KEY);
     setGuestSessionReady(false);
+    setCloudSessionReady(false);
+    setSheetsSessionReady(false);
     exitMode();
   };
 
@@ -102,13 +120,13 @@ const MainLayout = () => {
       {showCloudSessionManager && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800 animate-in zoom-in-95 duration-200">
-            <CloudSessionManager onSessionReady={handleSessionReady} />
+            <CloudSessionManager onSessionReady={handleCloudSessionReady} />
           </div>
         </div>
       )}
 
       {/* Google Sheets Session Manager Modal */}
-      {showGoogleSheetsSessionManager && <GoogleSheetsSessionManager onSessionReady={handleSessionReady} />}
+      {showGoogleSheetsSessionManager && <GoogleSheetsSessionManager onSessionReady={handleSheetsSessionReady} />}
 
       {/* Guest Session Manager Modal */}
       {showGuestSessionManager && (
