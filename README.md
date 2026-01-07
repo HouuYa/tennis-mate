@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.1.1-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -167,7 +167,14 @@ npm run dev
 
 ## 📝 로드맵
 
-### ✅ v1.1.0 MVP (완료)
+### ✅ v1.1.1 (완료 - 2026-01-07)
+- [x] Guest Mode 세션 관리자 추가
+- [x] 모든 모드 "Back to Mode Selection" 하단 통일
+- [x] 페이지 새로고침 시 모드 유지
+- [x] ModeSelection 한국어 설명 추가
+- [x] GoogleSheetsGuide 스크린샷 이미지 추가
+
+### ✅ v1.1.0 (완료 - 2026-01-06)
 - [x] 3가지 저장소 모드 (Guest/Sheets/Cloud)
 - [x] Google Sheets Mode 전체 구현
 - [x] Head-to-Head 라이벌 분석
@@ -218,7 +225,7 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 
 <div align="center">
 
-**Tennis Mate v1.0.0**
+**Tennis Mate v1.1.1**
 
 Made with ❤️ & 🎾 by [HouuYa](https://github.com/HouuYa)
 

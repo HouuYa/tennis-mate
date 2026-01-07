@@ -16,10 +16,15 @@
 │   ├── MatchSchedule.tsx # Unified View: History + Current + Future Preview
 │   ├── LiveFeed.tsx      # Chat-style Event Log
 │   ├── StatsView.tsx     # Leaderboard & AI Analysis (+ Head-to-Head)
-│   ├── ModeSelection.tsx # Storage Mode Selection (Guest/Sheets/Cloud)
+│   ├── ModeSelection.tsx # Storage Mode Selection (Guest/Sheets/Cloud) + Korean descriptions
+│   ├── GuestSessionManager.tsx # Guest Mode Session Manager (date/location selection)
+│   ├── CloudSessionManager.tsx # Cloud Mode Session Manager (Supabase)
 │   ├── GoogleSheetsSessionManager.tsx # Google Sheets Setup & Connection
-│   ├── GoogleSheetsGuide.tsx # 6-Step Setup Guide Modal
+│   ├── GoogleSheetsGuide.tsx # 6-Step Setup Guide Modal with screenshots
+│   ├── LocationPicker.tsx # Geolocation-based location input
 │   └── BottomNav.tsx     # Navigation Bar
+├── public/
+│   └── guide/            # Setup guide screenshot images
 ├── services/
 │   ├── DataService.ts    # Interface for Data Operations
 │   ├── LocalDataService.ts # LocalStorage Implementation
@@ -232,6 +237,15 @@ function doPost(e) {
 
 ### F. Session Management & Persistence
 
+**Mode Persistence (v1.1.1):**
+- **Mode 저장**: 선택한 모드를 localStorage에 저장
+- **Key**: `'tennis-mate-mode'`
+- **Session Ready Flags**: 각 모드별 세션 준비 상태 플래그
+  - `'tennis-mate-guest-session-ready'`
+  - `'tennis-mate-cloud-session-ready'`
+  - `'tennis-mate-sheets-session-ready'`
+- **동작**: 페이지 새로고침 시에도 모드 유지, 세션 준비 완료 시 바로 앱으로 진입
+
 **Mode-Specific Session Handling:**
 
 **1. Cloud Mode (Supabase)**
@@ -243,6 +257,7 @@ function doPost(e) {
   3. **Default Players**: 5명의 기본 플레이어 자동 생성 (Nadal, Federer, Djokovic, Murray, Alcaraz)
   4. **복원**: `switchMode('CLOUD')` → 저장된 ID로 세션 데이터 로드
   5. **삭제**: "Reset All Data" → localStorage에서 ID 제거
+- **이전 세션 계속하기**: 저장된 세션 ID가 있으면 바로 계속하기 옵션 제공
 
 **2. Google Sheets Mode**
 - **No Session Concept**: 세션 ID 없이 작동 (Stateless)
@@ -254,11 +269,14 @@ function doPost(e) {
   3. **URL 저장**: 성공 시 localStorage에 저장
   4. **자동 연결**: 다음 방문 시 저장된 URL로 자동 연결
 - **데이터 로드**: 매번 최근 100경기를 Google Sheets에서 로드
+- **Setup Guide**: 실제 스크린샷 이미지가 포함된 6단계 가이드 (`GoogleSheetsGuide.tsx`)
 
-**3. Guest Mode (Local)**
+**3. Guest Mode (Local) - Enhanced in v1.1.1**
 - **완전 로컬**: 모든 데이터를 localStorage에 저장
 - **Key**: `'tennis-mate-state'`
 - **No Network**: 인터넷 연결 불필요
+- **GuestSessionManager**: 날짜/시간, 위치 선택 UI 제공
+- **저장된 세션 메시지**: 이전 매치 기록이 있으면 알림 표시
 
 **UX Improvement (v0.9.1 - v1.0.0):**
 - **Session Manager Modal**: Cloud/Sheets Mode 선택 즉시 전체 화면 모달로 Manager 표시
@@ -271,11 +289,18 @@ function doPost(e) {
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ GUEST MODE (즉시 시작)                                   │
+│ GUEST MODE (v1.1.1 - Session Manager 추가)              │
 └─────────────────────────────────────────────────────────┘
 1. GUEST MODE 클릭
    ↓
-2. 즉시 Player 탭으로 이동 (localStorage 사용)
+2. GuestSessionManager 모달 표시
+   ├─ 날짜/시간 선택 (기본값: 현재)
+   ├─ 위치 선택 (위치 아이콘 클릭 또는 직접 입력)
+   └─ 저장된 매치 기록이 있으면 알림 배너 표시
+   ↓
+3. "Start Session" 클릭 → guestSessionReady 플래그 설정
+   ↓
+4. Player 탭으로 이동 (localStorage 사용)
 
 ┌─────────────────────────────────────────────────────────┐
 │ GOOGLE SHEETS MODE (최초 1회 설정)                       │
