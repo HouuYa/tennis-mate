@@ -1,14 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { generateAIAnalysis } from '../services/geminiService';
+import { generateAIAnalysis, getStoredApiKey } from '../services/geminiService';
 import { sortPlayers, calculatePoints } from '../utils/playerUtils';
 import { BarChart3, Sparkles, Share2, Link as LinkIcon, Download, FileText, Trash2, PieChart } from 'lucide-react';
 import { AnalyticsView } from './AnalyticsView';
+import { GeminiApiKeySettings } from './GeminiApiKeySettings';
 
 export const StatsView: React.FC = () => {
-  const { players, matches, exportData, importData, getShareableLink, resetData } = useApp();
+  const { players, matches, exportData, importData, getShareableLink, resetData, mode } = useApp();
   const { showToast } = useToast();
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -16,15 +17,32 @@ export const StatsView: React.FC = () => {
   const [showImport, setShowImport] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   const sortedPlayers = sortPlayers(players);
 
+  // Check if user has stored API key (for Google Sheets/Cloud modes)
+  useEffect(() => {
+    if (mode === 'GOOGLE_SHEETS' || mode === 'CLOUD') {
+      const apiKey = getStoredApiKey();
+      setHasApiKey(!!apiKey);
+    }
+  }, [mode]);
+
   const handleAskAI = async () => {
+    if ((mode === 'GOOGLE_SHEETS' || mode === 'CLOUD') && !hasApiKey) {
+      showToast('Please set your Gemini API key first', 'warning');
+      return;
+    }
+
     setLoading(true);
     const analysis = await generateAIAnalysis(players, matches);
     setAiAnalysis(analysis);
     setLoading(false);
   };
+
+  // Determine if AI Coach should be shown
+  const showAICoach = mode !== 'LOCAL'; // Hide in Guest mode
 
   const copyShareLink = () => {
     const link = getShareableLink();
@@ -77,31 +95,49 @@ export const StatsView: React.FC = () => {
 
   return (
     <div className="pb-20 space-y-6">
-      {/* AI Coach Section */}
-      <div className="bg-gradient-to-br from-indigo-900 to-slate-900 p-6 rounded-xl border border-indigo-500/30">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
-            <Sparkles size={20} /> AI Coach
-          </h2>
-          <button
-            onClick={handleAskAI}
-            disabled={loading}
-            className="text-xs bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded-full text-white font-semibold transition-colors disabled:opacity-50"
-          >
-            {loading ? "Analyzing..." : "Analyze Stats"}
-          </button>
-        </div>
-
-        {aiAnalysis ? (
-          <div className="text-sm text-indigo-100 leading-relaxed whitespace-pre-wrap bg-indigo-950/50 p-4 rounded-lg">
-            {aiAnalysis}
+      {/* AI Coach Section - Only show in Google Sheets and Cloud modes */}
+      {showAICoach && (
+        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 p-6 rounded-xl border border-indigo-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
+              <Sparkles size={20} /> AI Coach
+            </h2>
+            <button
+              onClick={handleAskAI}
+              disabled={loading || !hasApiKey}
+              className="text-xs bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded-full text-white font-semibold transition-colors disabled:opacity-50"
+            >
+              {loading ? "Analyzing..." : "Analyze Stats"}
+            </button>
           </div>
-        ) : (
-          <p className="text-sm text-slate-400">
-            Tap "Analyze Stats" to get insights on MVPs and team chemistry powered by Gemini.
-          </p>
-        )}
-      </div>
+
+          {/* API Key Settings for Google Sheets/Cloud modes */}
+          {(mode === 'GOOGLE_SHEETS' || mode === 'CLOUD') && (
+            <div className="mb-4">
+              <GeminiApiKeySettings
+                compact={true}
+                onClose={() => {
+                  // Refresh API key status after saving
+                  const apiKey = getStoredApiKey();
+                  setHasApiKey(!!apiKey);
+                }}
+              />
+            </div>
+          )}
+
+          {aiAnalysis ? (
+            <div className="text-sm text-indigo-100 leading-relaxed whitespace-pre-wrap bg-indigo-950/50 p-4 rounded-lg">
+              {aiAnalysis}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">
+              {hasApiKey || mode === 'LOCAL'
+                ? 'Tap "Analyze Stats" to get insights on MVPs and team chemistry powered by Gemini.'
+                : '⬆️ Please enter your Gemini API key above to use AI Coach.'}
+            </p>
+          )}
+        </div>
+      )}
 
       {showAnalytics && <AnalyticsView onClose={() => setShowAnalytics(false)} />}
 
