@@ -64,7 +64,9 @@ This document serves as the master record for releases, daily summaries, and bug
 ## 🚀 전체 Changelog
 
 ### [1.2.0] - 2026-01-14
-**🎨 AI Coach UI/UX Redesign**
+**🎨 AI Coach UI/UX Redesign & RAG System**
+
+**UI/UX Improvements:**
 - **Collapsible Interface**: AI Coach를 Advanced Analytics와 동일한 접을 수 있는 디자인으로 변경
   - 기본 상태: 작은 버튼만 표시 ("AI Coach" 섹션)
   - 확장 상태: API key 설정 또는 AI 기능 버튼 표시
@@ -75,14 +77,9 @@ This document serves as the master record for releases, daily summaries, and bug
   - API key 미설정 시: Gemini API Key 설정 UI만 표시
   - API key 설정 후: "Analyze Stats"와 "Ask Question" 버튼 표시
 - **Space Efficiency**: Stats 탭의 공간 효율성 대폭 향상
-- **Component Architecture**:
-  - AIChatInterface.tsx의 역할 축소 (기존 탭 UI 제거)
-  - 2개의 신규 모달 컴포넌트로 기능 분리
 
-### [1.1.2] - 2026-01-14
-**🤖 AI Coach RAG System**
-- **RAG Search**: 테니스 규칙 PDF 기반 AI 질문답변 시스템 구현
-- **Chat UI**: "Analyze Stats" / "Ask Question" 탭 인터페이스
+**RAG System (Retrieval-Augmented Generation):**
+- **Tennis Rules Q&A**: 테니스 규칙 PDF 기반 AI 질문답변 시스템 구현
 - **ETL Pipeline**: Python 스크립트로 PDF 처리 및 Supabase 업로드
   - 조항별 chunking (영어: Article/Rule, 한글: 제N조)
   - Gemini embeddings 생성 (text-embedding-004, 768차원)
@@ -91,6 +88,11 @@ This document serves as the master record for releases, daily summaries, and bug
 - **Multi-Language**: 영어/한글 규칙 문서 동시 지원
 - **Source Attribution**: AI 답변에 출처 및 유사도 표시
 - **Documentation**: RAG 설정 가이드 작성 (`RAG_SETUP_GUIDE_KO.md`)
+
+**Component Architecture:**
+- `StatsAnalysisModal.tsx`: AI stats analysis with Gemini API
+- `TennisRulesChatModal.tsx`: RAG-based tennis rules chat
+- `ChatMessageSource` interface: Type-safe message sources
 
 ### [1.1.1] - 2026-01-07
 **🔧 Session Management & UX Improvements**
