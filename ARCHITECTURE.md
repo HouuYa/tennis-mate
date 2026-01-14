@@ -16,6 +16,10 @@
 │   ├── MatchSchedule.tsx # Unified View: History + Current + Future Preview
 │   ├── LiveFeed.tsx      # Chat-style Event Log
 │   ├── StatsView.tsx     # Leaderboard & AI Analysis (+ Head-to-Head)
+│   ├── AnalyticsView.tsx # Advanced Analytics Modal (Win Rates, Partners, Rivals)
+│   ├── StatsAnalysisModal.tsx # AI Stats Analysis Modal (v1.2.0)
+│   ├── TennisRulesChatModal.tsx # Tennis Rules Chat Modal (v1.2.0)
+│   ├── GeminiApiKeySettings.tsx # Gemini API Key Configuration
 │   ├── ModeSelection.tsx # Storage Mode Selection (Guest/Sheets/Cloud) + Korean descriptions
 │   ├── GuestSessionManager.tsx # Guest Mode Session Manager (date/location selection)
 │   ├── CloudSessionManager.tsx # Cloud Mode Session Manager (Supabase)
@@ -89,8 +93,42 @@ The app implements a **Repository/Adapter Pattern** via the `DataService` interf
   3.  Next Set (Preview card showing resting player).
 - **Mobile First**: Large touch targets, dark mode for outdoor visibility.
 
-### D. AI Integration
-- Google Gemini API analyzes the raw JSON match data to generate natural language insights (MVPs, best partners) in the Stats view.
+### D. AI Integration (Enhanced in v1.2.0)
+
+**AI Coach Features:**
+1. **Stats Analysis**: Google Gemini API analyzes match data to generate insights (MVPs, team chemistry, performance trends)
+2. **Tennis Rules Chat**: RAG-based Q&A system using Supabase pgvector for tennis rules search
+
+**UI Design Pattern (v1.2.0):**
+- **Collapsible Section**: AI Coach appears as a compact button (similar to Advanced Analytics)
+- **Progressive Disclosure**:
+  - Initial state: Small "AI Coach" button
+  - Expanded (no API key): Shows Gemini API Key settings only
+  - Expanded (with API key): Shows "Analyze Stats" and "Ask Question" buttons
+- **Modal-Based Features**:
+  - `StatsAnalysisModal`: Full-screen modal for AI stats analysis
+  - `TennisRulesChatModal`: Full-screen modal for tennis rules Q&A chat
+- **Space Efficiency**: Reduces visual clutter in Stats tab when AI features are not in use
+
+**Component Flow:**
+```
+StatsView.tsx
+  ├── AI Coach Button (collapsed)
+  │   ↓ [User clicks]
+  ├── AI Coach Expanded Section
+  │   ├── [No API Key] → GeminiApiKeySettings (compact mode)
+  │   └── [Has API Key] → Two buttons:
+  │       ├── "Analyze Stats" → StatsAnalysisModal
+  │       └── "Ask Question" → TennisRulesChatModal
+  └── Advanced Analytics Button → AnalyticsView
+```
+
+**RAG System Architecture:**
+- **Embeddings**: Gemini `text-embedding-004` model (768 dimensions)
+- **Vector Store**: Supabase pgvector extension
+- **Search Function**: `match_tennis_rules` RPC (cosine similarity)
+- **Multi-Language**: Supports English and Korean tennis rules
+- **Source Attribution**: Displays source documents with similarity scores
 
 ### E. Database Schema (Supabase)
 

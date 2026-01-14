@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.2-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.0-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -75,10 +75,16 @@
   - 승/무/패 통계 및 승률 시각화
   - 라이벌 관계 분석
 
-### 5. 🤖 AI 코치 (Powered by Gemini)
-- **매치 분석**: Google Gemini API로 경기 데이터 분석
-- **인사이트 제공**: MVP, 최고 파트너, 승률 분석을 자연어로 브리핑
-- **테니스 규칙 질문 (NEW in v1.1.2!)**:
+### 5. 🤖 AI 코치 (Powered by Gemini) - v1.2.0 UI 개선!
+- **컴팩트 디자인 (NEW!)**:
+  - 기본적으로 작은 버튼만 표시 (공간 효율성 향상)
+  - 클릭하여 확장/축소 가능
+  - Progressive Disclosure: 필요한 기능만 단계적으로 표시
+- **매치 분석**:
+  - Google Gemini API로 경기 데이터 분석
+  - MVP, 최고 파트너, 승률 분석을 자연어로 브리핑
+  - 독립 모달로 분리되어 더 나은 사용자 경험
+- **테니스 규칙 질문**:
   - RAG (Retrieval-Augmented Generation) 시스템
   - 테니스 규칙 PDF 기반 AI 검색
   - 영어/한글 규칙 문서 지원
@@ -179,14 +185,18 @@ npm run dev
 
 ## 📝 로드맵
 
-### ✅ v1.1.2 (완료 - 2026-01-14)
+### ✅ v1.2.0 (완료 - 2026-01-14)
+- [x] AI Coach UI/UX 대폭 개선
+  - [x] 컴팩트하고 접을 수 있는 디자인
+  - [x] Progressive Disclosure UX
+  - [x] 독립 모달 컴포넌트 (StatsAnalysisModal, TennisRulesChatModal)
 - [x] AI Coach RAG 시스템 구현
-- [x] 테니스 규칙 PDF 검색 기능
-- [x] 채팅 인터페이스 (Analyze Stats / Ask Question)
-- [x] Python ETL 파이프라인
-- [x] pgvector 기반 유사도 검색
-- [x] Edge Function 배포
-- [x] RAG 설정 가이드 작성
+  - [x] 테니스 규칙 PDF 검색 기능
+  - [x] Python ETL 파이프라인
+  - [x] pgvector 기반 유사도 검색
+  - [x] Edge Function 배포
+  - [x] RAG 설정 가이드 작성
+- [x] Type Safety 개선 (ChatMessageSource interface 분리)
 
 ### ✅ v1.1.1 (완료 - 2026-01-07)
 - [x] Guest Mode 세션 관리자 추가
@@ -204,7 +214,7 @@ npm run dev
 - [x] AI 코치 (Gemini)
 - [x] 클라우드 세션 관리
 
-### 🔜 v1.2.0 (예정)
+### 🔜 v1.3.0 (예정)
 - [ ] 다중 코트 지원 (2개 코트 동시 진행)
 - [ ] Tie-break 스코어 지원 (7-6 (4) 형식)
 - [ ] 플레이어 아바타 업로드
@@ -246,7 +256,7 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 
 <div align="center">
 
-**Tennis Mate v1.1.2**
+**Tennis Mate v1.2.0**
 
 Made with ❤️ & 🎾 by [HouuYa](https://github.com/HouuYa)
 
