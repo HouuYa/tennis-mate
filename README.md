@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.1-brightgreen)
+![Version](https://img.shields.io/badge/version-1.1.2-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -78,6 +78,12 @@
 ### 5. 🤖 AI 코치 (Powered by Gemini)
 - **매치 분석**: Google Gemini API로 경기 데이터 분석
 - **인사이트 제공**: MVP, 최고 파트너, 승률 분석을 자연어로 브리핑
+- **테니스 규칙 질문 (NEW in v1.1.2!)**:
+  - RAG (Retrieval-Augmented Generation) 시스템
+  - 테니스 규칙 PDF 기반 AI 검색
+  - 영어/한글 규칙 문서 지원
+  - 출처 표시 및 유사도 점수
+  - 채팅 인터페이스로 자유로운 질문
 
 ---
 
@@ -90,7 +96,8 @@
 | **State** | Context API |
 | **Storage** | LocalStorage (Guest) / Google Sheets (BYODB) / Supabase (Cloud) |
 | **Backend** | Google Apps Script (Sheets Mode), Supabase Postgres (Cloud Mode) |
-| **AI** | Google Gemini API (@google/genai) |
+| **AI** | Google Gemini API (@google/genai), RAG with pgvector |
+| **Vector DB** | Supabase pgvector (Tennis Rules Search) |
 | **Deploy** | GitHub Pages / Vercel (Static Hosting) |
 
 ---
@@ -146,8 +153,13 @@ npm run dev
 ---
 
 ### 설정 가이드 (Setup Guides)
+
+#### Google Sheets Mode
 - 🇰🇷 [한국어 설정 가이드 (Korean)](./GOOGLE_SHEETS_SETUP_GUIDE_KO.md)
 - 🇺🇸 [English Setup Guide](./GOOGLE_SHEETS_SETUP_GUIDE_EN.md)
+
+#### AI Coach RAG System (관리자용)
+- 🇰🇷 [테니스 규칙 RAG 설정 가이드](./RAG_SETUP_GUIDE_KO.md)
 
 ### 요약 (Quick Start)
 1. **앱에서 "Google Sheets Mode" 선택**
@@ -166,6 +178,15 @@ npm run dev
 ---
 
 ## 📝 로드맵
+
+### ✅ v1.1.2 (완료 - 2026-01-14)
+- [x] AI Coach RAG 시스템 구현
+- [x] 테니스 규칙 PDF 검색 기능
+- [x] 채팅 인터페이스 (Analyze Stats / Ask Question)
+- [x] Python ETL 파이프라인
+- [x] pgvector 기반 유사도 검색
+- [x] Edge Function 배포
+- [x] RAG 설정 가이드 작성
 
 ### ✅ v1.1.1 (완료 - 2026-01-07)
 - [x] Guest Mode 세션 관리자 추가
@@ -225,7 +246,7 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 
 <div align="center">
 
-**Tennis Mate v1.1.1**
+**Tennis Mate v1.1.2**
 
 Made with ❤️ & 🎾 by [HouuYa](https://github.com/HouuYa)
 

@@ -6,6 +6,16 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-01-14 (AI Coach RAG System)
+- **RAG (Retrieval-Augmented Generation)**: AI Coach에 테니스 규칙 검색 기능 추가
+- **Chat Interface**: 탭 기반 UI (Analyze Stats / Ask Question)
+- **PDF ETL Pipeline**: Python 스크립트로 PDF → Supabase 업로드 (pgvector)
+- **Edge Function**: `search-tennis-rules` - 사용자 API 키 기반 RAG 검색
+- **Gemini Embeddings**: `text-embedding-004` 모델 사용 (768 차원)
+- **Multi-Language Support**: 영어/한글 규칙 문서 동시 지원
+- **Source Citations**: AI 답변에 출처 표시 (규칙 제목, 유사도)
+- **RAG Setup Guide**: 관리자용 상세 설정 가이드 문서 작성
+
 ### 2026-01-07 (Session Management & UX Improvements)
 - **GuestSessionManager**: Guest Mode에도 Session Manager 추가 (날짜/위치 선택, 저장된 세션 메시지)
 - **Mode Persistence**: 페이지 새로고침 시에도 모드 유지 (localStorage)
@@ -45,6 +55,19 @@ This document serves as the master record for releases, daily summaries, and bug
 ---
 
 ## 🚀 전체 Changelog
+
+### [1.1.2] - 2026-01-14
+**🤖 AI Coach RAG System**
+- **RAG Search**: 테니스 규칙 PDF 기반 AI 질문답변 시스템 구현
+- **Chat UI**: "Analyze Stats" / "Ask Question" 탭 인터페이스
+- **ETL Pipeline**: Python 스크립트로 PDF 처리 및 Supabase 업로드
+  - 조항별 chunking (영어: Article/Rule, 한글: 제N조)
+  - Gemini embeddings 생성 (text-embedding-004, 768차원)
+  - pgvector를 사용한 유사도 검색
+- **Edge Function**: `search-tennis-rules` 배포 (사용자 API 키 방식)
+- **Multi-Language**: 영어/한글 규칙 문서 동시 지원
+- **Source Attribution**: AI 답변에 출처 및 유사도 표시
+- **Documentation**: RAG 설정 가이드 작성 (`RAG_SETUP_GUIDE_KO.md`)
 
 ### [1.1.1] - 2026-01-07
 **🔧 Session Management & UX Improvements**
