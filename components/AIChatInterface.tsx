@@ -176,16 +176,9 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
   };
 
   return (
-    <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-xl border border-indigo-500/30 overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-indigo-500/30">
-        <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
-          <Sparkles size={20} /> AI Coach
-        </h2>
-      </div>
-
+    <div className="flex flex-col h-full">
       {/* Tabs */}
-      <div className="flex border-b border-indigo-500/20 bg-indigo-950/30">
+      <div className="flex border-b border-indigo-500/20 bg-indigo-950/30 flex-shrink-0">
         <button
           onClick={() => setActiveTab('stats')}
           className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
@@ -211,12 +204,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-6">
-        {!hasApiKey && (
-          <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
-            ⚠️ Please set your Gemini API key above to use AI Coach.
-          </div>
-        )}
+      <div className="p-6 flex-1 overflow-y-auto">
 
         {/* Stats Tab */}
         {activeTab === 'stats' && (

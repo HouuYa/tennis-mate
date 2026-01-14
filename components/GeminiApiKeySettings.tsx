@@ -46,20 +46,13 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
       showToast('✅ API key is valid!', 'success');
       saveApiKey(apiKey.trim());
       setHasStoredKey(true);
+      // Call onClose to refresh parent component
+      setTimeout(() => {
+        onClose?.();
+      }, 500);
     } else {
       showToast(`❌ Invalid API key: ${result.error}`, 'error');
     }
-  };
-
-  const handleSave = () => {
-    if (!apiKey.trim()) {
-      showToast('Please enter an API key', 'warning');
-      return;
-    }
-    saveApiKey(apiKey.trim());
-    setHasStoredKey(true);
-    showToast('API key saved!', 'success');
-    onClose?.();
   };
 
   const handleClear = () => {
