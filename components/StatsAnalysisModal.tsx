@@ -24,9 +24,9 @@ export const StatsAnalysisModal: React.FC<StatsAnalysisModalProps> = ({
     try {
       const analysis = await generateAIAnalysis(players, matches);
       setStatsAnalysis(analysis);
-    } catch (error) {
+    } catch (error: unknown) {
       showToast('Failed to generate analysis', 'error');
-      console.error('Analysis error:', error);
+      console.error('Analysis error:', error instanceof Error ? error.message : error);
     } finally {
       setLoading(false);
     }
