@@ -3,16 +3,18 @@ import { X, Send, Loader, BookOpen } from 'lucide-react';
 import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 
+interface ChatMessageSource {
+  title: string;
+  source_file: string;
+  similarity: number;
+}
+
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  sources?: Array<{
-    title: string;
-    source_file: string;
-    similarity: number;
-  }>;
+  sources?: ChatMessageSource[];
 }
 
 interface TennisRulesChatModalProps {
