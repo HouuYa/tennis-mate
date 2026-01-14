@@ -4,10 +4,11 @@ import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { getStoredApiKey } from '../services/geminiService';
 import { sortPlayers, calculatePoints } from '../utils/playerUtils';
-import { BarChart3, Share2, Link as LinkIcon, Download, FileText, Trash2, PieChart } from 'lucide-react';
+import { BarChart3, Share2, Link as LinkIcon, Download, FileText, Trash2, PieChart, Sparkles, BookOpen } from 'lucide-react';
 import { AnalyticsView } from './AnalyticsView';
 import { GeminiApiKeySettings } from './GeminiApiKeySettings';
-import { AIChatInterface } from './AIChatInterface';
+import { StatsAnalysisModal } from './StatsAnalysisModal';
+import { TennisRulesChatModal } from './TennisRulesChatModal';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData, mode } = useApp();
@@ -17,6 +18,9 @@ export const StatsView: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [showAICoachExpanded, setShowAICoachExpanded] = useState(false);
+  const [showStatsAnalysis, setShowStatsAnalysis] = useState(false);
+  const [showTennisChat, setShowTennisChat] = useState(false);
 
   const sortedPlayers = sortPlayers(players);
 
@@ -82,29 +86,102 @@ export const StatsView: React.FC = () => {
 
   return (
     <div className="pb-20 space-y-6">
-      {/* AI Coach Section - Only show in Google Sheets and Cloud modes */}
+      {/* AI Coach Section - Collapsible like Advanced Analytics */}
       {showAICoach && (
-        <div className="space-y-4">
-          {/* API Key Settings for Google Sheets/Cloud modes */}
-          {(mode === 'GOOGLE_SHEETS' || mode === 'CLOUD') && (
-            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-              <GeminiApiKeySettings
-                compact={true}
-                onKeyUpdate={setHasApiKey}
-              />
+        <div className="space-y-3">
+          {/* AI Coach Collapsed Button */}
+          {!showAICoachExpanded ? (
+            <button
+              onClick={() => setShowAICoachExpanded(true)}
+              className="w-full bg-slate-800 hover:bg-slate-700 hover:border-indigo-400 border border-slate-700 p-4 rounded-xl flex items-center justify-between group transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-indigo-900/30 p-2 rounded-lg text-indigo-400 group-hover:bg-indigo-900/50 transition-colors">
+                  <Sparkles size={24} />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-bold text-slate-200 group-hover:text-indigo-300">AI Coach</h3>
+                  <p className="text-xs text-slate-500">Get insights & ask tennis questions</p>
+                </div>
+              </div>
+              <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
+            </button>
+          ) : (
+            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
+              {/* Header with collapse button */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={20} className="text-indigo-400" />
+                  <h3 className="font-bold text-slate-200">AI Coach</h3>
+                </div>
+                <button
+                  onClick={() => setShowAICoachExpanded(false)}
+                  className="text-slate-500 hover:text-white text-sm px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 transition-colors"
+                >
+                  Hide
+                </button>
+              </div>
+
+              {/* If no API key, show settings only */}
+              {!hasApiKey ? (
+                <div>
+                  <GeminiApiKeySettings
+                    compact={true}
+                    onKeyUpdate={(hasKey) => {
+                      setHasApiKey(hasKey);
+                      if (hasKey) {
+                        showToast('API Key saved! You can now use AI features.', 'success');
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Analyze Stats Button */}
+                  <button
+                    onClick={() => setShowStatsAnalysis(true)}
+                    className="w-full bg-indigo-900/30 hover:bg-indigo-900/50 border border-indigo-700/50 p-3 rounded-lg flex items-center justify-between group transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BarChart3 size={18} className="text-indigo-400" />
+                      <div className="text-left">
+                        <div className="font-semibold text-slate-200 text-sm">Analyze Stats</div>
+                        <div className="text-xs text-slate-500">Get AI insights on performance</div>
+                      </div>
+                    </div>
+                    <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
+                  </button>
+
+                  {/* Ask Question Button */}
+                  <button
+                    onClick={() => setShowTennisChat(true)}
+                    className="w-full bg-indigo-900/30 hover:bg-indigo-900/50 border border-indigo-700/50 p-3 rounded-lg flex items-center justify-between group transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BookOpen size={18} className="text-indigo-400" />
+                      <div className="text-left">
+                        <div className="font-semibold text-slate-200 text-sm">Ask Question</div>
+                        <div className="text-xs text-slate-500">Chat about tennis rules</div>
+                      </div>
+                    </div>
+                    <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
+                  </button>
+                </div>
+              )}
             </div>
           )}
-
-          {/* AI Chat Interface with Tabs */}
-          <AIChatInterface
-            players={players}
-            matches={matches}
-            hasApiKey={hasApiKey}
-          />
         </div>
       )}
 
       {showAnalytics && <AnalyticsView onClose={() => setShowAnalytics(false)} />}
+      {showStatsAnalysis && (
+        <StatsAnalysisModal
+          onClose={() => setShowStatsAnalysis(false)}
+          players={players}
+          matches={matches}
+        />
+      )}
+      {showTennisChat && <TennisRulesChatModal onClose={() => setShowTennisChat(false)} />}
 
       <button
         onClick={() => setShowAnalytics(true)}
