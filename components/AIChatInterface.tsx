@@ -135,7 +135,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
           role: 'assistant',
           content: data.answer || 'No answer generated.',
           timestamp: new Date(),
-          sources: data.matches?.slice(0, 3).map((m: any) => ({
+          sources: data.matches?.slice(0, 3).map((m: { title: string; source_file: string; similarity: number }) => ({
             title: m.title,
             source_file: m.source_file,
             similarity: m.similarity,
