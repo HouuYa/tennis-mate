@@ -90,11 +90,7 @@ export const StatsView: React.FC = () => {
             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
               <GeminiApiKeySettings
                 compact={true}
-                onClose={() => {
-                  // Refresh API key status after saving
-                  const apiKey = getStoredApiKey();
-                  setHasApiKey(!!apiKey);
-                }}
+                onKeyUpdate={setHasApiKey}
               />
             </div>
           )}
