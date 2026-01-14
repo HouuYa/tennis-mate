@@ -2,11 +2,60 @@ import { GoogleGenAI } from "@google/genai";
 import { Player, Match } from "../types";
 import { AI_INSTRUCTION } from "../constants";
 
-export const generateAIAnalysis = async (players: Player[], matches: Match[]): Promise<string> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_API_KEY_STORAGE = 'tennis-mate-gemini-api-key';
+
+// Get stored API key from localStorage
+export const getStoredApiKey = (): string | null => {
+  return localStorage.getItem(GEMINI_API_KEY_STORAGE);
+};
+
+// Save API key to localStorage
+export const saveApiKey = (apiKey: string): void => {
+  localStorage.setItem(GEMINI_API_KEY_STORAGE, apiKey);
+};
+
+// Remove stored API key
+export const clearApiKey = (): void => {
+  localStorage.removeItem(GEMINI_API_KEY_STORAGE);
+};
+
+// Test if API key is valid
+export const testApiKey = async (apiKey: string): Promise<{ valid: boolean; error?: string }> => {
+  if (!apiKey || apiKey.trim().length === 0) {
+    return { valid: false, error: "API key is empty" };
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: 'Hello',
+      config: { temperature: 0.1 }
+    });
+
+    if (response.text) {
+      return { valid: true };
+    } else {
+      return { valid: false, error: "No response from API" };
+    }
+  } catch (error: any) {
+    return {
+      valid: false,
+      error: error?.message || "Invalid API key or connection error"
+    };
+  }
+};
+
+export const generateAIAnalysis = async (
+  players: Player[],
+  matches: Match[],
+  userApiKey?: string
+): Promise<string> => {
+  // Priority: userApiKey > stored key > env key
+  const apiKey = userApiKey || getStoredApiKey() || import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
-    return "API Key is missing. Cannot generate AI analysis.";
+    return "API Key is missing. Please set your Gemini API key in settings.";
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -28,7 +77,7 @@ export const generateAIAnalysis = async (players: Player[], matches: Match[]): P
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash-exp',
       contents: `Here is the tennis club data: ${JSON.stringify(dataSummary)}`,
       config: {
         systemInstruction: AI_INSTRUCTION,
@@ -37,8 +86,11 @@ export const generateAIAnalysis = async (players: Player[], matches: Match[]): P
     });
 
     return response.text || "No analysis available.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
+    if (error?.message?.includes('API_KEY_INVALID') || error?.message?.includes('401')) {
+      return "❌ Invalid API key. Please check your Gemini API key in settings.";
+    }
     return "Sorry, I couldn't analyze the match data at this moment.";
   }
 };
