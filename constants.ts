@@ -24,3 +24,9 @@ export const API_ENDPOINTS = {
 export const INITIAL_PLAYERS = [
   "Nadal", "Federer", "Djokovic", "Murray", "Alcaraz"
 ];
+
+// API Error Detection Keywords
+export const API_ERROR_KEYWORDS = {
+  QUOTA_EXCEEDED: ['429', 'quota', 'RESOURCE_EXHAUSTED'],
+  INVALID_KEY: ['API_KEY_INVALID', '401'],
+} as const;

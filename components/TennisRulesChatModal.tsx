@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen } from 'lucide-react';
 import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { API_ERROR_KEYWORDS } from '../constants';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ChatMessageSource {
   title: string;
@@ -35,13 +38,16 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // Handle ESC key to close modal
+  useEscapeKey(onClose);
+
   const handleAskQuestion = async () => {
     if (!question.trim()) {
       return;
     }
 
     const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: uuidv4(),
       role: 'user',
       content: question.trim(),
       timestamp: new Date(),
@@ -93,7 +99,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
 
       if (data.success) {
         const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
+          id: uuidv4(),
           role: 'assistant',
           content: data.answer || 'No answer generated.',
           timestamp: new Date(),
@@ -108,14 +114,31 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       } else {
         throw new Error(data.error || 'Unknown error');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Chat error:', error);
-      showToast('Failed to get answer. Please try again.', 'error');
+
+      let errorContent = 'Sorry, I encountered an error. Please try again.';
+
+      // Check if it's a quota error
+      if (error instanceof Error) {
+        const isQuotaError = API_ERROR_KEYWORDS.QUOTA_EXCEEDED.some(keyword =>
+          error.message.includes(keyword)
+        );
+
+        if (isQuotaError) {
+          errorContent = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
+          showToast('API quota exceeded. Please create a new key.', 'error');
+        } else {
+          showToast('Failed to get answer. Please try again.', 'error');
+        }
+      } else {
+        showToast('Failed to get answer. Please try again.', 'error');
+      }
 
       const errorMessage: ChatMessage = {
-        id: `assistant-error-${Date.now()}`,
+        id: uuidv4(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: errorContent,
         timestamp: new Date(),
       };
 
@@ -138,8 +161,8 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4">
+    <div onClick={onClose} className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+      <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4">
         {/* Header */}
         <div className="p-6 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
           <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, BarChart3, Loader } from 'lucide-react';
 import { generateAIAnalysis } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import type { Player, Match } from '../types';
 
 interface StatsAnalysisModalProps {
@@ -18,6 +19,9 @@ export const StatsAnalysisModal: React.FC<StatsAnalysisModalProps> = ({
   const { showToast } = useToast();
   const [statsAnalysis, setStatsAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Handle ESC key to close modal
+  useEscapeKey(onClose);
 
   const handleAnalyzeStats = async () => {
     setLoading(true);
