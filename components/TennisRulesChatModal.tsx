@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen } from 'lucide-react';
 import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ChatMessageSource {
   title: string;
@@ -35,13 +36,25 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   const handleAskQuestion = async () => {
     if (!question.trim()) {
       return;
     }
 
     const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: uuidv4(),
       role: 'user',
       content: question.trim(),
       timestamp: new Date(),
@@ -93,7 +106,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
 
       if (data.success) {
         const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
+          id: uuidv4(),
           role: 'assistant',
           content: data.answer || 'No answer generated.',
           timestamp: new Date(),
@@ -126,7 +139,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       }
 
       const errorMessage: ChatMessage = {
-        id: `assistant-error-${Date.now()}`,
+        id: uuidv4(),
         role: 'assistant',
         content: errorContent,
         timestamp: new Date(),
@@ -151,8 +164,8 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4">
+    <div onClick={onClose} className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+      <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4">
         {/* Header */}
         <div className="p-6 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
           <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
