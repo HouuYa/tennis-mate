@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen } from 'lucide-react';
 import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { API_ERROR_KEYWORDS } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ChatMessageSource {
@@ -37,16 +39,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
   }, [chatMessages]);
 
   // Handle ESC key to close modal
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const handleAskQuestion = async () => {
     if (!question.trim()) {
@@ -128,7 +121,11 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
 
       // Check if it's a quota error
       if (error instanceof Error) {
-        if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        const isQuotaError = API_ERROR_KEYWORDS.QUOTA_EXCEEDED.some(keyword =>
+          error.message.includes(keyword)
+        );
+
+        if (isQuotaError) {
           errorContent = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
           showToast('API quota exceeded. Please create a new key.', 'error');
         } else {

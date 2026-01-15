@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, BarChart3, Loader } from 'lucide-react';
 import { generateAIAnalysis } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import type { Player, Match } from '../types';
 
 interface StatsAnalysisModalProps {
@@ -20,16 +21,7 @@ export const StatsAnalysisModal: React.FC<StatsAnalysisModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   // Handle ESC key to close modal
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const handleAnalyzeStats = async () => {
     setLoading(true);

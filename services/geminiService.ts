@@ -1,8 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { Player, Match } from "../types";
-import { AI_INSTRUCTION } from "../constants";
+import { AI_INSTRUCTION, API_ERROR_KEYWORDS } from "../constants";
 
 const GEMINI_API_KEY_STORAGE = 'tennis-mate-gemini-api-key';
+
+// Helper function to check if error message contains any of the keywords
+const errorContainsKeywords = (message: string, keywords: readonly string[]): boolean => {
+  return keywords.some(keyword => message.includes(keyword));
+};
 
 // Get stored API key from localStorage
 export const getStoredApiKey = (): string | null => {
@@ -38,9 +43,9 @@ export const testApiKey = async (apiKey: string): Promise<{ valid: boolean; erro
     } else {
       return { valid: false, error: "No response from API" };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle quota exceeded error (429)
-    if (error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+    if (error instanceof Error && errorContainsKeywords(error.message, API_ERROR_KEYWORDS.QUOTA_EXCEEDED)) {
       return {
         valid: false,
         error: "⚠️ API quota exceeded. Please create a new API key at https://aistudio.google.com/app/apikey"
@@ -49,7 +54,7 @@ export const testApiKey = async (apiKey: string): Promise<{ valid: boolean; erro
 
     return {
       valid: false,
-      error: error?.message || "Invalid API key or connection error"
+      error: error instanceof Error ? error.message : "Invalid API key or connection error"
     };
   }
 };
@@ -94,15 +99,16 @@ export const generateAIAnalysis = async (
     });
 
     return response.text || "No analysis available.";
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
+  } catch (error: unknown) {
+    console.error("Gemini API Error:", error instanceof Error ? error.message : error);
 
     // Handle quota exceeded error (429)
-    if (error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+    if (error instanceof Error && errorContainsKeywords(error.message, API_ERROR_KEYWORDS.QUOTA_EXCEEDED)) {
       return "⚠️ **API Quota Exceeded**\n\nYour Gemini API key has reached its usage limit. Please:\n\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Tennis Mate settings\n\nFree tier limits: 15 requests/minute, 1500 requests/day";
     }
 
-    if (error?.message?.includes('API_KEY_INVALID') || error?.message?.includes('401')) {
+    // Handle invalid API key error
+    if (error instanceof Error && errorContainsKeywords(error.message, API_ERROR_KEYWORDS.INVALID_KEY)) {
       return "❌ Invalid API key. Please check your Gemini API key in settings.";
     }
 
