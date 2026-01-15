@@ -39,6 +39,14 @@ export const testApiKey = async (apiKey: string): Promise<{ valid: boolean; erro
       return { valid: false, error: "No response from API" };
     }
   } catch (error: any) {
+    // Handle quota exceeded error (429)
+    if (error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+      return {
+        valid: false,
+        error: "⚠️ API quota exceeded. Please create a new API key at https://aistudio.google.com/app/apikey"
+      };
+    }
+
     return {
       valid: false,
       error: error?.message || "Invalid API key or connection error"
@@ -88,9 +96,16 @@ export const generateAIAnalysis = async (
     return response.text || "No analysis available.";
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+
+    // Handle quota exceeded error (429)
+    if (error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+      return "⚠️ **API Quota Exceeded**\n\nYour Gemini API key has reached its usage limit. Please:\n\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Tennis Mate settings\n\nFree tier limits: 15 requests/minute, 1500 requests/day";
+    }
+
     if (error?.message?.includes('API_KEY_INVALID') || error?.message?.includes('401')) {
       return "❌ Invalid API key. Please check your Gemini API key in settings.";
     }
+
     return "Sorry, I couldn't analyze the match data at this moment.";
   }
 };

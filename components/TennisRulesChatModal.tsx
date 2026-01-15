@@ -108,14 +108,27 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       } else {
         throw new Error(data.error || 'Unknown error');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Chat error:', error);
-      showToast('Failed to get answer. Please try again.', 'error');
+
+      let errorContent = 'Sorry, I encountered an error. Please try again.';
+
+      // Check if it's a quota error
+      if (error instanceof Error) {
+        if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+          errorContent = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
+          showToast('API quota exceeded. Please create a new key.', 'error');
+        } else {
+          showToast('Failed to get answer. Please try again.', 'error');
+        }
+      } else {
+        showToast('Failed to get answer. Please try again.', 'error');
+      }
 
       const errorMessage: ChatMessage = {
         id: `assistant-error-${Date.now()}`,
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: errorContent,
         timestamp: new Date(),
       };
 
