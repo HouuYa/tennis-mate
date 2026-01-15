@@ -16,6 +16,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   const [apiKey, setApiKey] = useState('');
   const [testing, setTesting] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [showKey, setShowKey] = useState(false);
   const [hasStoredKey, setHasStoredKey] = useState(false);
 
@@ -36,6 +37,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
 
     setTesting(true);
     setIsValid(null);
+    setErrorMessage('');
 
     const result = await testApiKey(apiKey.trim());
 
@@ -44,6 +46,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
 
     if (result.valid) {
       showToast('✅ API key is valid!', 'success');
+      setErrorMessage('');
       saveApiKey(apiKey.trim());
       setHasStoredKey(true);
       // Call onClose to refresh parent component
@@ -51,7 +54,9 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
         onClose?.();
       }, 500);
     } else {
-      showToast(`❌ Invalid API key: ${result.error}`, 'error');
+      // Show simple toast, detailed error below
+      showToast('API key validation failed', 'error');
+      setErrorMessage(result.error || 'Invalid API key');
     }
   };
 
@@ -59,6 +64,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
     clearApiKey();
     setApiKey('');
     setIsValid(null);
+    setErrorMessage('');
     setHasStoredKey(false);
     showToast('API key removed', 'info');
   };
@@ -130,10 +136,10 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
           )}
         </div>
 
-        {isValid === false && (
-          <p className="text-xs text-red-400">
-            ❌ Invalid API key. Please check and try again.
-          </p>
+        {isValid === false && errorMessage && (
+          <div className="text-xs text-red-400 bg-red-900/20 p-3 rounded-lg border border-red-700/50">
+            {errorMessage}
+          </div>
         )}
       </div>
     );
@@ -194,10 +200,9 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
             </div>
           )}
 
-          {isValid === false && (
-            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-700/50">
-              <X size={16} />
-              <span>Invalid API key. Please check and try again.</span>
+          {isValid === false && errorMessage && (
+            <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-700/50 whitespace-pre-line">
+              {errorMessage}
             </div>
           )}
         </div>
