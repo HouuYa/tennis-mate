@@ -10,7 +10,7 @@
 
 **모바일 환경에 최적화된 테니스 매치 매니저**
 <br/>
-This project serves as a sandbox for experimenting with rule-grounded RAG system(https://github.com/HouuYa/Tennis_Rules_RAG) using Supabase as the operational backbone.
+This project serves as a sandbox for experimenting with [the rule-grounded RAG system](https://github.com/HouuYa/Tennis_Rules_RAG) using Supabase as the operational backbone.
 
 공정한 로테이션, 직관적인 매치 큐(Queue), AI 코칭, 그리고 3가지 저장소 옵션을 제공합니다.
 
