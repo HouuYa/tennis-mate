@@ -86,6 +86,67 @@ Tennis_Rules_RAG 레포지토리를 클론하여 실제 코드를 분석한 결�
 
 **권장 접근**: `extract_pdf_gemini.py`를 영문 PDF에 DRY RUN → Gemini 출력 형식 확인 → 정규식 조정
 
+#### DRY RUN 결과 (2026-02-08 실행)
+
+Gemini API 없이 pdftotext로 영문 PDF 구조를 분석하고, 예상 Gemini 출력 형식별로 정규식 테스트:
+
+```
+영문 PDF 실제 구조 (pdftotext 확인):
+  • "1." + 줄바꿈 + "THE COURT" 형식 (번호와 제목 분리)
+  • Rule 1~31 + Appendix I~XII + Wheelchair Tennis + Amendment
+  • 하위 항목: a., b., i., ii. 형식
+
+예상 Gemini 출력: Format A (**1. THE COURT**) 가장 유력
+  (한글 PDF도 **1. 코트 (THE COURT)** 형식으로 출력됨)
+
+테스트 결과:
+┌──────────────────────────────┬─────────────────┬─────────────────┐
+│ 예상 Gemini 형식              │ 현재 정규식      │ 제안 정규식      │
+├──────────────────────────────┼─────────────────┼─────────────────┤
+│ A: **1. THE COURT**  (유력)  │ start ❌  13건  │ start ✅  25건  │
+│ B: **Rule 1. THE COURT**    │ start ❌   0건  │ start ✅   8건  │
+│ C: **Rule 1 - THE COURT**   │ start ❌   0건  │ start ✅   5건  │
+│ D: Plain text (마크다운 없음) │ 전부 실패        │ 전부 실패        │
+├──────────────────────────────┼─────────────────┼─────────────────┤
+│ 한글 회귀 테스트              │ 147 chunks      │ 147 chunks ✅   │
+└──────────────────────────────┴─────────────────┴─────────────────┘
+
+현재 정규식 문제점:
+  1. start_marker: 한국어만 ("코트", "테니스 룰") → 영문 전부 실패
+  2. body_split: APPENDIX I~XII 패턴 미매칭 (현재 [I-V]+\. 는 "I." 필요)
+  3. negative lookahead: Page, Contents 누락
+
+제안 정규식 수정사항:
+  • start_marker: THE COURT, FOREWORD, Rule 1 패턴 추가
+  • body_split: APPENDIX [IVX]+ 패턴 추가, Rule\s*\d+ 추가
+  • negative lookahead: Page, Contents, Table of, Note 추가
+  • 한글 회귀: ✅ 동일 결과 (147 chunks)
+```
+
+#### Gemini 실제 API 호출 결과 (2026-02-08)
+
+```
+⚠️ 예상과 완전히 다른 형식 발견!
+
+한글 PDF Gemini 출력:           영문 PDF Gemini 출력:
+  **1. 코트 (THE COURT)**        1.     THE COURT
+  **머리말**                      **FOREWORD**
+  (전부 볼드 마크다운)             (일부만 볼드, 규칙은 일반 텍스트)
+
+영문 출력 패턴 분석 (83KB, /tmp/english_rules_gemini.txt):
+  • Rules 1-31:     일반 텍스트 "N.     TITLE"      (볼드 없음!)
+  • Appendix I-XII: 일반 텍스트 "APPENDIX I"        (볼드 없음!)
+  • 특수 섹션:       볼드 "**FOREWORD**",
+                          "**RULES OF WHEELCHAIR TENNIS**"
+
+영향:
+  • 볼드 마크다운 정규식 → 영문 Rules/Appendix 전부 매칭 실패
+  • Phase 3에서 plain text 패턴 기반 정규식 재설계 필요:
+    - start_marker: r"^1\.\s+THE COURT" (볼드 없는 패턴)
+    - body_split: r"^\d+\.\s+[A-Z ]+$" + r"^APPENDIX\s+[IVX]+"
+    - 또는 한/영 분기 처리 (언어별 다른 정규식 적용)
+```
+
 ---
 
 ### 검토 2: metadata JSONB 채우기

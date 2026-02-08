@@ -13,7 +13,7 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   sources?: Array<{
-    title: string;
+    rule_id: string;
     source_file: string;
     similarity: number;
   }>;
@@ -135,8 +135,8 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
           role: 'assistant',
           content: data.answer || 'No answer generated.',
           timestamp: new Date(),
-          sources: data.matches?.slice(0, 3).map((m: { title: string; source_file: string; similarity: number }) => ({
-            title: m.title,
+          sources: data.matches?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
+            rule_id: m.rule_id,
             source_file: m.source_file,
             similarity: m.similarity,
           })),
@@ -281,7 +281,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
                             </p>
                             {msg.sources.map((source, idx) => (
                               <p key={idx} className="text-xs text-slate-400">
-                                • {source.title} ({(source.similarity * 100).toFixed(0)}%
+                                • {source.rule_id} ({(source.similarity * 100).toFixed(0)}%
                                 match)
                               </p>
                             ))}

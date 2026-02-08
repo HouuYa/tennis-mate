@@ -7,7 +7,7 @@ import { API_ERROR_KEYWORDS } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ChatMessageSource {
-  title: string;
+  rule_id: string;
   source_file: string;
   similarity: number;
 }
@@ -103,8 +103,8 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
           role: 'assistant',
           content: data.answer || 'No answer generated.',
           timestamp: new Date(),
-          sources: data.matches?.slice(0, 3).map((m: { title: string; source_file: string; similarity: number }) => ({
-            title: m.title,
+          sources: data.matches?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
+            rule_id: m.rule_id,
             source_file: m.source_file,
             similarity: m.similarity,
           })),
@@ -226,7 +226,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                           </p>
                           {msg.sources.map((source, idx) => (
                             <p key={idx} className="text-xs text-slate-400">
-                              • {source.title} ({(source.similarity * 100).toFixed(0)}% match)
+                              • {source.rule_id} ({(source.similarity * 100).toFixed(0)}% match)
                             </p>
                           ))}
                         </div>
