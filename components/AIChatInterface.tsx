@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { generateAIAnalysis, getStoredApiKey } from '../services/geminiService';
+import { generateAIAnalysis, getStoredApiKey, getStoredModel } from '../services/geminiService';
 import { Sparkles, Send, Loader, BookOpen, BarChart3, X } from 'lucide-react';
 import type { Player, Match } from '../types';
 
@@ -117,6 +117,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
             question: question.trim(),
             geminiApiKey: apiKey,
             language,
+            model: getStoredModel(),
             includeStats: true,
             generateAnswer: true,
           }),

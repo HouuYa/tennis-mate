@@ -32,10 +32,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 // Types
 // ============================================================
 
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+
 interface SearchRequest {
   question: string;
   geminiApiKey?: string;
   language?: 'en' | 'ko';
+  model?: string; // Gemini model for answer generation (default: gemini-2.5-flash)
   includeStats?: boolean;
   generateAnswer?: boolean; // If true, generate AI answer; if false, return matches only
 }
@@ -106,9 +109,11 @@ async function generateAnswer(
   question: string,
   context: string,
   apiKey: string,
-  language?: string
+  language?: string,
+  model?: string
 ): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+  const modelId = model || DEFAULT_MODEL;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
 
   const prompt = language === 'ko'
     ? `당신은 테니스 규칙 전문가입니다. 아래 제공된 공식 테니스 규칙 문맥을 기반으로 질문에 답변해 주세요.
@@ -248,7 +253,7 @@ serve(async (req: Request) => {
   try {
     // Parse request
     const requestBody: SearchRequest = await req.json();
-    const { question, language, includeStats, generateAnswer: shouldGenerateAnswer = true } = requestBody;
+    const { question, language, model, includeStats, generateAnswer: shouldGenerateAnswer = true } = requestBody;
 
     // Resolve API key (body -> header -> env)
     const geminiApiKey = resolveApiKey(req, requestBody);
@@ -317,7 +322,7 @@ serve(async (req: Request) => {
     let answer: string | undefined;
     if (shouldGenerateAnswer) {
       console.log('Generating AI answer...');
-      answer = await generateAnswer(question, context, geminiApiKey, language);
+      answer = await generateAnswer(question, context, geminiApiKey, language, model);
     }
 
     // Step 5: Calculate stats (optional)

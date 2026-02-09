@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen } from 'lucide-react';
-import { getStoredApiKey } from '../services/geminiService';
+import { getStoredApiKey, getStoredModel } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { API_ERROR_KEYWORDS } from '../constants';
@@ -94,6 +94,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
             question: question.trim(),
             geminiApiKey: apiKey,
             language,
+            model: getStoredModel(),
             includeStats: true,
             generateAnswer: true,
           }),

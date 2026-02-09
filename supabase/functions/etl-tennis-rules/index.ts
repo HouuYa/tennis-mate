@@ -28,6 +28,8 @@ function jsonResponse(data: unknown, status = 200) {
   });
 }
 
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+
 function resolveApiKey(req: Request, body: Record<string, unknown>): string {
   const bodyKey = body.gemini_api_key as string;
   if (bodyKey?.trim()) return bodyKey.trim();
@@ -47,14 +49,15 @@ function resolveApiKey(req: Request, body: Record<string, unknown>): string {
 async function extractText(
   pdfBase64: string,
   apiKey: string,
-  language: string
+  language: string,
+  model?: string
 ): Promise<{ text: string; charCount: number }> {
   const prompt = language === 'ko'
     ? '이 문서의 모든 텍스트를 가능한 한 원본(규칙 번호, 조항 등)을 유지하며 그대로 추출해줘. 마크다운 형식으로 출력해줘.'
     : 'Extract all text from this document preserving the original structure (rule numbers, articles, appendices). Output in markdown format. Do not summarize.';
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model || DEFAULT_MODEL}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -250,12 +253,12 @@ serve(async (req: Request) => {
 
     switch (action) {
       case 'extract_text': {
-        const { pdf_base64, language = 'en' } = body;
+        const { pdf_base64, language = 'en', model } = body;
         if (!pdf_base64) {
           return jsonResponse({ error: 'pdf_base64 is required' }, 400);
         }
-        console.log(`[ETL] Extracting text (${language})...`);
-        const result = await extractText(pdf_base64, apiKey, language);
+        console.log(`[ETL] Extracting text (${language}, model: ${model || DEFAULT_MODEL})...`);
+        const result = await extractText(pdf_base64, apiKey, language, model as string);
         console.log(`[ETL] Extracted ${result.charCount} chars`);
         return jsonResponse({ success: true, ...result });
       }

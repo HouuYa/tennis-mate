@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, FileText, Layers, Database, CheckCircle, AlertCircle, Loader } from 'lucide-react';
-import { getStoredApiKey } from '../services/geminiService';
+import { getStoredApiKey, getStoredModel } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 
 type ETLStep = 'idle' | 'extracting' | 'chunking' | 'uploading' | 'done' | 'error';
@@ -40,7 +40,7 @@ export const AdminETLPage: React.FC = () => {
     const res = await fetch(`${supabaseUrl}/functions/v1/etl-tennis-rules`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, gemini_api_key: apiKey, ...payload }),
+      body: JSON.stringify({ action, gemini_api_key: apiKey, model: getStoredModel(), ...payload }),
     });
 
     const data = await res.json();
