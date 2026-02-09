@@ -4,11 +4,12 @@ import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { getStoredApiKey } from '../services/geminiService';
 import { sortPlayers, calculatePoints } from '../utils/playerUtils';
-import { BarChart3, Share2, Link as LinkIcon, Download, FileText, Trash2, PieChart, Sparkles, BookOpen } from 'lucide-react';
+import { BarChart3, Share2, Link as LinkIcon, Download, FileText, Trash2, PieChart, Sparkles, BookOpen, Settings, X } from 'lucide-react';
 import { AnalyticsView } from './AnalyticsView';
 import { GeminiApiKeySettings } from './GeminiApiKeySettings';
 import { StatsAnalysisModal } from './StatsAnalysisModal';
 import { TennisRulesChatModal } from './TennisRulesChatModal';
+import { AdminETLPage } from './AdminETLPage';
 
 export const StatsView: React.FC = () => {
   const { players, matches, exportData, importData, getShareableLink, resetData, mode } = useApp();
@@ -21,15 +22,14 @@ export const StatsView: React.FC = () => {
   const [showAICoachExpanded, setShowAICoachExpanded] = useState(false);
   const [showStatsAnalysis, setShowStatsAnalysis] = useState(false);
   const [showTennisChat, setShowTennisChat] = useState(false);
+  const [showAdminETL, setShowAdminETL] = useState(false);
 
   const sortedPlayers = sortPlayers(players);
 
-  // Check if user has stored API key (for Google Sheets/Cloud modes)
+  // Check if user has stored API key
   useEffect(() => {
-    if (mode === 'GOOGLE_SHEETS' || mode === 'CLOUD') {
-      const apiKey = getStoredApiKey();
-      setHasApiKey(!!apiKey);
-    }
+    const apiKey = getStoredApiKey();
+    setHasApiKey(!!apiKey);
   }, [mode]);
 
   // Determine if AI Coach should be shown
@@ -166,6 +166,21 @@ export const StatsView: React.FC = () => {
                     </div>
                     <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
                   </button>
+
+                  {/* Manage Rules Button */}
+                  <button
+                    onClick={() => setShowAdminETL(true)}
+                    className="w-full bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 p-3 rounded-lg flex items-center justify-between group transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Settings size={18} className="text-slate-400" />
+                      <div className="text-left">
+                        <div className="font-semibold text-slate-300 text-sm">Manage Rules</div>
+                        <div className="text-xs text-slate-500">Upload & update tennis rules DB</div>
+                      </div>
+                    </div>
+                    <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
+                  </button>
                 </div>
               )}
             </div>
@@ -182,6 +197,19 @@ export const StatsView: React.FC = () => {
         />
       )}
       {showTennisChat && <TennisRulesChatModal onClose={() => setShowTennisChat(false)} />}
+      {showAdminETL && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full my-8 p-6 relative">
+            <button
+              onClick={() => setShowAdminETL(false)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors z-10"
+            >
+              <X size={20} />
+            </button>
+            <AdminETLPage />
+          </div>
+        </div>
+      )}
 
       <button
         onClick={() => setShowAnalytics(true)}

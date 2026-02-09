@@ -5,11 +5,13 @@ import { useToast } from '../context/ToastContext';
 
 interface GeminiApiKeySettingsProps {
   onClose?: () => void;
+  onKeyUpdate?: (hasKey: boolean) => void;
   compact?: boolean; // For inline display in StatsView
 }
 
 export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   onClose,
+  onKeyUpdate,
   compact = false
 }) => {
   const { showToast } = useToast();
@@ -51,6 +53,8 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
       saveApiKey(apiKey.trim());
       saveModel(selectedModel);
       setHasStoredKey(true);
+      // Notify parent that key is available
+      onKeyUpdate?.(true);
       // Call onClose to refresh parent component
       setTimeout(() => {
         onClose?.();
@@ -68,6 +72,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
     setIsValid(null);
     setErrorMessage('');
     setHasStoredKey(false);
+    onKeyUpdate?.(false);
     showToast('API key removed', 'info');
   };
 
