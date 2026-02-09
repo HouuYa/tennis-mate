@@ -33,6 +33,15 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const suggestedQuestions = [
+    { text: 'What is a let in tennis?', emoji: '🎾' },
+    { text: '테니스 서브 규칙은?', emoji: '🏓' },
+    { text: 'What is a foot fault?', emoji: '👟' },
+    { text: '타이브레이크 규칙 설명해줘', emoji: '📋' },
+    { text: 'How does the scoring system work?', emoji: '📊' },
+    { text: '복식 리시버 순서는?', emoji: '👥' },
+  ];
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -191,14 +200,27 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-4">
             {chatMessages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center py-12">
+              <div className="h-full flex flex-col items-center justify-center text-center py-8">
                 <BookOpen size={48} className="mb-4 text-indigo-400 opacity-50" />
                 <p className="font-semibold text-indigo-300 mb-2">
                   Ask me about tennis rules!
                 </p>
-                <p className="text-sm text-slate-400">
-                  Example: "What is a let?" or "테니스 서브 규칙은?"
+                <p className="text-sm text-slate-400 mb-6">
+                  Ask in English or Korean
                 </p>
+                <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                  {suggestedQuestions.map((sq, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setQuestion(sq.text);
+                      }}
+                      className="text-xs bg-indigo-950/50 border border-indigo-500/20 text-indigo-300 px-3 py-1.5 rounded-full hover:bg-indigo-900/50 hover:border-indigo-500/40 transition-colors"
+                    >
+                      {sq.emoji} {sq.text}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <>
