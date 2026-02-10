@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
-import { getStoredApiKey, getStoredModel } from '../services/geminiService';
+import { getStoredApiKey, getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { API_ERROR_KEYWORDS } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../services/supabaseClient';
+import { ErrorActionPanel } from './ErrorActionPanel';
+import { ModelSwitcher } from './ModelSwitcher';
 
 interface ChatMessageSource {
   rule_id: string;
@@ -37,6 +39,8 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     count: 0,
     checking: true,
   });
+  const [currentModel, setCurrentModel] = useState<GeminiModelId>(getStoredModel());
+  const [lastError, setLastError] = useState<{ type: 'quota' | 'invalid_key' | 'network' | 'generic'; message: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
@@ -183,34 +187,26 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         errorText.includes(keyword)
       );
 
-      // Show user-friendly error messages (no sensitive data)
-      let userMessage: string;
+      // Determine error type for ErrorActionPanel
+      let errorType: 'quota' | 'invalid_key' | 'network' | 'generic';
       let toastMessage: string;
 
       if (isQuotaError) {
-        toastMessage = 'API quota exceeded. Please create a new key.';
-        userMessage = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
+        errorType = 'quota';
+        toastMessage = 'API quota exceeded. Please change key or switch model.';
       } else if (isInvalidKey) {
+        errorType = 'invalid_key';
         toastMessage = 'Invalid API key. Please check your settings.';
-        userMessage = '❌ Invalid API Key\n\nPlease check:\n1. Your Gemini API key is correct\n2. The key is enabled in Google AI Studio\n3. Update it in Settings if needed';
-      } else if (isGeminiError) {
-        toastMessage = 'Failed to process your request. Please try again.';
-        userMessage = '❌ Request Failed\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable';
+      } else if (errorText.includes('fetch') || errorText.includes('network')) {
+        errorType = 'network';
+        toastMessage = 'Network error. Please check your connection.';
       } else {
+        errorType = 'generic';
         toastMessage = 'An error occurred. Please try again.';
-        userMessage = '❌ Error\n\nSomething went wrong. Please check your connection and try again.';
       }
 
       showToast(toastMessage, 'error');
-
-      const errorMessage: ChatMessage = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: userMessage,
-        timestamp: new Date(),
-      };
-
-      setChatMessages((prev) => [...prev, errorMessage]);
+      setLastError({ type: errorType, message: errorText });
     } finally {
       setLoading(false);
     }
@@ -226,6 +222,31 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
   const clearChat = () => {
     setChatMessages([]);
     showToast('Chat history cleared', 'success');
+  };
+
+  const handleModelChange = (newModel: GeminiModelId) => {
+    setCurrentModel(newModel);
+    saveModel(newModel);
+    showToast(`Switched to ${newModel}`, 'success');
+    setLastError(null); // Clear error when model changes
+  };
+
+  const handleApiKeyUpdated = () => {
+    showToast('API key updated successfully', 'success');
+    setLastError(null); // Clear error when API key is updated
+  };
+
+  const handleRetry = () => {
+    if (chatMessages.length > 0) {
+      const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user');
+      if (lastUserMessage) {
+        setQuestion(lastUserMessage.content);
+        // Auto-submit after a brief delay
+        setTimeout(() => {
+          handleAskQuestion();
+        }, 100);
+      }
+    }
   };
 
   return (
@@ -256,7 +277,13 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Model Switcher */}
+            <ModelSwitcher
+              currentModel={currentModel}
+              onModelChange={handleModelChange}
+              showInHeader={true}
+            />
             {chatMessages.length > 0 && (
               <button
                 onClick={clearChat}
@@ -338,6 +365,22 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                     </div>
                   </div>
                 ))}
+
+                {/* Error Action Panel */}
+                {lastError && !loading && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%]">
+                      <ErrorActionPanel
+                        errorType={lastError.type}
+                        errorMessage={lastError.message}
+                        currentModel={currentModel}
+                        onModelChange={handleModelChange}
+                        onApiKeyUpdated={handleApiKeyUpdated}
+                        onRetry={handleRetry}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {loading && (
                   <div className="flex justify-start">

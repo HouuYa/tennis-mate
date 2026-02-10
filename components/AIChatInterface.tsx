@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { generateAIAnalysis, getStoredApiKey, getStoredModel } from '../services/geminiService';
+import { generateAIAnalysis, getStoredApiKey, getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
 import { Sparkles, Send, Loader, BookOpen, BarChart3, X } from 'lucide-react';
 import type { Player, Match } from '../types';
+import { ErrorActionPanel } from './ErrorActionPanel';
+import { ModelSwitcher } from './ModelSwitcher';
+import { API_ERROR_KEYWORDS } from '../constants';
 
 type TabType = 'stats' | 'chat';
 
@@ -40,6 +43,8 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
+  const [currentModel, setCurrentModel] = useState<GeminiModelId>(getStoredModel());
+  const [lastError, setLastError] = useState<{ type: 'quota' | 'invalid_key' | 'network' | 'generic'; message: string } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -149,37 +154,33 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
 
       const errorText = error instanceof Error ? error.message : 'Unknown error';
       const isGeminiError = errorText.includes('GEMINI_API_ERROR');
-      const isInvalidKey = errorText.includes('API_KEY_INVALID') || errorText.includes('401');
-      const isQuotaError = errorText.includes('429') || errorText.includes('quota');
+      const isQuotaError = API_ERROR_KEYWORDS.QUOTA_EXCEEDED.some(keyword =>
+        errorText.includes(keyword)
+      );
+      const isInvalidKey = API_ERROR_KEYWORDS.INVALID_KEY.some(keyword =>
+        errorText.includes(keyword)
+      );
 
-      // Show user-friendly error messages (no sensitive data)
-      let userMessage: string;
+      // Determine error type for ErrorActionPanel
+      let errorType: 'quota' | 'invalid_key' | 'network' | 'generic';
       let toastMessage: string;
 
-      if (isInvalidKey) {
-        toastMessage = 'Invalid Gemini API key. Please check your settings.';
-        userMessage = '❌ Invalid API Key\n\nPlease check:\n1. Your Gemini API key is correct\n2. The key is enabled in Google AI Studio\n3. Update it in Settings if needed';
-      } else if (isQuotaError) {
-        toastMessage = 'API quota exceeded. Please check your Gemini API key.';
-        userMessage = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
-      } else if (isGeminiError) {
-        toastMessage = 'Failed to process your request. Please try again.';
-        userMessage = '❌ Request Failed\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable';
+      if (isQuotaError) {
+        errorType = 'quota';
+        toastMessage = 'API quota exceeded. Please change key or switch model.';
+      } else if (isInvalidKey) {
+        errorType = 'invalid_key';
+        toastMessage = 'Invalid API key. Please check your settings.';
+      } else if (errorText.includes('fetch') || errorText.includes('network')) {
+        errorType = 'network';
+        toastMessage = 'Network error. Please check your connection.';
       } else {
+        errorType = 'generic';
         toastMessage = 'An error occurred. Please try again.';
-        userMessage = '❌ Error\n\nSomething went wrong. Please check your connection and try again.';
       }
 
       showToast(toastMessage, 'error');
-
-      const errorMessage: ChatMessage = {
-        id: `assistant-error-${Date.now()}`,
-        role: 'assistant',
-        content: userMessage,
-        timestamp: new Date(),
-      };
-
-      setChatMessages((prev) => [...prev, errorMessage]);
+      setLastError({ type: errorType, message: errorText });
     } finally {
       setLoadingChat(false);
     }
@@ -195,6 +196,31 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
   const clearChat = () => {
     setChatMessages([]);
     showToast('Chat history cleared', 'success');
+  };
+
+  const handleModelChange = (newModel: GeminiModelId) => {
+    setCurrentModel(newModel);
+    saveModel(newModel);
+    showToast(`Switched to ${newModel}`, 'success');
+    setLastError(null); // Clear error when model changes
+  };
+
+  const handleApiKeyUpdated = () => {
+    showToast('API key updated successfully', 'success');
+    setLastError(null); // Clear error when API key is updated
+  };
+
+  const handleRetry = () => {
+    if (chatMessages.length > 0) {
+      const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user');
+      if (lastUserMessage) {
+        setQuestion(lastUserMessage.content);
+        // Auto-submit after a brief delay
+        setTimeout(() => {
+          handleAskQuestion();
+        }, 100);
+      }
+    }
   };
 
   return (
@@ -265,6 +291,16 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
         {/* Chat Tab */}
         {activeTab === 'chat' && (
           <div className="space-y-4">
+            {/* Model Switcher */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">AI Model:</span>
+              <ModelSwitcher
+                currentModel={currentModel}
+                onModelChange={handleModelChange}
+                showInHeader={true}
+              />
+            </div>
+
             {/* Chat Messages */}
             <div className="bg-indigo-950/30 rounded-lg border border-indigo-500/20 h-96 overflow-y-auto p-4 space-y-4">
               {chatMessages.length === 0 ? (
@@ -316,6 +352,22 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
                       </div>
                     </div>
                   ))}
+
+                  {/* Error Action Panel */}
+                  {lastError && !loadingChat && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%]">
+                        <ErrorActionPanel
+                          errorType={lastError.type}
+                          errorMessage={lastError.message}
+                          currentModel={currentModel}
+                          onModelChange={handleModelChange}
+                          onApiKeyUpdated={handleApiKeyUpdated}
+                          onRetry={handleRetry}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {loadingChat && (
                     <div className="flex justify-start">
