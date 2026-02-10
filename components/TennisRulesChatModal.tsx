@@ -120,7 +120,8 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       // Call Edge Function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const apiKey = getStoredApiKey();
-      const model = getStoredModel();
+      // Use currentModel from hook (already initialized with getStoredModel())
+      const model = currentModel;
 
       console.log('[Tennis Rules] Preparing request:', {
         language,
