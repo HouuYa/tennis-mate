@@ -126,45 +126,56 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        const errorMsg = data.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMsg);
+        const errorType = data.errorType || 'UNKNOWN_ERROR';
+        throw new Error(`${errorType}: ${data.error || 'Unknown error'}`);
       }
 
-      if (data.success) {
-        const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: data.answer || 'No answer generated.',
-          timestamp: new Date(),
-          sources: data.matches?.slice(0, 3).map((m: { title: string; source_file: string; similarity: number }) => ({
-            title: m.title,
-            source_file: m.source_file,
-            similarity: m.similarity,
-          })),
-        };
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.answer || 'No answer generated.',
+        timestamp: new Date(),
+        sources: data.matches?.slice(0, 3).map((m: { title: string; source_file: string; similarity: number }) => ({
+          title: m.title,
+          source_file: m.source_file,
+          similarity: m.similarity,
+        })),
+      };
 
-        setChatMessages((prev) => [...prev, assistantMessage]);
-      } else {
-        throw new Error(data.error || 'Unknown error');
-      }
+      setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
+      // Log detailed error for debugging (secure logs only)
       console.error('Chat error:', error);
 
       const errorText = error instanceof Error ? error.message : 'Unknown error';
+      const isGeminiError = errorText.includes('GEMINI_API_ERROR');
+      const isInvalidKey = errorText.includes('API_KEY_INVALID') || errorText.includes('401');
+      const isQuotaError = errorText.includes('429') || errorText.includes('quota');
 
-      // Show detailed error in toast
-      if (errorText.includes('API_KEY_INVALID') || errorText.includes('401')) {
-        showToast('Invalid Gemini API key. Please check your settings.', 'error');
-      } else if (errorText.includes('429') || errorText.includes('quota')) {
-        showToast('API quota exceeded. Please check your Gemini API key.', 'error');
+      // Show user-friendly error messages (no sensitive data)
+      let userMessage: string;
+      let toastMessage: string;
+
+      if (isInvalidKey) {
+        toastMessage = 'Invalid Gemini API key. Please check your settings.';
+        userMessage = '❌ Invalid API Key\n\nPlease check:\n1. Your Gemini API key is correct\n2. The key is enabled in Google AI Studio\n3. Update it in Settings if needed';
+      } else if (isQuotaError) {
+        toastMessage = 'API quota exceeded. Please check your Gemini API key.';
+        userMessage = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
+      } else if (isGeminiError) {
+        toastMessage = 'Failed to process your request. Please try again.';
+        userMessage = '❌ Request Failed\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable';
       } else {
-        showToast(`Failed to get answer: ${errorText}`, 'error');
+        toastMessage = 'An error occurred. Please try again.';
+        userMessage = '❌ Error\n\nSomething went wrong. Please check your connection and try again.';
       }
+
+      showToast(toastMessage, 'error');
 
       const errorMessage: ChatMessage = {
         id: `assistant-error-${Date.now()}`,
         role: 'assistant',
-        content: `❌ Error: ${errorText}\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable`,
+        content: userMessage,
         timestamp: new Date(),
       };
 

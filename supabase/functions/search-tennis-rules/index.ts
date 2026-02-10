@@ -72,6 +72,22 @@ interface TennisRule {
 }
 
 // ============================================================
+// Helper Functions
+// ============================================================
+
+function sanitizeErrorMessage(message: string): string {
+  // Remove potential API keys (AIza... pattern)
+  let sanitized = message.replace(/AIza[0-9A-Za-z_-]{35}/g, '[API_KEY_REDACTED]');
+
+  // Remove URLs that might contain sensitive query parameters
+  sanitized = sanitized.replace(/https?:\/\/[^\s]+\?[^\s]*/g, (url) => {
+    return url.split('?')[0] + '?[PARAMS_REDACTED]';
+  });
+
+  return sanitized;
+}
+
+// ============================================================
 // Gemini API Functions
 // ============================================================
 
@@ -79,12 +95,13 @@ async function generateEmbedding(
   text: string,
   apiKey: string
 ): Promise<number[]> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent`;
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
     },
     body: JSON.stringify({
       model: 'models/gemini-embedding-001',
@@ -98,8 +115,8 @@ async function generateEmbedding(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('Gemini Embedding API error:', response.status, error);
-    throw new Error(`Gemini API error (${response.status}): ${error}`);
+    console.error('Gemini Embedding API error:', response.status);
+    throw new Error(`Gemini API error (${response.status}): ${sanitizeErrorMessage(error)}`);
   }
 
   const data = await response.json();
@@ -117,7 +134,7 @@ async function generateAnswer(
   model?: string
 ): Promise<string> {
   const modelId = model || DEFAULT_MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
 
   const prompt = language === 'ko'
     ? `당신은 테니스 규칙 전문가입니다. 아래 제공된 공식 테니스 규칙 문맥을 기반으로 질문에 답변해 주세요.
@@ -155,6 +172,7 @@ Answer:`;
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
     },
     body: JSON.stringify({
       contents: [
@@ -173,8 +191,8 @@ Answer:`;
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('Gemini Generate API error:', response.status, error);
-    throw new Error(`Gemini API error (${response.status}): ${error}`);
+    console.error('Gemini Generate API error:', response.status);
+    throw new Error(`Gemini API error (${response.status}): ${sanitizeErrorMessage(error)}`);
   }
 
   const data = await response.json();
@@ -370,16 +388,22 @@ serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   } catch (error) {
-    console.error('Error in search-tennis-rules:', error);
+    console.error('Error in search-tennis-rules:', error instanceof Error ? error.message : String(error));
 
-    // Extract more detailed error information
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const isGeminiError = errorMessage.includes('Gemini API error');
+    // Extract and sanitize error information
+    const rawErrorMessage = error instanceof Error ? error.message : String(error);
+    const sanitizedError = sanitizeErrorMessage(rawErrorMessage);
+    const isGeminiError = sanitizedError.includes('Gemini API error');
+
+    // Return generic error message to client, keep details in logs
+    const clientErrorMessage = isGeminiError
+      ? 'Failed to process request with Gemini API. Please check your API key and try again.'
+      : 'An internal server error occurred. Please try again later.';
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
+        error: clientErrorMessage,
         errorType: isGeminiError ? 'GEMINI_API_ERROR' : 'SERVER_ERROR',
       } as SearchResponse & { errorType?: string }),
       {

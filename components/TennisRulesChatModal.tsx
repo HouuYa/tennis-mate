@@ -94,61 +94,60 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        const errorMsg = data.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMsg);
+        const errorType = data.errorType || 'UNKNOWN_ERROR';
+        throw new Error(`${errorType}: ${data.error || 'Unknown error'}`);
       }
 
-      if (data.success) {
-        const assistantMessage: ChatMessage = {
-          id: uuidv4(),
-          role: 'assistant',
-          content: data.answer || 'No answer generated.',
-          timestamp: new Date(),
-          sources: data.matches?.slice(0, 3).map((m: { title: string; source_file: string; similarity: number }) => ({
-            title: m.title,
-            source_file: m.source_file,
-            similarity: m.similarity,
-          })),
-        };
+      const assistantMessage: ChatMessage = {
+        id: uuidv4(),
+        role: 'assistant',
+        content: data.answer || 'No answer generated.',
+        timestamp: new Date(),
+        sources: data.matches?.slice(0, 3).map((m: { title: string; source_file: string; similarity: number }) => ({
+          title: m.title,
+          source_file: m.source_file,
+          similarity: m.similarity,
+        })),
+      };
 
-        setChatMessages((prev) => [...prev, assistantMessage]);
-      } else {
-        throw new Error(data.error || 'Unknown error');
-      }
+      setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (error: unknown) {
+      // Log detailed error for debugging (secure logs only)
       console.error('Chat error:', error);
 
       const errorText = error instanceof Error ? error.message : 'Unknown error';
-      let errorContent = 'Sorry, I encountered an error. Please try again.';
+      const isGeminiError = errorText.includes('GEMINI_API_ERROR');
+      const isQuotaError = API_ERROR_KEYWORDS.QUOTA_EXCEEDED.some(keyword =>
+        errorText.includes(keyword)
+      );
+      const isInvalidKey = API_ERROR_KEYWORDS.INVALID_KEY.some(keyword =>
+        errorText.includes(keyword)
+      );
 
-      // Check if it's a quota error
-      if (error instanceof Error) {
-        const isQuotaError = API_ERROR_KEYWORDS.QUOTA_EXCEEDED.some(keyword =>
-          error.message.includes(keyword)
-        );
+      // Show user-friendly error messages (no sensitive data)
+      let userMessage: string;
+      let toastMessage: string;
 
-        const isInvalidKey = API_ERROR_KEYWORDS.INVALID_KEY.some(keyword =>
-          error.message.includes(keyword)
-        );
-
-        if (isQuotaError) {
-          errorContent = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
-          showToast('API quota exceeded. Please create a new key.', 'error');
-        } else if (isInvalidKey) {
-          errorContent = `❌ Invalid API Key\n\n${errorText}\n\nPlease check:\n1. Your Gemini API key is correct\n2. The key is enabled in Google AI Studio\n3. Update it in Settings if needed`;
-          showToast('Invalid API key. Please check your settings.', 'error');
-        } else {
-          errorContent = `❌ Error: ${errorText}\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable`;
-          showToast(`Failed to get answer: ${errorText}`, 'error');
-        }
+      if (isQuotaError) {
+        toastMessage = 'API quota exceeded. Please create a new key.';
+        userMessage = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
+      } else if (isInvalidKey) {
+        toastMessage = 'Invalid API key. Please check your settings.';
+        userMessage = '❌ Invalid API Key\n\nPlease check:\n1. Your Gemini API key is correct\n2. The key is enabled in Google AI Studio\n3. Update it in Settings if needed';
+      } else if (isGeminiError) {
+        toastMessage = 'Failed to process your request. Please try again.';
+        userMessage = '❌ Request Failed\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable';
       } else {
-        showToast('Failed to get answer. Please try again.', 'error');
+        toastMessage = 'An error occurred. Please try again.';
+        userMessage = '❌ Error\n\nSomething went wrong. Please check your connection and try again.';
       }
+
+      showToast(toastMessage, 'error');
 
       const errorMessage: ChatMessage = {
         id: uuidv4(),
         role: 'assistant',
-        content: errorContent,
+        content: userMessage,
         timestamp: new Date(),
       };
 
