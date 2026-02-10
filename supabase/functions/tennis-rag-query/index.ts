@@ -19,6 +19,7 @@ interface RequestBody {
   match_count?: number;
   match_threshold?: number;
   gemini_api_key?: string;
+  model?: string;  // User's selected Gemini model
 }
 
 interface SearchResult {
@@ -57,11 +58,15 @@ serve(async (req) => {
       question,
       match_count = 5,
       match_threshold = 0.3,
-      gemini_api_key: client_api_key
+      gemini_api_key: client_api_key,
+      model: client_model
     }: RequestBody = await req.json();
 
     // API key priority: client-provided -> server environment variable
     const gemini_api_key = client_api_key || Deno.env.get("GEMINI_API_KEY");
+
+    // Model priority: client-provided -> safe default
+    const model = client_model || 'gemini-1.5-flash-latest';
 
     if (!question?.trim()) {
       return new Response(
@@ -202,7 +207,7 @@ Answer:`
     };
 
     const generateResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
         headers: {

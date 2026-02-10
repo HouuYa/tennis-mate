@@ -134,6 +134,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
           body: JSON.stringify({
             question: question.trim(),
             gemini_api_key: apiKey,
+            model: model,
             match_count: 5,
             match_threshold: 0.3,
           }),
