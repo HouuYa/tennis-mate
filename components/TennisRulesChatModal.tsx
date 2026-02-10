@@ -253,51 +253,61 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     <div onClick={onClose} className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
       <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4">
         {/* Header */}
-        <div className="p-6 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
-              <BookOpen size={24} className="text-indigo-400" />
-              Ask Tennis Questions
-            </h2>
+        <div className="p-4 sm:p-6 border-b border-slate-700 flex-shrink-0">
+          {/* Top Row: Title and Close */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <BookOpen size={20} className="text-indigo-400" />
+              <h2 className="text-lg sm:text-xl font-bold text-indigo-300">
+                Ask Tennis Questions
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-slate-500 hover:text-white transition-colors p-1"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Bottom Row: Status, Model, and Clear */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             {/* Rule Data Status Indicator */}
             {ruleDataStatus.checking ? (
               <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                <Loader size={14} className="animate-spin" />
-                <span>Checking data...</span>
+                <Loader size={12} className="animate-spin" />
+                <span>Checking...</span>
               </div>
             ) : ruleDataStatus.loaded ? (
               <div className="flex items-center gap-1.5 text-xs text-green-400 bg-green-950/30 px-2 py-1 rounded-full border border-green-500/20">
-                <CheckCircle2 size={14} />
-                <span>{ruleDataStatus.count.toLocaleString()} rules ready</span>
+                <CheckCircle2 size={12} />
+                <span>{ruleDataStatus.count} rules</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-xs text-amber-400 bg-amber-950/30 px-2 py-1 rounded-full border border-amber-500/20">
-                <AlertCircle size={14} />
-                <span>No rules data</span>
+                <AlertCircle size={12} />
+                <span>No rules</span>
               </div>
             )}
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Model Switcher */}
-            <ModelSwitcher
-              currentModel={currentModel}
-              onModelChange={handleModelChange}
-              showInHeader={true}
-            />
-            {chatMessages.length > 0 && (
-              <button
-                onClick={clearChat}
-                className="text-slate-500 hover:text-white text-sm px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="text-slate-500 hover:text-white transition-colors"
-            >
-              <X size={24} />
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* Model Switcher */}
+              <ModelSwitcher
+                currentModel={currentModel}
+                onModelChange={handleModelChange}
+                showInHeader={true}
+              />
+              {/* Clear Button */}
+              {chatMessages.length > 0 && (
+                <button
+                  onClick={clearChat}
+                  className="text-slate-500 hover:text-white text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors whitespace-nowrap"
+                  title="Clear chat"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

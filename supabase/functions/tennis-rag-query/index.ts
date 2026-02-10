@@ -247,16 +247,28 @@ Answer:`
       }
     );
 
-    let answer = language === 'ko' ? "답변 생성 실패" : "Answer generation failed";
-    if (generateResponse.ok) {
-      const generateData = await generateResponse.json();
-      answer = generateData?.candidates?.[0]?.content?.parts?.[0]?.text ||
-               (language === 'ko' ? "답변을 생성할 수 없습니다." : "Unable to generate answer.");
-    } else {
+    if (!generateResponse.ok) {
       const errorText = await generateResponse.text();
       const sanitizedError = sanitizeErrorMessage(errorText);
       console.error("[RAG] Answer generation error:", sanitizedError);
+
+      // Return error to frontend with proper status code
+      return new Response(
+        JSON.stringify({
+          error: "GEMINI_API_ERROR",
+          details: sanitizedError,
+          status: generateResponse.status
+        }),
+        {
+          status: generateResponse.status, // Pass through the error status (429, 401, etc.)
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
     }
+
+    const generateData = await generateResponse.json();
+    const answer = generateData?.candidates?.[0]?.content?.parts?.[0]?.text ||
+                   (language === 'ko' ? "답변을 생성할 수 없습니다." : "Unable to generate answer.");
 
     // 6. Return response
     return new Response(
