@@ -48,7 +48,7 @@ Tennis Mate의 **AI Coach**에서 테니스 규칙을 질문하고 전문가 답
 
 ### ✨ 특징
 
-- ✅ **모바일 최적화** - 짧고 명확한 답변 (300자 이내)
+- ✅ **모바일 최적화** - 짧고 명확하며 완전한 답변
 - ✅ **인용 출처** - 답변에 [1], [2], [3] 번호로 출처 명시
 - ✅ **다국어 지원** - 한글 질문 → 한글 답변, English → English
 - ✅ **전문가 톤** - 간결하고 명확한 전문가 답변
@@ -235,26 +235,26 @@ LIMIT 5;
 
 #### 프롬프트 수정
 
-프롬프트는 `supabase/functions/tennis-rag-query/index.ts` 파일의 210-240줄에 있습니다.
+프롬프트는 `supabase/functions/tennis-rag-query/index.ts` 파일의 181-216줄에 있습니다.
 
 ```typescript
 const prompts = {
   ko: `당신은 테니스 규칙 전문가입니다...
 
   ## 답변 지침:
-  - **구조**: 핵심 답변 (2-3문장) → 필요시 상세 설명
+  - **구조**: 핵심 답변 (2-3문장) 먼저 제시 → 필요시 상세 설명 추가
   - **인용**: 규칙 참조 시 반드시 [1], [2], [3] 번호 사용
   - **톤**: 전문가답게 간결하고 명확하게
-  - **길이**: 모바일 최적화 - 최대 300자 이내
+  - **완성도**: 답변이 중간에 끊기지 않도록 문장을 완성할 것
   `,
 
   en: `You are a tennis rules expert...
 
   ## Instructions:
-  - **Structure**: Core answer (2-3 sentences) → Detailed if needed
+  - **Structure**: Core answer (2-3 sentences) first → Detailed explanation if needed
   - **Citations**: Always use [1], [2], [3] when referencing
   - **Tone**: Professional, concise, and clear
-  - **Length**: Mobile-optimized - max 350 tokens
+  - **Completeness**: Ensure answer is complete and not cut off mid-sentence
   `
 }
 ```
@@ -304,8 +304,8 @@ SELECT COUNT(*) FROM tennis_rules;
 
 **현재 상태**: ✅ **해결됨**
 
-새 버전은 모바일 최적화되어 있습니다:
-- 최대 300자 (한글) / 350 tokens (영어)
+새 버전은 최적화되어 있습니다:
+- 답변이 중간에 끊기지 않도록 완성도 보장
 - 핵심 답변 우선 제시
 - 명확한 구조
 

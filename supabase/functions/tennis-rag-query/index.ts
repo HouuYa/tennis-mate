@@ -188,10 +188,10 @@ ${context}
 ${question}
 
 ## 답변 지침:
-- **구조**: 핵심 답변 (2-3문장) → 필요시 상세 설명
+- **구조**: 핵심 답변 (2-3문장) 먼저 제시 → 필요시 상세 설명 추가
 - **인용**: 규칙 참조 시 반드시 [1], [2], [3] 번호 사용
 - **톤**: 전문가답게 간결하고 명확하게
-- **길이**: 모바일 최적화 - 최대 300자 이내
+- **완성도**: 답변이 중간에 끊기지 않도록 문장을 완성할 것
 - **언어**: 한국어로 답변
 - 관련 규칙이 없으면 "관련 규칙을 찾을 수 없습니다"라고 명시
 
@@ -205,10 +205,10 @@ ${context}
 ${question}
 
 ## Instructions:
-- **Structure**: Core answer (2-3 sentences) → Detailed explanation if needed
+- **Structure**: Core answer (2-3 sentences) first → Detailed explanation if needed
 - **Citations**: Always use [1], [2], [3] numbers when referencing rules
 - **Tone**: Professional, concise, and clear
-- **Length**: Mobile-optimized - max 350 tokens
+- **Completeness**: Ensure answer is complete and not cut off mid-sentence
 - **Language**: Answer in English
 - If no relevant rules found, state "No relevant rules found"
 
@@ -229,7 +229,7 @@ Answer:`
           }],
           generationConfig: {
             temperature: 0.3, // More consistent answers
-            maxOutputTokens: 400, // Mobile-friendly length
+            maxOutputTokens: 1000, // Sufficient length to avoid truncation
             topP: 0.95,
             topK: 40
           }

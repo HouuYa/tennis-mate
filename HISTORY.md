@@ -9,7 +9,7 @@ This document serves as the master record for releases, daily summaries, and bug
 ### 2026-02-10 (RAG Mobile Optimization & Production Release)
 - **tennis-rag-query Function**: Replaced `search-tennis-rules` with production-ready `tennis-rag-query`
 - **Dynamic Model Selection**: Edge function now accepts user-selected Gemini model (fixes 404 model error)
-- **Mobile-Optimized Answers**: Limited answer length to 400 tokens (~300 characters) for mobile viewing
+- **Answer Completeness**: Increased token limit to 1000 and updated prompts to prevent mid-sentence truncation
 - **Citation System**: Implemented [1], [2], [3] citation numbers in answers matching source list
 - **Language Auto-Detection**: Automatic Korean/English detection from question text
 - **Bilingual Prompts**: Separate optimized prompts for Korean and English responses
@@ -18,7 +18,9 @@ This document serves as the master record for releases, daily summaries, and bug
 - **Frontend Updates**: Pass user-selected model from frontend to edge function
 - **Documentation Overhaul**: Updated `TENNIS_RAG_INTEGRATION_PLAN.md` and `RAG_SETUP_GUIDE_KO.md` with model selection
 - **Code Cleanup**: Removed unused `search-tennis-rules` folder
-- **Bug Fix**: Fixed hardcoded `gemini-2.0-flash-exp` model (deprecated) → dynamic model selection
+- **Bug Fixes**:
+  - Fixed hardcoded `gemini-2.0-flash-exp` model (deprecated) → dynamic model selection
+  - Fixed answer truncation by increasing maxOutputTokens (400 → 1000) and removing strict length limits
 
 ### 2026-01-14 (AI Coach UI Redesign)
 - **Collapsible AI Coach**: AI Coach UI를 Advanced Analytics처럼 작고 접을 수 있는 디자인으로 변경
