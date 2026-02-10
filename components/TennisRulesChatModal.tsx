@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-<parameter name="X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getStoredApiKey, getStoredModel } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
