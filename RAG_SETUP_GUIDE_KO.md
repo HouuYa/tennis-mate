@@ -217,7 +217,22 @@ FROM tennis_rules
 LIMIT 5;
 ```
 
-### 🔧 프롬프트 수정
+### 🔧 프롬프트 및 모델 수정
+
+#### 모델 선택
+
+사용자가 API 키 입력 시 선택한 모델이 자동으로 사용됩니다.
+
+**사용 가능한 모델** (`services/geminiService.ts`):
+- `gemini-2.5-flash` (권장)
+- `gemini-2.5-flash-lite` (경제적)
+- `gemini-2.5-pro` (가장 강력)
+
+**Edge function은 다음 우선순위로 모델 선택**:
+1. 사용자가 선택한 모델 (프론트엔드에서 전달)
+2. Fallback: `gemini-1.5-flash-latest` (모델이 없을 경우)
+
+#### 프롬프트 수정
 
 프롬프트는 `supabase/functions/tennis-rag-query/index.ts` 파일의 210-240줄에 있습니다.
 

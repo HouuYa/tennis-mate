@@ -262,6 +262,7 @@ POST /functions/v1/tennis-rag-query
 {
   question: string;              // User's question
   gemini_api_key?: string;       // Client API key (optional if server has)
+  model?: string;                // Gemini model ID (e.g., 'gemini-2.5-flash')
   match_count?: number;          // Default: 5
   match_threshold?: number;      // Default: 0.3
 }
