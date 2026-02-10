@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader, BookOpen } from 'lucide-react';
+import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getStoredApiKey, getStoredModel } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { API_ERROR_KEYWORDS } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../services/supabaseClient';
 
 interface ChatMessageSource {
   rule_id: string;
@@ -31,6 +32,11 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ruleDataStatus, setRuleDataStatus] = useState<{ loaded: boolean; count: number; checking: boolean }>({
+    loaded: false,
+    count: 0,
+    checking: true,
+  });
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
@@ -41,6 +47,30 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     { text: 'How does the scoring system work?', emoji: '📊' },
     { text: '복식 리시버 순서는?', emoji: '👥' },
   ];
+
+  // Check rule data availability on mount
+  useEffect(() => {
+    const checkRuleData = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('tennis_rules')
+          .select('*', { count: 'exact', head: true });
+
+        if (error) {
+          console.error('Error checking tennis rules:', error);
+          setRuleDataStatus({ loaded: false, count: 0, checking: false });
+        } else {
+          const ruleCount = count || 0;
+          setRuleDataStatus({ loaded: ruleCount > 0, count: ruleCount, checking: false });
+        }
+      } catch (error) {
+        console.error('Failed to check rule data:', error);
+        setRuleDataStatus({ loaded: false, count: 0, checking: false });
+      }
+    };
+
+    checkRuleData();
+  }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -74,6 +104,15 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       // Call Edge Function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const apiKey = getStoredApiKey();
+      const model = getStoredModel();
+
+      console.log('[Tennis Rules] Preparing request:', {
+        language,
+        model,
+        hasApiKey: !!apiKey,
+        supabaseUrl,
+        questionLength: question.trim().length,
+      });
 
       if (!supabaseUrl) {
         throw new Error('Supabase URL not configured');
@@ -83,8 +122,10 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         throw new Error('API key not found');
       }
 
+      console.log('[Tennis Rules] Calling edge function...');
+
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/search-tennis-rules`,
+        `${supabaseUrl}/functions/v1/tennis-rag-query`,
         {
           method: 'POST',
           headers: {
@@ -92,20 +133,28 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
           },
           body: JSON.stringify({
             question: question.trim(),
-            geminiApiKey: apiKey,
-            language,
-            model: getStoredModel(),
-            includeStats: true,
-            generateAnswer: true,
+            gemini_api_key: apiKey,
+            model: model,
+            match_count: 5,
+            match_threshold: 0.3,
           }),
         }
       );
 
+      console.log('[Tennis Rules] Response status:', response.status, response.statusText);
+
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
-        const errorType = data.errorType || 'UNKNOWN_ERROR';
-        throw new Error(`${errorType}: ${data.error || 'Unknown error'}`);
+      console.log('[Tennis Rules] Response data:', {
+        hasAnswer: !!data.answer,
+        sourceCount: data.sources?.length || 0,
+        error: data.error,
+      });
+
+      if (!response.ok) {
+        const errorMsg = data.error || 'Unknown error';
+        console.error('[Tennis Rules] Request failed:', { errorMsg, status: response.status });
+        throw new Error(errorMsg);
       }
 
       const assistantMessage: ChatMessage = {
@@ -113,7 +162,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         role: 'assistant',
         content: data.answer || 'No answer generated.',
         timestamp: new Date(),
-        sources: data.matches?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
+        sources: data.sources?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
           rule_id: m.rule_id,
           source_file: m.source_file,
           similarity: m.similarity,
@@ -184,10 +233,29 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4">
         {/* Header */}
         <div className="p-6 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
-          <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
-            <BookOpen size={24} className="text-indigo-400" />
-            Ask Tennis Questions
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
+              <BookOpen size={24} className="text-indigo-400" />
+              Ask Tennis Questions
+            </h2>
+            {/* Rule Data Status Indicator */}
+            {ruleDataStatus.checking ? (
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <Loader size={14} className="animate-spin" />
+                <span>Checking data...</span>
+              </div>
+            ) : ruleDataStatus.loaded ? (
+              <div className="flex items-center gap-1.5 text-xs text-green-400 bg-green-950/30 px-2 py-1 rounded-full border border-green-500/20">
+                <CheckCircle2 size={14} />
+                <span>{ruleDataStatus.count.toLocaleString()} rules ready</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-amber-400 bg-amber-950/30 px-2 py-1 rounded-full border border-amber-500/20">
+                <AlertCircle size={14} />
+                <span>No rules data</span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {chatMessages.length > 0 && (
               <button
