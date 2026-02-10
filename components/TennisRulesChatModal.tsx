@@ -91,11 +91,12 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        const errorMsg = data.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMsg);
+      }
 
       if (data.success) {
         const assistantMessage: ChatMessage = {
@@ -117,6 +118,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     } catch (error: unknown) {
       console.error('Chat error:', error);
 
+      const errorText = error instanceof Error ? error.message : 'Unknown error';
       let errorContent = 'Sorry, I encountered an error. Please try again.';
 
       // Check if it's a quota error
@@ -125,11 +127,19 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
           error.message.includes(keyword)
         );
 
+        const isInvalidKey = API_ERROR_KEYWORDS.INVALID_KEY.some(keyword =>
+          error.message.includes(keyword)
+        );
+
         if (isQuotaError) {
           errorContent = '⚠️ API Quota Exceeded\n\nYour Gemini API key has reached its usage limit.\n\nPlease:\n1. Visit https://aistudio.google.com/app/apikey\n2. Create a new API key\n3. Update it in Settings\n\nFree tier: 15 requests/min, 1500/day';
           showToast('API quota exceeded. Please create a new key.', 'error');
+        } else if (isInvalidKey) {
+          errorContent = `❌ Invalid API Key\n\n${errorText}\n\nPlease check:\n1. Your Gemini API key is correct\n2. The key is enabled in Google AI Studio\n3. Update it in Settings if needed`;
+          showToast('Invalid API key. Please check your settings.', 'error');
         } else {
-          showToast('Failed to get answer. Please try again.', 'error');
+          errorContent = `❌ Error: ${errorText}\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable`;
+          showToast(`Failed to get answer: ${errorText}`, 'error');
         }
       } else {
         showToast('Failed to get answer. Please try again.', 'error');

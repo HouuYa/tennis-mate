@@ -44,6 +44,8 @@ export const testApiKey = async (apiKey: string): Promise<{ valid: boolean; erro
       return { valid: false, error: "No response from API" };
     }
   } catch (error: unknown) {
+    console.error('API key test error:', error);
+
     // Handle quota exceeded error (429)
     if (error instanceof Error && errorContainsKeywords(error.message, API_ERROR_KEYWORDS.QUOTA_EXCEEDED)) {
       return {
@@ -52,9 +54,19 @@ export const testApiKey = async (apiKey: string): Promise<{ valid: boolean; erro
       };
     }
 
+    // Handle invalid API key error
+    if (error instanceof Error && errorContainsKeywords(error.message, API_ERROR_KEYWORDS.INVALID_KEY)) {
+      return {
+        valid: false,
+        error: "❌ Invalid API key. Please check your Gemini API key."
+      };
+    }
+
+    // Provide detailed error message
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return {
       valid: false,
-      error: error instanceof Error ? error.message : "Invalid API key or connection error"
+      error: `API key test failed: ${errorMessage}`
     };
   }
 };

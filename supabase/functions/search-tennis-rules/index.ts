@@ -83,10 +83,14 @@ async function generateEmbedding(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+    console.error('Gemini Embedding API error:', response.status, error);
+    throw new Error(`Gemini API error (${response.status}): ${error}`);
   }
 
   const data = await response.json();
+  if (!data.embedding?.values) {
+    throw new Error('Invalid embedding response from Gemini API');
+  }
   return data.embedding.values;
 }
 
@@ -135,10 +139,14 @@ Answer:`;
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+    console.error('Gemini Generate API error:', response.status, error);
+    throw new Error(`Gemini API error (${response.status}): ${error}`);
   }
 
   const data = await response.json();
+  if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+    throw new Error('Invalid generate response from Gemini API');
+  }
   return data.candidates[0].content.parts[0].text;
 }
 
@@ -305,15 +313,20 @@ serve(async (req: Request) => {
       },
     });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in search-tennis-rules:', error);
+
+    // Extract more detailed error information
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isGeminiError = errorMessage.includes('Gemini API error');
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Internal server error',
-      } as SearchResponse),
+        error: errorMessage,
+        errorType: isGeminiError ? 'GEMINI_API_ERROR' : 'SERVER_ERROR',
+      } as SearchResponse & { errorType?: string }),
       {
-        status: 500,
+        status: isGeminiError ? 400 : 500,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',

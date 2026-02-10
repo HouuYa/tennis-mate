@@ -123,11 +123,12 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        const errorMsg = data.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMsg);
+      }
 
       if (data.success) {
         const assistantMessage: ChatMessage = {
@@ -148,12 +149,22 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
       }
     } catch (error) {
       console.error('Chat error:', error);
-      showToast('Failed to get answer. Please try again.', 'error');
+
+      const errorText = error instanceof Error ? error.message : 'Unknown error';
+
+      // Show detailed error in toast
+      if (errorText.includes('API_KEY_INVALID') || errorText.includes('401')) {
+        showToast('Invalid Gemini API key. Please check your settings.', 'error');
+      } else if (errorText.includes('429') || errorText.includes('quota')) {
+        showToast('API quota exceeded. Please check your Gemini API key.', 'error');
+      } else {
+        showToast(`Failed to get answer: ${errorText}`, 'error');
+      }
 
       const errorMessage: ChatMessage = {
         id: `assistant-error-${Date.now()}`,
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: `❌ Error: ${errorText}\n\nPlease check:\n1. Your Gemini API key is valid\n2. The API key has sufficient quota\n3. Your internet connection is stable`,
         timestamp: new Date(),
       };
 
