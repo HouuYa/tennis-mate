@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
-import { getStoredApiKey, getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
+import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useTennisChat } from '../hooks/useTennisChat';
 import { API_ERROR_KEYWORDS } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../services/supabaseClient';
@@ -31,7 +32,20 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
   onClose,
 }) => {
   const { showToast } = useToast();
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // Use custom hook for shared chat logic
+  const {
+    chatMessages,
+    setChatMessages,
+    currentModel,
+    lastError,
+    setLastError,
+    handleModelChange,
+    handleApiKeyUpdated,
+    handleRetry: hookHandleRetry,
+    clearChat,
+  } = useTennisChat();
+
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [ruleDataStatus, setRuleDataStatus] = useState<{ loaded: boolean; count: number; checking: boolean }>({
@@ -39,8 +53,6 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     count: 0,
     checking: true,
   });
-  const [currentModel, setCurrentModel] = useState<GeminiModelId>(getStoredModel());
-  const [lastError, setLastError] = useState<{ type: 'quota' | 'invalid_key' | 'network' | 'generic'; message: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
@@ -219,34 +231,20 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     }
   };
 
-  const clearChat = () => {
-    setChatMessages([]);
-    showToast('Chat history cleared', 'success');
-  };
-
-  const handleModelChange = (newModel: GeminiModelId) => {
-    setCurrentModel(newModel);
-    saveModel(newModel);
-    showToast(`Switched to ${newModel}`, 'success');
-    setLastError(null); // Clear error when model changes
-  };
-
-  const handleApiKeyUpdated = () => {
-    showToast('API key updated successfully', 'success');
-    setLastError(null); // Clear error when API key is updated
-  };
-
+  // Use hook's handleRetry with component-specific retry logic
   const handleRetry = () => {
-    if (chatMessages.length > 0) {
-      const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user');
-      if (lastUserMessage) {
-        setQuestion(lastUserMessage.content);
-        // Auto-submit after a brief delay
-        setTimeout(() => {
-          handleAskQuestion();
-        }, 100);
+    hookHandleRetry(() => {
+      if (chatMessages.length > 0) {
+        const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user');
+        if (lastUserMessage) {
+          setQuestion(lastUserMessage.content);
+          // Auto-submit after a brief delay
+          setTimeout(() => {
+            handleAskQuestion();
+          }, 100);
+        }
       }
-    }
+    });
   };
 
   return (

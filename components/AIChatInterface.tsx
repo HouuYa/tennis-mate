@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { generateAIAnalysis, getStoredApiKey, getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
+import { generateAIAnalysis, getStoredApiKey } from '../services/geminiService';
+import { useTennisChat } from '../hooks/useTennisChat';
 import { Sparkles, Send, Loader, BookOpen, BarChart3, X } from 'lucide-react';
 import type { Player, Match } from '../types';
 import { ErrorActionPanel } from './ErrorActionPanel';
@@ -36,15 +37,25 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
   const { mode } = useApp();
   const { showToast } = useToast();
 
+  // Use custom hook for shared chat logic
+  const {
+    chatMessages,
+    setChatMessages,
+    currentModel,
+    lastError,
+    setLastError,
+    handleModelChange,
+    handleApiKeyUpdated,
+    handleRetry: hookHandleRetry,
+    clearChat,
+  } = useTennisChat();
+
   const [activeTab, setActiveTab] = useState<TabType>('stats');
   const [statsAnalysis, setStatsAnalysis] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
-  const [currentModel, setCurrentModel] = useState<GeminiModelId>(getStoredModel());
-  const [lastError, setLastError] = useState<{ type: 'quota' | 'invalid_key' | 'network' | 'generic'; message: string } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -193,34 +204,20 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
     }
   };
 
-  const clearChat = () => {
-    setChatMessages([]);
-    showToast('Chat history cleared', 'success');
-  };
-
-  const handleModelChange = (newModel: GeminiModelId) => {
-    setCurrentModel(newModel);
-    saveModel(newModel);
-    showToast(`Switched to ${newModel}`, 'success');
-    setLastError(null); // Clear error when model changes
-  };
-
-  const handleApiKeyUpdated = () => {
-    showToast('API key updated successfully', 'success');
-    setLastError(null); // Clear error when API key is updated
-  };
-
+  // Use hook's handleRetry with component-specific retry logic
   const handleRetry = () => {
-    if (chatMessages.length > 0) {
-      const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user');
-      if (lastUserMessage) {
-        setQuestion(lastUserMessage.content);
-        // Auto-submit after a brief delay
-        setTimeout(() => {
-          handleAskQuestion();
-        }, 100);
+    hookHandleRetry(() => {
+      if (chatMessages.length > 0) {
+        const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user');
+        if (lastUserMessage) {
+          setQuestion(lastUserMessage.content);
+          // Auto-submit after a brief delay
+          setTimeout(() => {
+            handleAskQuestion();
+          }, 100);
+        }
       }
-    }
+    });
   };
 
   return (
