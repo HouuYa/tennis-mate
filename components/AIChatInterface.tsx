@@ -113,7 +113,8 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
       // Call Edge Function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const apiKey = getStoredApiKey();
-      const model = getStoredModel();
+      // Use currentModel from hook (already initialized with getStoredModel())
+      const model = currentModel;
 
       if (!supabaseUrl) {
         throw new Error('Supabase URL not configured');
