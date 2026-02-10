@@ -125,7 +125,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       console.log('[Tennis Rules] Calling edge function...');
 
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/search-tennis-rules`,
+        `${supabaseUrl}/functions/v1/tennis-rag-query`,
         {
           method: 'POST',
           headers: {
