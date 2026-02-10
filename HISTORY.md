@@ -6,6 +6,18 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-02-10 (RAG Mobile Optimization & Production Release)
+- **tennis-rag-query Function**: Replaced `search-tennis-rules` with production-ready `tennis-rag-query`
+- **Mobile-Optimized Answers**: Limited answer length to 400 tokens (~300 characters) for mobile viewing
+- **Citation System**: Implemented [1], [2], [3] citation numbers in answers matching source list
+- **Language Auto-Detection**: Automatic Korean/English detection from question text
+- **Bilingual Prompts**: Separate optimized prompts for Korean and English responses
+- **Professional Tone**: Short, clear, expert-level answers with core → detailed structure
+- **Security Enhancements**: API key in headers (not URL), error message sanitization
+- **Frontend Updates**: Aligned `TennisRulesChatModal.tsx` and `AIChatInterface.tsx` with deployed function
+- **Documentation Overhaul**: Updated `TENNIS_RAG_INTEGRATION_PLAN.md` and `RAG_SETUP_GUIDE_KO.md` with diagrams
+- **Code Cleanup**: Removed unused `search-tennis-rules` folder
+
 ### 2026-01-14 (AI Coach UI Redesign)
 - **Collapsible AI Coach**: AI Coach UI를 Advanced Analytics처럼 작고 접을 수 있는 디자인으로 변경
 - **Modal-Based Features**: Analyze Stats와 Ask Question을 각각 독립적인 모달로 분리

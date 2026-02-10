@@ -48,6 +48,25 @@
 - [x] **Mode Persistence**
     - [x] 페이지 새로고침 시에도 선택한 모드 유지
     - [x] 뒤로가기 시 경고 메시지 표시
+
+## ✅ v1.2.0 - RAG Mobile Optimization (완료 - 2026-02-10)
+- [x] **tennis-rag-query Production Function**
+    - [x] Mobile-optimized answer length (max 400 tokens)
+    - [x] Citation numbers [1], [2], [3] in answer text
+    - [x] Automatic language detection (Korean/English)
+    - [x] Bilingual prompt templates
+    - [x] Professional, concise tone
+    - [x] API key security (headers, error sanitization)
+- [x] **Frontend Alignment**
+    - [x] Updated TennisRulesChatModal.tsx to call tennis-rag-query
+    - [x] Updated AIChatInterface.tsx endpoint
+    - [x] Matched request/response structure with deployed function
+- [x] **Documentation Updates**
+    - [x] TENNIS_RAG_INTEGRATION_PLAN.md with mermaid diagrams
+    - [x] RAG_SETUP_GUIDE_KO.md simplified user guide
+    - [x] HISTORY.md changelog entry
+- [x] **Code Cleanup**
+    - [x] Removed unused search-tennis-rules folder
 - [x] **Korean UI 개선**
     - [x] ModeSelection 페이지에 각 모드별 한국어 설명 추가
     - [x] GitHub 링크 하단 추가
