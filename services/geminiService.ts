@@ -3,6 +3,33 @@ import { Player, Match } from "../types";
 import { AI_INSTRUCTION, API_ERROR_KEYWORDS } from "../constants";
 
 const GEMINI_API_KEY_STORAGE = 'tennis-mate-gemini-api-key';
+const GEMINI_MODEL_STORAGE = 'tennis-mate-gemini-model';
+
+// Available Gemini models for content generation
+export const GEMINI_MODELS = [
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Recommended — fast & capable', recommended: true },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'Cost-efficient, high-throughput' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable, complex reasoning' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Legacy (retiring Mar 2026)', deprecated: true },
+] as const;
+
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+
+export type GeminiModelId = typeof GEMINI_MODELS[number]['id'];
+
+// Get stored model from localStorage
+export const getStoredModel = (): GeminiModelId => {
+  const stored = localStorage.getItem(GEMINI_MODEL_STORAGE);
+  if (stored && GEMINI_MODELS.some(m => m.id === stored)) {
+    return stored as GeminiModelId;
+  }
+  return DEFAULT_GEMINI_MODEL;
+};
+
+// Save model to localStorage
+export const saveModel = (model: GeminiModelId): void => {
+  localStorage.setItem(GEMINI_MODEL_STORAGE, model);
+};
 
 // Helper function to check if error message contains any of the keywords
 const errorContainsKeywords = (message: string, keywords: readonly string[]): boolean => {
@@ -32,8 +59,9 @@ export const testApiKey = async (apiKey: string): Promise<{ valid: boolean; erro
 
   try {
     const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+    const model = getStoredModel();
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model,
       contents: 'Hello',
       config: { temperature: 0.1 }
     });
@@ -89,8 +117,9 @@ export const generateAIAnalysis = async (
   };
 
   try {
+    const model = getStoredModel();
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model,
       contents: `Here is the tennis club data: ${JSON.stringify(dataSummary)}`,
       config: {
         systemInstruction: AI_INSTRUCTION,

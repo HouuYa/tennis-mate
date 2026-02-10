@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Check, X, Loader2, Eye, EyeOff, ExternalLink } from 'lucide-react';
-import { getStoredApiKey, saveApiKey, clearApiKey, testApiKey } from '../services/geminiService';
+import { Key, Check, X, Loader2, Eye, EyeOff, ExternalLink, ChevronDown } from 'lucide-react';
+import { getStoredApiKey, saveApiKey, clearApiKey, testApiKey, GEMINI_MODELS, getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 
 interface GeminiApiKeySettingsProps {
   onClose?: () => void;
+  onKeyUpdate?: (hasKey: boolean) => void;
   compact?: boolean; // For inline display in StatsView
 }
 
 export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   onClose,
+  onKeyUpdate,
   compact = false
 }) => {
   const { showToast } = useToast();
@@ -19,6 +21,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showKey, setShowKey] = useState(false);
   const [hasStoredKey, setHasStoredKey] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<GeminiModelId>(getStoredModel());
 
   useEffect(() => {
     const stored = getStoredApiKey();
@@ -48,7 +51,10 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
       showToast('✅ API key is valid!', 'success');
       setErrorMessage('');
       saveApiKey(apiKey.trim());
+      saveModel(selectedModel);
       setHasStoredKey(true);
+      // Notify parent that key is available
+      onKeyUpdate?.(true);
       // Call onClose to refresh parent component
       setTimeout(() => {
         onClose?.();
@@ -66,6 +72,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
     setIsValid(null);
     setErrorMessage('');
     setHasStoredKey(false);
+    onKeyUpdate?.(false);
     showToast('API key removed', 'info');
   };
 
@@ -110,6 +117,21 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
           >
             {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
+        </div>
+
+        <div className="relative">
+          <select
+            value={selectedModel}
+            onChange={(e) => { setSelectedModel(e.target.value as GeminiModelId); saveModel(e.target.value as GeminiModelId); }}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 pr-8 text-white text-xs focus:border-indigo-500 outline-none appearance-none"
+          >
+            {GEMINI_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name} — {m.description}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-2 top-2.5 text-slate-500 pointer-events-none" />
         </div>
 
         <div className="flex gap-2">
@@ -191,6 +213,24 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
             >
               {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
+          </div>
+
+          <div>
+            <label className="block text-sm text-slate-400 mb-1.5">AI Model</label>
+            <div className="relative">
+              <select
+                value={selectedModel}
+                onChange={(e) => { setSelectedModel(e.target.value as GeminiModelId); saveModel(e.target.value as GeminiModelId); }}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 pr-10 text-white text-sm focus:border-indigo-500 outline-none appearance-none"
+              >
+                {GEMINI_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} — {m.description}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-3.5 text-slate-500 pointer-events-none" />
+            </div>
           </div>
 
           {isValid === true && (
