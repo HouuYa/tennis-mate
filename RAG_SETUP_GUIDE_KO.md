@@ -228,9 +228,10 @@ LIMIT 5;
 - `gemini-2.5-flash-lite` (경제적)
 - `gemini-2.5-pro` (가장 강력)
 
-**Edge function은 다음 우선순위로 모델 선택**:
-1. 사용자가 선택한 모델 (프론트엔드에서 전달)
-2. Fallback: `gemini-1.5-flash-latest` (모델이 없을 경우)
+**Edge function은 프론트엔드에서 전달된 모델을 사용**:
+- 모델 파라미터는 **필수**입니다 (fallback 없음)
+- 프론트엔드가 항상 사용자 선택 모델을 전달하므로 문제없음
+- Deprecation 걱정 없음 (하드코딩된 fallback 모델 제거)
 
 #### 프롬프트 수정
 
