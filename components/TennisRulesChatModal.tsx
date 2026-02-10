@@ -133,11 +133,9 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
           },
           body: JSON.stringify({
             question: question.trim(),
-            geminiApiKey: apiKey,
-            language,
-            model,
-            includeStats: true,
-            generateAnswer: true,
+            gemini_api_key: apiKey,
+            match_count: 5,
+            match_threshold: 0.3,
           }),
         }
       );
@@ -147,18 +145,15 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       const data = await response.json();
 
       console.log('[Tennis Rules] Response data:', {
-        success: data.success,
-        errorType: data.errorType,
         hasAnswer: !!data.answer,
-        matchCount: data.matches?.length || 0,
+        sourceCount: data.sources?.length || 0,
         error: data.error,
       });
 
-      if (!response.ok || !data.success) {
-        const errorType = data.errorType || 'UNKNOWN_ERROR';
+      if (!response.ok) {
         const errorMsg = data.error || 'Unknown error';
-        console.error('[Tennis Rules] Request failed:', { errorType, errorMsg, status: response.status });
-        throw new Error(`${errorType}: ${errorMsg}`);
+        console.error('[Tennis Rules] Request failed:', { errorMsg, status: response.status });
+        throw new Error(errorMsg);
       }
 
       const assistantMessage: ChatMessage = {
@@ -166,7 +161,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         role: 'assistant',
         content: data.answer || 'No answer generated.',
         timestamp: new Date(),
-        sources: data.matches?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
+        sources: data.sources?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
           rule_id: m.rule_id,
           source_file: m.source_file,
           similarity: m.similarity,

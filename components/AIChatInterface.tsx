@@ -107,7 +107,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
       }
 
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/search-tennis-rules`,
+        `${supabaseUrl}/functions/v1/tennis-rag-query`,
         {
           method: 'POST',
           headers: {
@@ -115,20 +115,17 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
           },
           body: JSON.stringify({
             question: question.trim(),
-            geminiApiKey: apiKey,
-            language,
-            model: getStoredModel(),
-            includeStats: true,
-            generateAnswer: true,
+            gemini_api_key: apiKey,
+            match_count: 5,
+            match_threshold: 0.3,
           }),
         }
       );
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
-        const errorType = data.errorType || 'UNKNOWN_ERROR';
-        throw new Error(`${errorType}: ${data.error || 'Unknown error'}`);
+      if (!response.ok) {
+        throw new Error(data.error || 'Unknown error');
       }
 
       const assistantMessage: ChatMessage = {
@@ -136,7 +133,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
         role: 'assistant',
         content: data.answer || 'No answer generated.',
         timestamp: new Date(),
-        sources: data.matches?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
+        sources: data.sources?.slice(0, 3).map((m: { rule_id: string; source_file: string; similarity: number }) => ({
           rule_id: m.rule_id,
           source_file: m.source_file,
           similarity: m.similarity,
