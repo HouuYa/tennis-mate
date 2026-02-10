@@ -65,8 +65,17 @@ serve(async (req) => {
     // API key priority: client-provided -> server environment variable
     const gemini_api_key = client_api_key || Deno.env.get("GEMINI_API_KEY");
 
-    // Model priority: client-provided -> safe default
-    const model = client_model || 'gemini-1.5-flash-latest';
+    // Model is required from client (no hardcoded fallback to avoid deprecation issues)
+    if (!client_model) {
+      console.error("[RAG] Model not provided in request");
+      return new Response(
+        JSON.stringify({
+          error: "Model parameter is required. Please specify a Gemini model (e.g., 'gemini-2.5-flash')."
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const model = client_model;
 
     if (!question?.trim()) {
       return new Response(
