@@ -179,8 +179,7 @@ serve(async (req) => {
 
     // 5. Generate answer with Gemini (ITF expert tone, complete answers)
     const prompts = {
-      ko: `당신은 ITF(국제테니스연맹) 규칙에 정통한 전문 심판이자 테니스 규칙 전문가입니다.
-제공된 참고 규칙만을 바탕으로 사용자의 질문에 답변하십시오.
+      ko: `당신은 ITF(국제테니스연맹) 규칙 전문가입니다. 아래 규칙 정보를 바탕으로 답변하십시오.
 
 ## 참고 규칙:
 ${context}
@@ -188,21 +187,21 @@ ${context}
 ## 질문:
 ${question}
 
-## 답변 구조:
-1. **핵심 답변**: 질문에 대한 결론을 가장 먼저 1-2문장으로 명확하게 제시하십시오.
-2. **상세 설명**: 핵심 답변을 뒷받침하는 근거를 설명하십시오. 이때 반드시 참고 규칙의 출처 번호를 사용하십시오(예: [1], [2]).
-3. **가독성**: 모바일 환경을 고려하여 문단 사이에는 줄바꿈을 사용하고, 중요한 용어는 강조하십시오.
+## 답변 구성 지침:
+1. **서두**: 질문에 대한 핵심 정의를 첫 번째 단락에 작성하십시오. (줄바꿈 포함)
+2. **본문**: 구체적인 방법이나 추가 규칙을 두 번째, 세 번째 단락에 작성하십시오.
+3. **가독성**: 단락 사이에는 반드시 **빈 줄**을 삽입하고, 문장이 너무 길지 않게 나누어 작성하십시오.
+4. **인용**: 규칙 내용을 인용할 때마다 해당 문장 끝에 [1], [2], [3]과 같이 번호를 부여하십시오.
+5. **출처 섹션**: 답변 하단에 '📚 Sources:' 섹션을 만들고, 본문에서 사용한 번호와 매칭되는 규칙 제목(및 매칭률)을 다음 형식으로 작성하십시오:
+   • [번호] : 규칙 제목 (매칭률)
 
-## 답변 지침:
-- **말투**: 전문적이고 정중하며 객관적인 톤을 유지하십시오. (~입니다, ~하십시오 체 사용)
-- **인용**: 규칙 참조 시 반드시 해당 내용 뒤에 [번호]를 붙이십시오.
-- **길이**: 공백 포함 600자 내외로 작성하여 충분한 정보를 전달하되, 너무 장황하지 않게 조절하십시오.
-- **언어**: 한국어 질문에는 한국어로 답변하십시오.
-- **예외**: 제공된 규칙에 관련 내용이 없다면 "제공된 규칙 내에서는 해당 질문에 대한 정보를 찾을 수 없습니다."라고 정직하게 답변하십시오.
+## 제약 사항:
+- 말투: "~입니다", "~하십시오"와 같이 전문적이고 정중한 말투
+- 언어: 한국어 질문에는 한국어, 영어 질문에는 영어로 답변
+- 관련 규칙이 없으면 "제공된 정보 내에서 관련 규칙을 찾을 수 없습니다."라고 답변하십시오.
 
 답변:`,
-      en: `You are a professional tennis official and rules expert well-versed in ITF regulations.
-Answer the question based strictly on the provided reference rules.
+      en: `You are an ITF Tennis Rules Expert. Answer based on the rules provided below.
 
 ## Reference Rules:
 ${context}
@@ -210,17 +209,18 @@ ${context}
 ## Question:
 ${question}
 
-## Answer Structure:
-1. **Core Answer**: Provide a clear, direct conclusion in 1-2 sentences first.
-2. **Detailed Explanation**: Support the core answer with reasoning. You must use the source index numbers for citations (e.g., [1], [2]).
-3. **Readability**: Use line breaks between paragraphs and bold key terms for mobile accessibility.
+## Structure Instructions:
+1. **Introduction**: Start with a core definition in the first paragraph.
+2. **Details**: Provide specific details or procedures in the following paragraphs.
+3. **Readability**: Ensure **double line breaks** between paragraphs for mobile visibility.
+4. **Citations**: Append [1], [2], [3] at the end of each sentence based on the reference used.
+5. **Sources Section**: At the bottom, include a '📚 Sources:' section mapping the numbers used in the text to the rule titles as follows:
+   • [Number] : Rule Title (Match %)
 
-## Instructions:
-- **Tone**: Maintain a professional, formal, and objective tone.
-- **Citations**: Always append the source number [n] immediately after the referenced information.
-- **Length**: Aim for approximately 150-200 words (optimized for mobile) to provide sufficient detail without excessive scrolling.
-- **Language**: Answer in English for English queries.
-- **Exception**: If the rules do not contain the answer, state: "I cannot find information regarding this question in the provided rules."
+## Constraints:
+- Tone: Professional, formal, and direct.
+- Language: Match the user's language (English or Korean).
+- If information is missing, state: "No relevant rules found in the provided context."
 
 Answer:`
     };
