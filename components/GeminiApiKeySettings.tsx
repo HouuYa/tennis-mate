@@ -7,12 +7,14 @@ interface GeminiApiKeySettingsProps {
   onClose?: () => void;
   onKeyUpdate?: (hasKey: boolean) => void;
   compact?: boolean; // For inline display in StatsView
+  inline?: boolean; // For embedding in error panels (minimal UI)
 }
 
 export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   onClose,
   onKeyUpdate,
-  compact = false
+  compact = false,
+  inline = false
 }) => {
   const { showToast } = useToast();
   const [apiKey, setApiKey] = useState('');
@@ -79,6 +81,51 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   const getGeminiApiKeyUrl = () => {
     return 'https://aistudio.google.com/app/apikey';
   };
+
+  // Inline mode for error panels (most minimal)
+  if (inline) {
+    return (
+      <div className="space-y-2">
+        <div className="relative">
+          <input
+            type={showKey ? 'text' : 'password'}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="AIza...your_api_key_here"
+            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-white text-sm focus:border-blue-500 outline-none font-mono"
+          />
+          <button
+            onClick={() => setShowKey(!showKey)}
+            className="absolute right-2 top-2 text-slate-500 hover:text-white"
+          >
+            {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+
+        <button
+          onClick={handleTest}
+          disabled={testing || !apiKey.trim()}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+        >
+          {testing ? (
+            <>
+              <Loader2 size={14} className="animate-spin" /> Testing...
+            </>
+          ) : (
+            <>
+              <Check size={14} /> Test & Save
+            </>
+          )}
+        </button>
+
+        {isValid === false && errorMessage && (
+          <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded border border-red-700/50">
+            {errorMessage}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (compact) {
     return (
