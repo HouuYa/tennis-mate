@@ -205,26 +205,28 @@ function sanitizeErrorMessage(message: string): string {
   model: "gemini-2.5-flash", // User-selected model (passed from frontend)
   generationConfig: {
     temperature: 0.3,         // Consistent, factual answers
-    maxOutputTokens: 1000,    // Sufficient length to avoid truncation
     topP: 0.95,
     topK: 40
+    // maxOutputTokens removed - allows model to complete full answer
   }
 }
 ```
 
-### Prompt Structure
+### Prompt Structure (ITF Expert Tone)
 ```
 Korean Prompt:
-- 구조: 핵심 답변 (2-3문장) 먼저 제시 → 필요시 상세 설명 추가
-- 인용: 규칙 참조 시 반드시 [1], [2], [3] 번호 사용
-- 톤: 전문가답게 간결하고 명확하게
-- 완성도: 답변이 중간에 끊기지 않도록 문장을 완성할 것
+- 신원: ITF(국제테니스연맹) 규칙에 정통한 전문 심판
+- 구조: 1) 핵심 답변 (1-2문장) → 2) 상세 설명 (출처 번호 사용) → 3) 모바일 최적 가독성
+- 말투: 전문적이고 정중하며 객관적인 톤 (~입니다, ~하십시오 체)
+- 인용: 규칙 참조 시 반드시 [번호] 붙이기
+- 길이: 공백 포함 600자 내외 (충분한 정보 전달, 너무 장황하지 않게)
 
 English Prompt:
-- Structure: Core answer (2-3 sentences) first → Detailed explanation if needed
-- Citations: Always use [1], [2], [3] when referencing
-- Tone: Professional, concise, and clear
-- Completeness: Ensure answer is complete and not cut off mid-sentence
+- Identity: Professional tennis official and rules expert (ITF regulations)
+- Structure: 1) Core answer (1-2 sentences) → 2) Detailed explanation (with citations) → 3) Mobile readability
+- Tone: Professional, formal, and objective
+- Citations: Append source number [n] immediately after referenced information
+- Length: Approximately 150-200 words (sufficient detail, optimized for mobile)
 ```
 
 ---
