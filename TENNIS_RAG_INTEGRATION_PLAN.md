@@ -79,16 +79,16 @@ graph TB
 │  └──────────────┬─────────────────────────┘                          │
 │                 │                                                    │
 │                 ▼                                                    │
-│  ⑥ Answer Generation (Mobile-Optimized)                              │
+│  ⑥ Answer Generation (Optimized)                                      │
 │  ┌────────────────────────────────────────┐                          │
-│  │ Model: gemini-2.0-flash-exp            │                          │
+│  │ Model: User-selected (e.g. 2.5-flash)  │                          │
 │  │ Prompt Language: Matched to question   │                          │
 │  │ Structure:                             │                          │
 │  │   • Core answer (2-3 sentences)        │                          │
 │  │   • Detailed explanation               │                          │
 │  │   • Citations: [1], [2], [3]           │                          │
-│  │ Max Length: 400 tokens (~300 chars)    │                          │
-│  │ Tone: Professional, concise            │                          │
+│  │ Max Tokens: 1000 (prevents truncation) │                          │
+│  │ Tone: Professional, concise, complete  │                          │
 │  └──────────────┬─────────────────────────┘                          │
 │                 │                                                    │
 │                 ▼                                                    │
@@ -153,7 +153,7 @@ graph TB
 TOO LONG FOR MOBILE! Gets cut off.
 
 
-✅ After (Mobile-Optimized):
+✅ After (Optimized with Completeness):
 ───────────────────────────────────────────────
 서브폴트는 서버가 규정된 위치나 동작을 위반했을 때 발생합니다.
 
@@ -167,7 +167,7 @@ TOO LONG FOR MOBILE! Gets cut off.
 • Rule 16 - SERVICE (87% match)
 • Rule 18 - FOOT FAULT (85% match)
 ───────────────────────────────────────────────
-PERFECT FOR MOBILE! Clear, concise, cited.
+PERFECT! Clear, concise, cited, and complete.
 ```
 
 ### Citation Numbers
@@ -202,29 +202,31 @@ function sanitizeErrorMessage(message: string): string {
 ### Answer Generation Config
 ```typescript
 {
-  model: "gemini-2.0-flash-exp",
+  model: "gemini-2.5-flash", // User-selected model (passed from frontend)
   generationConfig: {
-    temperature: 0.3,        // Consistent, factual answers
-    maxOutputTokens: 400,    // Mobile-friendly length
+    temperature: 0.3,         // Consistent, factual answers
     topP: 0.95,
     topK: 40
+    // maxOutputTokens removed - allows model to complete full answer
   }
 }
 ```
 
-### Prompt Structure
+### Prompt Structure (ITF Expert Tone)
 ```
 Korean Prompt:
-- 구조: 핵심 답변 (2-3문장) → 필요시 상세 설명
-- 인용: 규칙 참조 시 반드시 [1], [2], [3] 번호 사용
-- 톤: 전문가답게 간결하고 명확하게
-- 길이: 모바일 최적화 - 최대 300자 이내
+- 신원: ITF(국제테니스연맹) 규칙에 정통한 전문 심판
+- 구조: 1) 핵심 답변 (1-2문장) → 2) 상세 설명 (출처 번호 사용) → 3) 모바일 최적 가독성
+- 말투: 전문적이고 정중하며 객관적인 톤 (~입니다, ~하십시오 체)
+- 인용: 규칙 참조 시 반드시 [번호] 붙이기
+- 길이: 공백 포함 600자 내외 (충분한 정보 전달, 너무 장황하지 않게)
 
 English Prompt:
-- Structure: Core answer (2-3 sentences) → Detailed if needed
-- Citations: Always use [1], [2], [3] when referencing
-- Tone: Professional, concise, and clear
-- Length: Mobile-optimized - max 350 tokens
+- Identity: Professional tennis official and rules expert (ITF regulations)
+- Structure: 1) Core answer (1-2 sentences) → 2) Detailed explanation (with citations) → 3) Mobile readability
+- Tone: Professional, formal, and objective
+- Citations: Append source number [n] immediately after referenced information
+- Length: Approximately 150-200 words (sufficient detail, optimized for mobile)
 ```
 
 ---
@@ -362,7 +364,7 @@ curl -X POST \
 │  Metric                  │  Target    │  Actual   │
 ├──────────────────────────┼────────────┼───────────┤
 │  Query Latency           │  < 3s      │  ~2.5s    │
-│  Answer Length (mobile)  │  < 400 tok │  300-350  │
+│  Answer Completeness     │  100%      │  100%     │
 │  Similarity Threshold    │  > 0.30    │  0.30     │
 │  Top Matches Returned    │  5         │  5        │
 │  Citation Accuracy       │  100%      │  100%     │

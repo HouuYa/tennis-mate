@@ -177,9 +177,9 @@ serve(async (req) => {
       ?.map((r, idx) => `[${idx + 1}] ${r.rule_id}\n${r.content}\n(Similarity: ${r.similarity.toFixed(3)})`)
       .join("\n\n---\n\n");
 
-    // 5. Generate answer with Gemini (mobile-optimized)
+    // 5. Generate answer with Gemini (ITF expert tone, complete answers)
     const prompts = {
-      ko: `당신은 테니스 규칙 전문가입니다. 아래 공식 규칙을 기반으로 질문에 답변하세요.
+      ko: `당신은 ITF(국제테니스연맹) 규칙 전문가입니다. 아래 규칙 정보를 바탕으로 답변하십시오.
 
 ## 참고 규칙:
 ${context}
@@ -187,16 +187,21 @@ ${context}
 ## 질문:
 ${question}
 
-## 답변 지침:
-- **구조**: 핵심 답변 (2-3문장) → 필요시 상세 설명
-- **인용**: 규칙 참조 시 반드시 [1], [2], [3] 번호 사용
-- **톤**: 전문가답게 간결하고 명확하게
-- **길이**: 모바일 최적화 - 최대 300자 이내
-- **언어**: 한국어로 답변
-- 관련 규칙이 없으면 "관련 규칙을 찾을 수 없습니다"라고 명시
+## 답변 구성 지침:
+1. **서두**: 질문에 대한 핵심 정의를 첫 번째 단락에 작성하십시오. (줄바꿈 포함)
+2. **본문**: 구체적인 방법이나 추가 규칙을 두 번째, 세 번째 단락에 작성하십시오.
+3. **가독성**: 단락 사이에는 반드시 **빈 줄**을 삽입하고, 문장이 너무 길지 않게 나누어 작성하십시오.
+4. **인용**: 규칙 내용을 인용할 때마다 해당 문장 끝에 [1], [2], [3]과 같이 번호를 부여하십시오.
+5. **출처 섹션**: 답변 하단에 '📚 Sources:' 섹션을 만들고, 본문에서 사용한 번호와 매칭되는 규칙 제목(및 매칭률)을 다음 형식으로 작성하십시오:
+   • [번호] : 규칙 제목 (매칭률)
+
+## 제약 사항:
+- 말투: "~입니다", "~하십시오"와 같이 전문적이고 정중한 말투
+- 언어: 한국어 질문에는 한국어, 영어 질문에는 영어로 답변
+- 관련 규칙이 없으면 "제공된 정보 내에서 관련 규칙을 찾을 수 없습니다."라고 답변하십시오.
 
 답변:`,
-      en: `You are a tennis rules expert. Answer the question based on the official rules below.
+      en: `You are an ITF Tennis Rules Expert. Answer based on the rules provided below.
 
 ## Reference Rules:
 ${context}
@@ -204,13 +209,18 @@ ${context}
 ## Question:
 ${question}
 
-## Instructions:
-- **Structure**: Core answer (2-3 sentences) → Detailed explanation if needed
-- **Citations**: Always use [1], [2], [3] numbers when referencing rules
-- **Tone**: Professional, concise, and clear
-- **Length**: Mobile-optimized - max 350 tokens
-- **Language**: Answer in English
-- If no relevant rules found, state "No relevant rules found"
+## Structure Instructions:
+1. **Introduction**: Start with a core definition in the first paragraph.
+2. **Details**: Provide specific details or procedures in the following paragraphs.
+3. **Readability**: Ensure **double line breaks** between paragraphs for mobile visibility.
+4. **Citations**: Append [1], [2], [3] at the end of each sentence based on the reference used.
+5. **Sources Section**: At the bottom, include a '📚 Sources:' section mapping the numbers used in the text to the rule titles as follows:
+   • [Number] : Rule Title (Match %)
+
+## Constraints:
+- Tone: Professional, formal, and direct.
+- Language: Match the user's language (English or Korean).
+- If information is missing, state: "No relevant rules found in the provided context."
 
 Answer:`
     };
@@ -228,10 +238,10 @@ Answer:`
             parts: [{ text: prompts[language] }]
           }],
           generationConfig: {
-            temperature: 0.3, // More consistent answers
-            maxOutputTokens: 400, // Mobile-friendly length
+            temperature: 0.3, // More consistent, factual answers
             topP: 0.95,
             topK: 40
+            // maxOutputTokens removed - let model complete full answer
           }
         })
       }

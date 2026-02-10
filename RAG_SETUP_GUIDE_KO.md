@@ -48,7 +48,7 @@ Tennis Mate의 **AI Coach**에서 테니스 규칙을 질문하고 전문가 답
 
 ### ✨ 특징
 
-- ✅ **모바일 최적화** - 짧고 명확한 답변 (300자 이내)
+- ✅ **모바일 최적화** - 짧고 명확하며 완전한 답변
 - ✅ **인용 출처** - 답변에 [1], [2], [3] 번호로 출처 명시
 - ✅ **다국어 지원** - 한글 질문 → 한글 답변, English → English
 - ✅ **전문가 톤** - 간결하고 명확한 전문가 답변
@@ -235,27 +235,43 @@ LIMIT 5;
 
 #### 프롬프트 수정
 
-프롬프트는 `supabase/functions/tennis-rag-query/index.ts` 파일의 210-240줄에 있습니다.
+프롬프트는 `supabase/functions/tennis-rag-query/index.ts` 파일의 181-235줄에 있습니다.
 
 ```typescript
 const prompts = {
-  ko: `당신은 테니스 규칙 전문가입니다...
+  ko: `당신은 ITF(국제테니스연맹) 규칙에 정통한 전문 심판이자 테니스 규칙 전문가입니다.
+
+  ## 답변 구조:
+  1. **핵심 답변**: 질문에 대한 결론을 1-2문장으로 명확하게 제시
+  2. **상세 설명**: 핵심 답변을 뒷받침하는 근거를 설명 (출처 번호 [1], [2] 사용)
+  3. **가독성**: 모바일 환경을 고려하여 문단 사이 줄바꿈 사용
 
   ## 답변 지침:
-  - **구조**: 핵심 답변 (2-3문장) → 필요시 상세 설명
-  - **인용**: 규칙 참조 시 반드시 [1], [2], [3] 번호 사용
-  - **톤**: 전문가답게 간결하고 명확하게
-  - **길이**: 모바일 최적화 - 최대 300자 이내
+  - **말투**: 전문적이고 정중하며 객관적인 톤 (~입니다, ~하십시오 체)
+  - **인용**: 규칙 참조 시 반드시 해당 내용 뒤에 [번호] 붙이기
+  - **길이**: 공백 포함 600자 내외 (충분한 정보 전달, 너무 장황하지 않게)
   `,
 
-  en: `You are a tennis rules expert...
+  en: `You are a professional tennis official and rules expert well-versed in ITF regulations.
+
+  ## Answer Structure:
+  1. **Core Answer**: Provide clear conclusion in 1-2 sentences first
+  2. **Detailed Explanation**: Support with reasoning (use citations [1], [2])
+  3. **Readability**: Use line breaks between paragraphs for mobile
 
   ## Instructions:
-  - **Structure**: Core answer (2-3 sentences) → Detailed if needed
-  - **Citations**: Always use [1], [2], [3] when referencing
-  - **Tone**: Professional, concise, and clear
-  - **Length**: Mobile-optimized - max 350 tokens
+  - **Tone**: Professional, formal, and objective
+  - **Citations**: Append source number [n] immediately after referenced info
+  - **Length**: Approximately 150-200 words (sufficient detail, optimized for mobile)
   `
+}
+
+// Token limit removed - model will complete full answer naturally
+generationConfig: {
+  temperature: 0.3,
+  topP: 0.95,
+  topK: 40
+  // maxOutputTokens removed for complete answers
 }
 ```
 
@@ -304,8 +320,8 @@ SELECT COUNT(*) FROM tennis_rules;
 
 **현재 상태**: ✅ **해결됨**
 
-새 버전은 모바일 최적화되어 있습니다:
-- 최대 300자 (한글) / 350 tokens (영어)
+새 버전은 최적화되어 있습니다:
+- 답변이 중간에 끊기지 않도록 완성도 보장
 - 핵심 답변 우선 제시
 - 명확한 구조
 
