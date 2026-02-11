@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
@@ -352,20 +353,13 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                           : 'bg-slate-800 text-indigo-100 border border-indigo-500/20'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-
-                      {/* Sources */}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-indigo-500/20 space-y-1">
-                          <p className="text-xs text-indigo-300 font-semibold">
-                            📚 Sources:
-                          </p>
-                          {msg.sources.map((source, idx) => (
-                            <p key={idx} className="text-xs text-slate-400">
-                              • {source.rule_id} ({(source.similarity * 100).toFixed(0)}% match)
-                            </p>
-                          ))}
-                        </div>
+                      {msg.role === 'user' ? (
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      ) : (
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(msg.content) }}
+                        />
                       )}
 
                       <p className="text-xs text-indigo-300/50 mt-2">
