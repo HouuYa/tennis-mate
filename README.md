@@ -36,8 +36,8 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
 ## 🚀 주요 기능 (Key Features)
 
 ### 1. 💾 3가지 저장소 모드
+![최초 화면](./files/front_image%20260211.png)
 
- [이미지](./files/front_image 260211.png)
 
 #### 🧑 Guest Mode (Local Storage)
 - **특징**: 서버 없이 브라우저에 저장
@@ -80,6 +80,9 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
   - 라이벌 관계 분석
 
 ### 5. 🤖 AI 코치 (Powered by Gemini) - v1.2.0 UI 개선!
+![AI 코치 메뉴 위치](./files/ai%coach%2.png)
+
+
 - **컴팩트 디자인 (NEW!)**:
   - 기본적으로 작은 버튼만 표시 (공간 효율성 향상)
   - 클릭하여 확장/축소 가능
