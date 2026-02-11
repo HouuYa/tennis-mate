@@ -378,7 +378,7 @@ curl -X POST \
 
 ### 🔒 Security Enhancements
 - **XSS Protection**: Integrated DOMPurify to sanitize LLM-generated HTML
-  - Prevents prompt injection attacks
+  - Prevents Cross-Site Scripting (XSS) attacks from rendered HTML
   - Sanitizes all content before rendering with `dangerouslySetInnerHTML`
   - Installed `dompurify` and `@types/dompurify` packages
 
