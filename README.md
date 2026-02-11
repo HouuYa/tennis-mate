@@ -37,6 +37,8 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
 
 ### 1. 💾 3가지 저장소 모드
 
+ [이미지](./files/front_image 260211.png)
+
 #### 🧑 Guest Mode (Local Storage)
 - **특징**: 서버 없이 브라우저에 저장
 - **장점**: 즉시 시작, 설정 불필요
@@ -187,6 +189,22 @@ npm run dev
 
 ## 📝 로드맵
 
+### ✅ v1.1.0 (완료 - 2026-01-06)
+- [x] 3가지 저장소 모드 (Guest/Sheets/Cloud)
+- [x] Google Sheets Mode 전체 구현
+- [x] Head-to-Head 라이벌 분석
+- [x] Best Partnerships 분석
+- [x] 4~8인 로테이션 및 매치메이킹
+- [x] AI 코치 (Gemini)
+- [x] 클라우드 세션 관리
+
+### ✅ v1.1.1 (완료 - 2026-01-07)
+- [x] Guest Mode 세션 관리자 추가
+- [x] 모든 모드 "Back to Mode Selection" 하단 통일
+- [x] 페이지 새로고침 시 모드 유지
+- [x] ModeSelection 한국어 설명 추가
+- [x] GoogleSheetsGuide 스크린샷 이미지 추가
+
 ### ✅ v1.2.0 (완료 - 2026-01-14)
 - [x] AI Coach UI/UX 대폭 개선
   - [x] 컴팩트하고 접을 수 있는 디자인
@@ -199,22 +217,6 @@ npm run dev
   - [x] Edge Function 배포
   - [x] RAG 설정 가이드 작성
 - [x] Type Safety 개선 (ChatMessageSource interface 분리)
-
-### ✅ v1.1.1 (완료 - 2026-01-07)
-- [x] Guest Mode 세션 관리자 추가
-- [x] 모든 모드 "Back to Mode Selection" 하단 통일
-- [x] 페이지 새로고침 시 모드 유지
-- [x] ModeSelection 한국어 설명 추가
-- [x] GoogleSheetsGuide 스크린샷 이미지 추가
-
-### ✅ v1.1.0 (완료 - 2026-01-06)
-- [x] 3가지 저장소 모드 (Guest/Sheets/Cloud)
-- [x] Google Sheets Mode 전체 구현
-- [x] Head-to-Head 라이벌 분석
-- [x] Best Partnerships 분석
-- [x] 4~8인 로테이션 및 매치메이킹
-- [x] AI 코치 (Gemini)
-- [x] 클라우드 세션 관리
 
 ### 🔜 v1.3.0 (예정)
 - [ ] 다중 코트 지원 (2개 코트 동시 진행)
@@ -251,6 +253,10 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 ## 📧 문의 (Contact)
 
 프로젝트 링크: [https://github.com/HouuYa/tennis-mate](https://github.com/HouuYa/tennis-mate)
+
+웹앱 링크: [https://tennis-scoring-mate.netlify.app](https://tennis-scoring-mate.netlify.app)
+
+테니스 규칙 웹앱 링크 : [https://tennis-rules-rag.netlify.app/tennis_chat](https://tennis-rules-rag.netlify.app/tennis_chat)
 
 이슈 및 버그 리포트: [Issues](https://github.com/HouuYa/tennis-mate/issues)
 
