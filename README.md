@@ -80,7 +80,7 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
   - 라이벌 관계 분석
 
 ### 5. 🤖 AI 코치 (Powered by Gemini) - v1.2.0 UI 개선!
-![AI 코치 메뉴 위치](./files/ai%coach%2.png)
+![AI 코치 메뉴 위치](./files/ai%20coach%202.png)
 
 
 - **컴팩트 디자인 (NEW!)**:
