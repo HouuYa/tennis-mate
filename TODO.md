@@ -49,6 +49,42 @@
     - [x] 페이지 새로고침 시에도 선택한 모드 유지
     - [x] 뒤로가기 시 경고 메시지 표시
 
+---
+
+## ✅ v1.1.2 - AI Coach RAG System (완료 - 2026-01-14)
+- [x] **RAG (Retrieval-Augmented Generation) 구현**
+    - [x] 테니스 규칙 PDF 기반 AI 질문답변 시스템
+    - [x] pgvector를 사용한 벡터 유사도 검색
+    - [x] Gemini `text-embedding-004` 임베딩 (768차원)
+- [x] **Chat Interface**
+    - [x] 탭 기반 UI: "Analyze Stats" / "Ask Question"
+    - [x] 채팅 히스토리 표시
+    - [x] 실시간 질문/답변
+    - [x] 출처 표시 (규칙 제목, 유사도)
+- [x] **ETL Pipeline**
+    - [x] Python 스크립트 작성 (`scripts/upload_tennis_rules.py`)
+    - [x] PDF 텍스트 추출 (PyPDF2)
+    - [x] 조항별 chunking (영어: Article/Rule, 한글: 제N조)
+    - [x] Gemini embeddings 생성
+    - [x] Supabase 일괄 업로드
+- [x] **Database Setup**
+    - [x] Supabase pgvector extension 설정
+    - [x] `tennis_rules` 테이블 생성
+    - [x] `match_tennis_rules()` RPC 함수
+    - [x] ivfflat 인덱스 생성
+- [x] **Edge Function**
+    - [x] `search-tennis-rules` 함수 작성
+    - [x] 사용자 API 키 기반 검색
+    - [x] 언어별 필터링 (en/ko)
+    - [x] 출처 정보 반환
+- [x] **Documentation**
+    - [x] RAG 설정 가이드 작성 (`RAG_SETUP_GUIDE_KO.md`)
+    - [x] Python ETL 실행 가이드
+    - [x] Edge Function 배포 가이드
+    - [x] 문제 해결 FAQ
+
+---
+
 ## ✅ v1.2.0 - RAG Mobile Optimization (완료 - 2026-02-11)
 - [x] **tennis-rag-query Production Function**
     - [x] Mobile-optimized answer length (max 400 tokens)
@@ -92,40 +128,6 @@
 - [x] **Prompt Optimization**
     - [x] Update similarity format: (XX% match) → (Similarity: 0.XXX)
     - [x] Improve LLM reliability by removing calculation step
-
----
-
-## ✅ v1.1.2 - AI Coach RAG System (완료 - 2026-01-14)
-- [x] **RAG (Retrieval-Augmented Generation) 구현**
-    - [x] 테니스 규칙 PDF 기반 AI 질문답변 시스템
-    - [x] pgvector를 사용한 벡터 유사도 검색
-    - [x] Gemini `text-embedding-004` 임베딩 (768차원)
-- [x] **Chat Interface**
-    - [x] 탭 기반 UI: "Analyze Stats" / "Ask Question"
-    - [x] 채팅 히스토리 표시
-    - [x] 실시간 질문/답변
-    - [x] 출처 표시 (규칙 제목, 유사도)
-- [x] **ETL Pipeline**
-    - [x] Python 스크립트 작성 (`scripts/upload_tennis_rules.py`)
-    - [x] PDF 텍스트 추출 (PyPDF2)
-    - [x] 조항별 chunking (영어: Article/Rule, 한글: 제N조)
-    - [x] Gemini embeddings 생성
-    - [x] Supabase 일괄 업로드
-- [x] **Database Setup**
-    - [x] Supabase pgvector extension 설정
-    - [x] `tennis_rules` 테이블 생성
-    - [x] `match_tennis_rules()` RPC 함수
-    - [x] ivfflat 인덱스 생성
-- [x] **Edge Function**
-    - [x] `search-tennis-rules` 함수 작성
-    - [x] 사용자 API 키 기반 검색
-    - [x] 언어별 필터링 (en/ko)
-    - [x] 출처 정보 반환
-- [x] **Documentation**
-    - [x] RAG 설정 가이드 작성 (`RAG_SETUP_GUIDE_KO.md`)
-    - [x] Python ETL 실행 가이드
-    - [x] Edge Function 배포 가이드
-    - [x] 문제 해결 FAQ
 
 ---
 
