@@ -199,7 +199,8 @@ ${question}
    - <sup> 태그를 사용하여 작게 표시하십시오.
 4. **출처 섹션**:
    - 답변 마지막에 <hr> 태그를 넣고 "📚 Sources" 섹션을 만드십시오.
-   - 출처 목록은 <ul> 태그를 사용하고, 각 항목은 <li><small>[번호] : 규칙 제목 (XX% match)</small></li> 형식을 따르십시오.
+   - 출처 목록은 <ul> 태그를 사용하고, 각 항목은 <li><small>[번호] : 규칙 제목 (Similarity: 0.XXX)</small></li> 형식을 따르십시오.
+   - 참고 규칙에 제공된 Similarity 값을 그대로 복사하여 사용하십시오.
 
 ## 제약 사항:
 - 말투: "~입니다", "~하십시오"와 같이 전문적이고 정중한 말투
@@ -215,8 +216,8 @@ ${question}
 <hr>
 <h3>📚 Sources</h3>
 <ul>
-  <li><small>[1] : TIE-BREAK (71% match)</small></li>
-  <li><small>[2] : SCORING (69% match)</small></li>
+  <li><small>[1] : TIE-BREAK (Similarity: 0.710)</small></li>
+  <li><small>[2] : SCORING (Similarity: 0.690)</small></li>
 </ul>
 
 답변:`,
@@ -240,7 +241,8 @@ ${question}
    - Append citations at the end of each relevant sentence.
 4. **Sources Section**:
    - Add an <hr> tag at the bottom, followed by an "📚 Sources" header using <h3>.
-   - Use <ul> for the list, format items as: <li><small>[Number] : Rule Title (XX% match)</small></li>
+   - Use <ul> for the list, format items as: <li><small>[Number] : Rule Title (Similarity: 0.XXX)</small></li>
+   - Copy the Similarity value directly from the reference rules provided.
 
 ## Constraints:
 - Tone: Professional, formal, and direct.
@@ -256,8 +258,8 @@ ${question}
 <hr>
 <h3>📚 Sources</h3>
 <ul>
-  <li><small>[1] : TIE-BREAK (71% match)</small></li>
-  <li><small>[2] : SCORING (69% match)</small></li>
+  <li><small>[1] : TIE-BREAK (Similarity: 0.710)</small></li>
+  <li><small>[2] : SCORING (Similarity: 0.690)</small></li>
 </ul>
 
 Answer:`

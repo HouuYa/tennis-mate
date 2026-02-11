@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
@@ -356,8 +357,8 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                       ) : (
                         <div
-                          className="text-sm leading-relaxed tennis-rules-content"
-                          dangerouslySetInnerHTML={{ __html: msg.content }}
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(msg.content) }}
                         />
                       )}
 
