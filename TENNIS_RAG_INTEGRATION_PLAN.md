@@ -1,7 +1,7 @@
 # Tennis Rules RAG - Integration Complete ✅
 
-> **Last Updated**: 2026-02-10
-> **Status**: Production Ready with Mobile Optimization
+> **Last Updated**: 2026-02-11
+> **Status**: Production Ready with Enhanced Security & Mobile UI
 
 ---
 
@@ -374,6 +374,43 @@ curl -X POST \
 
 ---
 
+## Recent Improvements (2026-02-11)
+
+### 🔒 Security Enhancements
+- **XSS Protection**: Integrated DOMPurify to sanitize LLM-generated HTML
+  - Prevents Cross-Site Scripting (XSS) attacks from rendered HTML
+  - Sanitizes all content before rendering with `dangerouslySetInnerHTML`
+  - Installed `dompurify` and `@types/dompurify` packages
+
+### 📱 Mobile Readability Improvements
+- **HTML Formatting**: Switched from plain text to semantic HTML
+  - Backend prompts now generate `<p>`, `<ul>`, `<li>`, `<hr>`, `<h3>`, `<sup>`, `<strong>` tags
+  - Proper bullet point indentation on mobile devices
+  - Better line wrapping and spacing for long answers
+- **Duplicate Sources Removed**: Cleaned up frontend rendering
+  - Removed redundant Sources section from `TennisRulesChatModal.tsx`
+  - Single, LLM-generated Sources section maintains consistency
+
+### 🎨 Tailwind Typography Integration
+- **Build System Migration**: Moved from CDN to local Tailwind build
+  - Created `tailwind.config.js` with custom typography configuration
+  - Created `postcss.config.js` for build pipeline
+  - Created `index.css` with Tailwind directives
+  - Migrated to Tailwind CSS v3.4.0 for stability
+- **Typography Plugin**: Replaced custom CSS with `@tailwindcss/typography`
+  - Applied `prose prose-sm max-w-none` classes for consistent styling
+  - Custom typography theme matching project colors
+  - Better maintainability and ecosystem integration
+
+### 🎯 Prompt Optimization
+- **Similarity Format Consistency**: Improved LLM reliability
+  - Changed from `(XX% match)` to `(Similarity: 0.XXX)` format
+  - LLM now copies similarity values directly from context
+  - Eliminates calculation errors and improves accuracy
+  - Updated both Korean and English prompt examples
+
+---
+
 ## Future Enhancements
 
 1. **Admin ETL Interface** - Web UI for uploading new rules
@@ -384,6 +421,8 @@ curl -X POST \
 
 ---
 
-> **Status**: ✅ Production Ready
-> **Last Deploy**: 2026-02-10
+> **Status**: ✅ Production Ready with Enhanced Security
+> **Last Deploy**: 2026-02-11
+> **Security**: XSS Protection via DOMPurify
+> **UI**: HTML formatting with Tailwind Typography
 > **Next Review**: When ITF updates rules (annual)

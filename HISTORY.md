@@ -6,6 +6,30 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-02-11 (Mobile Readability & Security Improvements)
+- **HTML Formatting**: Switched from plain text to HTML tags for better mobile indentation
+  - Backend prompts now generate `<p>`, `<ul>`, `<li>`, `<hr>`, `<h3>`, `<sup>`, `<strong>` tags
+  - Proper bullet point indentation on mobile browsers
+  - Typography plugin integration for consistent styling
+- **XSS Security Fix**: Added DOMPurify sanitization to prevent Cross-Site Scripting (XSS) from LLM-generated HTML
+  - Installed `dompurify` and `@types/dompurify`
+  - Applied `DOMPurify.sanitize()` before rendering LLM-generated HTML
+- **Duplicate Sources Removed**: Cleaned up frontend rendering
+  - Removed redundant Sources section (was displayed twice)
+  - LLM-generated Sources section is now the single source of truth
+- **Tailwind Typography Migration**: Migrated from CDN to local build
+  - Installed `@tailwindcss/typography` plugin
+  - Created `tailwind.config.js`, `postcss.config.js`, `index.css`
+  - Replaced custom CSS with `prose` classes
+  - Downgraded to Tailwind v3.4.0 for build stability
+- **Similarity Format Consistency**: Improved LLM reliability
+  - Changed prompt from `(XX% match)` to `(Similarity: 0.XXX)`
+  - LLM now copies similarity values directly without calculation
+- **Code Review Response**: Addressed all Gemini Code Assist bot feedback
+  - Security: High-severity XSS vulnerability fixed
+  - Code Quality: Replaced custom CSS with official Typography plugin
+  - Reliability: Aligned prompt output format with context data format
+
 ### 2026-02-10 (RAG Mobile Optimization & Production Release)
 - **tennis-rag-query Function**: Replaced `search-tennis-rules` with production-ready `tennis-rag-query`
 - **Dynamic Model Selection**: Edge function now accepts user-selected Gemini model (fixes 404 model error)

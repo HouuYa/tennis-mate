@@ -49,7 +49,7 @@
     - [x] 페이지 새로고침 시에도 선택한 모드 유지
     - [x] 뒤로가기 시 경고 메시지 표시
 
-## ✅ v1.2.0 - RAG Mobile Optimization (완료 - 2026-02-10)
+## ✅ v1.2.0 - RAG Mobile Optimization (완료 - 2026-02-11)
 - [x] **tennis-rag-query Production Function**
     - [x] Mobile-optimized answer length (max 400 tokens)
     - [x] Citation numbers [1], [2], [3] in answer text
@@ -75,6 +75,23 @@
     - [x] 위치 권한 거부 시 warning toast로 변경
     - [x] Cloud Mode "이전 세션 계속하기" 옵션
     - [x] GoogleSheetsGuide에 실제 스크린샷 이미지 추가
+- [x] **Mobile Readability Enhancement**
+    - [x] HTML formatting for tennis rules answers (ul, li, p, hr, h3, sup tags)
+    - [x] Proper bullet point indentation on mobile browsers
+    - [x] Remove duplicate Sources rendering from frontend
+- [x] **Security Improvements**
+    - [x] DOMPurify integration for XSS protection
+    - [x] Sanitize LLM-generated HTML before rendering
+- [x] **Build System Migration**
+    - [x] Migrate from Tailwind CDN to local build
+    - [x] Install @tailwindcss/typography plugin
+    - [x] Create tailwind.config.js with custom typography styles
+    - [x] Create postcss.config.js and index.css
+    - [x] Replace custom CSS with prose classes
+    - [x] Downgrade to Tailwind v3.4.0 for build stability
+- [x] **Prompt Optimization**
+    - [x] Update similarity format: (XX% match) → (Similarity: 0.XXX)
+    - [x] Improve LLM reliability by removing calculation step
 
 ---
 
@@ -112,7 +129,7 @@
 
 ---
 
-## 🔜 v1.2.0 - Core Features Enhancement (예정)
+## 🔜 v1.3.0 - Core Features Enhancement (예정)
 
 ### 우선순위: HIGH
 
