@@ -11,7 +11,7 @@ This document serves as the master record for releases, daily summaries, and bug
   - Backend prompts now generate `<p>`, `<ul>`, `<li>`, `<hr>`, `<h3>`, `<sup>`, `<strong>` tags
   - Proper bullet point indentation on mobile browsers
   - Typography plugin integration for consistent styling
-- **XSS Security Fix**: Added DOMPurify sanitization to prevent prompt injection attacks
+- **XSS Security Fix**: Added DOMPurify sanitization to prevent Cross-Site Scripting (XSS) from LLM-generated HTML
   - Installed `dompurify` and `@types/dompurify`
   - Applied `DOMPurify.sanitize()` before rendering LLM-generated HTML
 - **Duplicate Sources Removed**: Cleaned up frontend rendering
