@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { useToast } from '../context/ToastContext';
-import { Shield, Users, Calendar, Trophy, Edit3, Trash2, Save, X, Plus, ChevronDown, ChevronUp, ArrowLeft, Loader2 } from 'lucide-react';
+import { Shield, Users, Calendar, Trophy, Edit3, Trash2, Save, X, Plus, ChevronDown, ChevronUp, ArrowLeft, Loader2, Merge, Undo2, AlertTriangle, Check } from 'lucide-react';
 import { Tab } from '../types';
 
 interface Props {
@@ -35,6 +35,19 @@ interface AdminMatch {
   court_number: number;
 }
 
+// Pending operation types
+type PendingOp =
+  | { id: string; type: 'rename'; playerId: string; oldName: string; newName: string }
+  | { id: string; type: 'delete-player'; player: AdminPlayer }
+  | { id: string; type: 'merge'; keepId: string; removeId: string; keepName: string; removeName: string }
+  | { id: string; type: 'edit-location'; sessionId: string; oldLocation: string | null; newLocation: string }
+  | { id: string; type: 'delete-session'; session: AdminSession }
+  | { id: string; type: 'edit-score'; matchId: string; sessionId: string; oldScoreA: number; oldScoreB: number; newScoreA: number; newScoreB: number }
+  | { id: string; type: 'delete-match'; match: AdminMatch };
+
+let opCounter = 0;
+const nextOpId = () => `op-${++opCounter}`;
+
 const ADMIN_AUTH_KEY = 'tennis-mate-admin-auth';
 
 export const AdminPage: React.FC<Props> = ({ setTab }) => {
@@ -49,11 +62,16 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   // Tab state
   const [activeSection, setActiveSection] = useState<'players' | 'sessions' | 'quick-entry'>('players');
 
-  // Data state
+  // Data state (original from DB)
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [sessions, setSessions] = useState<AdminSession[]>([]);
   const [matches, setMatches] = useState<AdminMatch[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Pending operations
+  const [pendingOps, setPendingOps] = useState<PendingOp[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [committing, setCommitting] = useState(false);
 
   // Edit state
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -64,6 +82,10 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   const [editMatchScoreB, setEditMatchScoreB] = useState(0);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editSessionLocation, setEditSessionLocation] = useState('');
+
+  // Merge state
+  const [mergeSourceId, setMergeSourceId] = useState<string | null>(null);
+  const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
 
   // Quick Entry state
   const [qeSessionId, setQeSessionId] = useState('');
@@ -78,6 +100,66 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   const [qeUseNewSession, setQeUseNewSession] = useState(false);
   const [qeSaving, setQeSaving] = useState(false);
 
+  // --- Computed: apply pending ops to get display data ---
+  const displayPlayers = useMemo(() => {
+    let result = [...players];
+    for (const op of pendingOps) {
+      if (op.type === 'rename') {
+        result = result.map(p => p.id === op.playerId ? { ...p, name: op.newName } : p);
+      } else if (op.type === 'delete-player') {
+        result = result.filter(p => p.id !== op.player.id);
+      } else if (op.type === 'merge') {
+        result = result.filter(p => p.id !== op.removeId);
+      }
+    }
+    return result;
+  }, [players, pendingOps]);
+
+  const displaySessions = useMemo(() => {
+    let result = [...sessions];
+    for (const op of pendingOps) {
+      if (op.type === 'edit-location') {
+        result = result.map(s => s.id === op.sessionId ? { ...s, location: op.newLocation || null } : s);
+      } else if (op.type === 'delete-session') {
+        result = result.filter(s => s.id !== op.session.id);
+      }
+    }
+    return result;
+  }, [sessions, pendingOps]);
+
+  const displayMatches = useMemo(() => {
+    let result = [...matches];
+    for (const op of pendingOps) {
+      if (op.type === 'edit-score') {
+        result = result.map(m => m.id === op.matchId ? { ...m, score_a: op.newScoreA, score_b: op.newScoreB } : m);
+      } else if (op.type === 'delete-match') {
+        result = result.filter(m => m.id !== op.match.id);
+      }
+    }
+    return result;
+  }, [matches, pendingOps]);
+
+  // Detect duplicate player names (case-insensitive)
+  const duplicateGroups = useMemo(() => {
+    const groups = new Map<string, AdminPlayer[]>();
+    for (const p of displayPlayers) {
+      const key = p.name.toLowerCase().trim();
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(p);
+    }
+    return Array.from(groups.entries()).filter(([, v]) => v.length > 1);
+  }, [displayPlayers]);
+
+  // Ops for current section
+  const currentSectionOps = useMemo(() => {
+    if (activeSection === 'players') {
+      return pendingOps.filter(op => op.type === 'rename' || op.type === 'delete-player' || op.type === 'merge');
+    } else if (activeSection === 'sessions') {
+      return pendingOps.filter(op => op.type === 'edit-location' || op.type === 'delete-session' || op.type === 'edit-score' || op.type === 'delete-match');
+    }
+    return [];
+  }, [pendingOps, activeSection]);
+
   // Check saved auth on mount
   useEffect(() => {
     const saved = sessionStorage.getItem(ADMIN_AUTH_KEY);
@@ -86,12 +168,12 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     }
   }, []);
 
-  // Load data when authenticated
+  // Load data when authenticated or switching section
   useEffect(() => {
     if (isAuthenticated) {
       loadAllData();
     }
-  }, [isAuthenticated, activeSection]);
+  }, [isAuthenticated]);
 
   const handleLogin = () => {
     const envId = import.meta.env.VITE_ADMIN_ID || 'admin';
@@ -121,6 +203,8 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
 
       if (playersRes.data) setPlayers(playersRes.data);
       if (sessionsRes.data) setSessions(sessionsRes.data);
+      // Clear pending ops on fresh load
+      setPendingOps([]);
     } catch (error) {
       console.error('Failed to load admin data:', error);
       showToast('Failed to load data', 'error');
@@ -145,112 +229,198 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     }
   };
 
-  // --- Player Operations ---
-  const handleUpdatePlayerName = async (playerId: string) => {
+  // --- Pending: Player Operations ---
+  const handleRenamePlayer = (playerId: string) => {
     if (!editPlayerName.trim()) return;
-    try {
-      const { error } = await supabase
-        .from('players')
-        .update({ name: editPlayerName.trim() })
-        .eq('id', playerId);
-      if (error) throw error;
-
-      setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, name: editPlayerName.trim() } : p));
-      setEditingPlayerId(null);
-      showToast('Player name updated', 'success');
-    } catch (error) {
-      console.error('Failed to update player:', error);
-      showToast('Failed to update player name', 'error');
-    }
-  };
-
-  const handleDeletePlayer = async (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    if (!confirm(`Delete player "${player?.name}"? This will also remove them from all sessions.`)) return;
+    if (!player) return;
+    if (editPlayerName.trim() === player.name) {
+      setEditingPlayerId(null);
+      return;
+    }
+    // Remove any previous rename for this player
+    setPendingOps(prev => [
+      ...prev.filter(op => !(op.type === 'rename' && op.playerId === playerId)),
+      { id: nextOpId(), type: 'rename', playerId, oldName: player.name, newName: editPlayerName.trim() }
+    ]);
+    setEditingPlayerId(null);
+  };
 
-    try {
-      const { error } = await supabase.from('players').delete().eq('id', playerId);
-      if (error) throw error;
+  const handleDeletePlayer = (playerId: string) => {
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+    setPendingOps(prev => [
+      ...prev,
+      { id: nextOpId(), type: 'delete-player', player }
+    ]);
+  };
 
-      setPlayers(prev => prev.filter(p => p.id !== playerId));
-      showToast('Player deleted', 'success');
-    } catch (error) {
-      console.error('Failed to delete player:', error);
-      showToast('Failed to delete player', 'error');
+  const handleMergePlayers = (keepId: string, removeId: string) => {
+    const keep = displayPlayers.find(p => p.id === keepId);
+    const remove = displayPlayers.find(p => p.id === removeId);
+    if (!keep || !remove) return;
+    setPendingOps(prev => [
+      ...prev,
+      { id: nextOpId(), type: 'merge', keepId, removeId, keepName: keep.name, removeName: remove.name }
+    ]);
+    setMergeSourceId(null);
+    setMergeTargetId(null);
+  };
+
+  // --- Pending: Session Operations ---
+  const handleEditLocation = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    setPendingOps(prev => [
+      ...prev.filter(op => !(op.type === 'edit-location' && op.sessionId === sessionId)),
+      { id: nextOpId(), type: 'edit-location', sessionId, oldLocation: session.location, newLocation: editSessionLocation.trim() }
+    ]);
+    setEditingSessionId(null);
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    setPendingOps(prev => [
+      ...prev,
+      { id: nextOpId(), type: 'delete-session', session }
+    ]);
+    if (expandedSessionId === sessionId) {
+      setExpandedSessionId(null);
+      setMatches([]);
     }
   };
 
-  // --- Session Operations ---
-  const handleUpdateSessionLocation = async (sessionId: string) => {
-    try {
-      const { error } = await supabase
-        .from('sessions')
-        .update({ location: editSessionLocation.trim() || null })
-        .eq('id', sessionId);
-      if (error) throw error;
-
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, location: editSessionLocation.trim() || null } : s));
-      setEditingSessionId(null);
-      showToast('Session location updated', 'success');
-    } catch (error) {
-      console.error('Failed to update session:', error);
-      showToast('Failed to update session', 'error');
-    }
+  const handleEditMatchScore = (matchId: string) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+    setPendingOps(prev => [
+      ...prev.filter(op => !(op.type === 'edit-score' && op.matchId === matchId)),
+      { id: nextOpId(), type: 'edit-score', matchId, sessionId: match.session_id, oldScoreA: match.score_a, oldScoreB: match.score_b, newScoreA: editMatchScoreA, newScoreB: editMatchScoreB }
+    ]);
+    setEditingMatchId(null);
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
-    if (!confirm('Delete this session and ALL its matches? This cannot be undone.')) return;
+  const handleDeleteMatch = (matchId: string) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+    setPendingOps(prev => [
+      ...prev,
+      { id: nextOpId(), type: 'delete-match', match }
+    ]);
+  };
+
+  // --- Undo a pending op ---
+  const undoOp = (opId: string) => {
+    setPendingOps(prev => prev.filter(op => op.id !== opId));
+  };
+
+  // --- Commit all pending ops ---
+  const handleCommitAll = async () => {
+    setShowConfirmModal(false);
+    setCommitting(true);
 
     try {
-      const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
-      if (error) throw error;
+      for (const op of pendingOps) {
+        switch (op.type) {
+          case 'merge': {
+            // 1. Fetch ALL matches that reference the removeId
+            const { data: allMatches, error: fetchErr } = await supabase
+              .from('matches')
+              .select('*');
+            if (fetchErr) throw fetchErr;
 
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
-      if (expandedSessionId === sessionId) {
-        setExpandedSessionId(null);
-        setMatches([]);
+            const toUpdate = (allMatches || []).filter((m: AdminMatch) =>
+              m.team_a.player1Id === op.removeId ||
+              m.team_a.player2Id === op.removeId ||
+              m.team_b.player1Id === op.removeId ||
+              m.team_b.player2Id === op.removeId
+            );
+
+            for (const m of toUpdate) {
+              const newTeamA = {
+                player1Id: m.team_a.player1Id === op.removeId ? op.keepId : m.team_a.player1Id,
+                player2Id: m.team_a.player2Id === op.removeId ? op.keepId : m.team_a.player2Id,
+              };
+              const newTeamB = {
+                player1Id: m.team_b.player1Id === op.removeId ? op.keepId : m.team_b.player1Id,
+                player2Id: m.team_b.player2Id === op.removeId ? op.keepId : m.team_b.player2Id,
+              };
+              const { error: updateErr } = await supabase
+                .from('matches')
+                .update({ team_a: newTeamA, team_b: newTeamB })
+                .eq('id', m.id);
+              if (updateErr) throw updateErr;
+            }
+
+            // 2. Update session_players
+            await supabase.from('session_players').delete().eq('player_id', op.removeId);
+
+            // 3. Delete the removed player
+            const { error: delErr } = await supabase.from('players').delete().eq('id', op.removeId);
+            if (delErr) throw delErr;
+            break;
+          }
+
+          case 'rename': {
+            const { error } = await supabase
+              .from('players')
+              .update({ name: op.newName })
+              .eq('id', op.playerId);
+            if (error) throw error;
+            break;
+          }
+
+          case 'delete-player': {
+            const { error } = await supabase.from('players').delete().eq('id', op.player.id);
+            if (error) throw error;
+            break;
+          }
+
+          case 'edit-location': {
+            const { error } = await supabase
+              .from('sessions')
+              .update({ location: op.newLocation || null })
+              .eq('id', op.sessionId);
+            if (error) throw error;
+            break;
+          }
+
+          case 'delete-session': {
+            const { error } = await supabase.from('sessions').delete().eq('id', op.session.id);
+            if (error) throw error;
+            break;
+          }
+
+          case 'edit-score': {
+            const { error } = await supabase
+              .from('matches')
+              .update({ score_a: op.newScoreA, score_b: op.newScoreB })
+              .eq('id', op.matchId);
+            if (error) throw error;
+            break;
+          }
+
+          case 'delete-match': {
+            const { error } = await supabase.from('matches').delete().eq('id', op.match.id);
+            if (error) throw error;
+            break;
+          }
+        }
       }
-      showToast('Session deleted', 'success');
+
+      showToast(`${pendingOps.length}건의 변경사항이 적용되었습니다.`, 'success');
+      setPendingOps([]);
+      await loadAllData();
     } catch (error) {
-      console.error('Failed to delete session:', error);
-      showToast('Failed to delete session', 'error');
+      console.error('Failed to commit changes:', error);
+      showToast('변경사항 적용 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setCommitting(false);
     }
   };
 
-  // --- Match Operations ---
-  const handleUpdateMatchScore = async (matchId: string) => {
-    try {
-      const { error } = await supabase
-        .from('matches')
-        .update({ score_a: editMatchScoreA, score_b: editMatchScoreB })
-        .eq('id', matchId);
-      if (error) throw error;
-
-      setMatches(prev => prev.map(m => m.id === matchId ? { ...m, score_a: editMatchScoreA, score_b: editMatchScoreB } : m));
-      setEditingMatchId(null);
-      showToast('Match score updated', 'success');
-    } catch (error) {
-      console.error('Failed to update match:', error);
-      showToast('Failed to update match score', 'error');
-    }
-  };
-
-  const handleDeleteMatch = async (matchId: string) => {
-    if (!confirm('Delete this match record?')) return;
-
-    try {
-      const { error } = await supabase.from('matches').delete().eq('id', matchId);
-      if (error) throw error;
-
-      setMatches(prev => prev.filter(m => m.id !== matchId));
-      showToast('Match deleted', 'success');
-    } catch (error) {
-      console.error('Failed to delete match:', error);
-      showToast('Failed to delete match', 'error');
-    }
-  };
-
-  // --- Quick Entry ---
+  // --- Quick Entry (immediate, not pending) ---
   const handleQuickEntry = async () => {
     if (!qeTeamA1 || !qeTeamA2 || !qeTeamB1 || !qeTeamB2) {
       showToast('Please select all 4 players', 'warning');
@@ -267,7 +437,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     try {
       let sessionId = qeSessionId;
 
-      // Create new session if needed
       if (qeUseNewSession || !sessionId) {
         const sessionPayload: { location?: string; status: string; played_at?: string } = {
           status: 'completed'
@@ -283,7 +452,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
         if (error) throw error;
         sessionId = data.id;
 
-        // Add players to session
         const sessionPlayers = selectedIds.map(pid => ({
           session_id: sessionId,
           player_id: pid
@@ -291,7 +459,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
         await supabase.from('session_players').upsert(sessionPlayers, { onConflict: 'session_id,player_id' });
       }
 
-      // Create match
       const matchPayload = {
         session_id: sessionId,
         played_at: qeNewDate ? new Date(qeNewDate).toISOString() : new Date().toISOString(),
@@ -308,16 +475,12 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
       if (matchError) throw matchError;
 
       showToast('Match recorded successfully!', 'success');
-
-      // Reset form
       setQeScoreA(0);
       setQeScoreB(0);
       setQeTeamA1('');
       setQeTeamA2('');
       setQeTeamB1('');
       setQeTeamB2('');
-
-      // Reload sessions
       loadAllData();
     } catch (error) {
       console.error('Failed to save match:', error);
@@ -328,6 +491,9 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   };
 
   const getPlayerName = (id: string) => {
+    // Check pending renames first
+    const renameOp = pendingOps.find(op => op.type === 'rename' && op.playerId === id);
+    if (renameOp && renameOp.type === 'rename') return renameOp.newName;
     return players.find(p => p.id === id)?.name || id.substring(0, 8);
   };
 
@@ -338,6 +504,33 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     } else {
       setExpandedSessionId(sessionId);
       loadSessionMatches(sessionId);
+    }
+  };
+
+  const opDescription = (op: PendingOp): string => {
+    switch (op.type) {
+      case 'rename': return `이름 변경: "${op.oldName}" → "${op.newName}"`;
+      case 'delete-player': return `선수 삭제: "${op.player.name}"`;
+      case 'merge': return `병합: "${op.removeName}" → "${op.keepName}" (기록 통합)`;
+      case 'edit-location': return `장소 변경: "${op.oldLocation || 'N/A'}" → "${op.newLocation || 'N/A'}"`;
+      case 'delete-session': return `세션 삭제: ${new Date(op.session.played_at).toLocaleDateString('ko-KR')}`;
+      case 'edit-score': return `점수 변경: ${op.oldScoreA}-${op.oldScoreB} → ${op.newScoreA}-${op.newScoreB}`;
+      case 'delete-match': return `매치 삭제`;
+    }
+  };
+
+  const opColor = (op: PendingOp): string => {
+    switch (op.type) {
+      case 'rename':
+      case 'edit-location':
+      case 'edit-score':
+        return 'text-blue-400 border-blue-700/50 bg-blue-900/20';
+      case 'delete-player':
+      case 'delete-session':
+      case 'delete-match':
+        return 'text-red-400 border-red-700/50 bg-red-900/20';
+      case 'merge':
+        return 'text-purple-400 border-purple-700/50 bg-purple-900/20';
     }
   };
 
@@ -418,12 +611,19 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
           <Shield size={20} className="text-tennis-green" />
           <h2 className="text-tennis-green font-bold text-lg">Admin</h2>
         </div>
-        <button
-          onClick={handleLogout}
-          className="text-xs text-slate-500 hover:text-red-400 border border-slate-700 px-2 py-1 rounded"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-2">
+          {pendingOps.length > 0 && (
+            <span className="text-[10px] text-yellow-400 font-bold bg-yellow-900/30 px-2 py-0.5 rounded-full">
+              {pendingOps.length} pending
+            </span>
+          )}
+          <button
+            onClick={handleLogout}
+            className="text-xs text-slate-500 hover:text-red-400 border border-slate-700 px-2 py-1 rounded"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Section Tabs */}
@@ -453,13 +653,54 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
         </div>
       )}
 
-      {/* Players Section */}
+      {/* ========== Players Section ========== */}
       {activeSection === 'players' && !loading && (
-        <div className="space-y-2 px-2">
+        <div className="space-y-3 px-2">
           <p className="text-xs text-slate-500">
-            Total: {players.length} players in database
+            Total: {displayPlayers.length} players in database
           </p>
-          {players.map(player => (
+
+          {/* Duplicate name detection */}
+          {duplicateGroups.length > 0 && (
+            <div className="bg-purple-900/20 border border-purple-700/40 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2 text-purple-400 text-xs font-bold">
+                <Merge size={14} /> 중복 이름 감지 ({duplicateGroups.length}건)
+              </div>
+              {duplicateGroups.map(([name, group]) => (
+                <div key={name} className="bg-slate-800/50 rounded-lg p-2 space-y-1">
+                  <p className="text-xs text-purple-300 font-medium">"{group[0].name}" x {group.length}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {group.length === 2 ? (
+                      <button
+                        onClick={() => handleMergePlayers(group[0].id, group[1].id)}
+                        className="text-[10px] px-2 py-1 bg-purple-700/50 text-purple-300 rounded hover:bg-purple-600/50 transition-colors"
+                      >
+                        "{group[0].name}" 으로 병합
+                      </button>
+                    ) : (
+                      group.map((p, i) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            // Keep this one, merge all others into it
+                            group.filter(other => other.id !== p.id).forEach(other => {
+                              handleMergePlayers(p.id, other.id);
+                            });
+                          }}
+                          className="text-[10px] px-2 py-1 bg-purple-700/50 text-purple-300 rounded hover:bg-purple-600/50 transition-colors"
+                        >
+                          #{i + 1} 로 병합
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Player list */}
+          {displayPlayers.map(player => (
             <div key={player.id} className="bg-slate-800 rounded-lg p-3 border border-slate-700 flex items-center justify-between">
               {editingPlayerId === player.id ? (
                 <div className="flex-1 flex items-center gap-2">
@@ -469,14 +710,49 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                     onChange={e => setEditPlayerName(e.target.value)}
                     className="flex-1 bg-slate-900 text-white p-2 rounded border border-slate-600 text-sm"
                     autoFocus
-                    onKeyDown={e => e.key === 'Enter' && handleUpdatePlayerName(player.id)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleRenamePlayer(player.id);
+                      if (e.key === 'Escape') setEditingPlayerId(null);
+                    }}
                   />
-                  <button onClick={() => handleUpdatePlayerName(player.id)} className="p-1.5 bg-tennis-green text-slate-900 rounded">
+                  <button onClick={() => handleRenamePlayer(player.id)} className="p-1.5 bg-tennis-green text-slate-900 rounded">
                     <Save size={14} />
                   </button>
                   <button onClick={() => setEditingPlayerId(null)} className="p-1.5 bg-slate-700 text-white rounded">
                     <X size={14} />
                   </button>
+                </div>
+              ) : mergeSourceId === player.id ? (
+                <div className="flex-1 space-y-2">
+                  <p className="text-xs text-purple-400">병합 대상 선택 (이 선수의 기록이 대상으로 이관됩니다):</p>
+                  <select
+                    value={mergeTargetId || ''}
+                    onChange={e => setMergeTargetId(e.target.value || null)}
+                    className="w-full bg-slate-900 text-white p-2 rounded border border-slate-600 text-sm"
+                    autoFocus
+                  >
+                    <option value="">선택...</option>
+                    {displayPlayers.filter(p => p.id !== player.id).map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        if (mergeTargetId) handleMergePlayers(mergeTargetId, player.id);
+                      }}
+                      disabled={!mergeTargetId}
+                      className="flex-1 text-xs py-1.5 bg-purple-600 text-white rounded font-bold disabled:opacity-50"
+                    >
+                      병합
+                    </button>
+                    <button
+                      onClick={() => { setMergeSourceId(null); setMergeTargetId(null); }}
+                      className="flex-1 text-xs py-1.5 bg-slate-700 text-white rounded"
+                    >
+                      취소
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -488,12 +764,21 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                     <button
                       onClick={() => { setEditingPlayerId(player.id); setEditPlayerName(player.name); }}
                       className="p-1.5 text-slate-500 hover:text-tennis-green"
+                      title="이름 변경"
                     >
                       <Edit3 size={14} />
                     </button>
                     <button
+                      onClick={() => { setMergeSourceId(player.id); setMergeTargetId(null); }}
+                      className="p-1.5 text-slate-500 hover:text-purple-400"
+                      title="다른 선수와 병합"
+                    >
+                      <Merge size={14} />
+                    </button>
+                    <button
                       onClick={() => handleDeletePlayer(player.id)}
                       className="p-1.5 text-slate-500 hover:text-red-400"
+                      title="삭제"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -502,16 +787,44 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               )}
             </div>
           ))}
+
+          {/* Pending changes summary for Players */}
+          {currentSectionOps.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <div className="border-t border-slate-700 pt-3">
+                <p className="text-xs font-bold text-yellow-400 mb-2">
+                  대기 중인 변경사항 ({currentSectionOps.length}건)
+                </p>
+                {currentSectionOps.map(op => (
+                  <div key={op.id} className={`flex items-center justify-between p-2 rounded-lg border text-xs mb-1 ${opColor(op)}`}>
+                    <span>{opDescription(op)}</span>
+                    <button onClick={() => undoOp(op.id)} className="p-1 hover:text-white" title="되돌리기">
+                      <Undo2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowConfirmModal(true)}
+                disabled={committing}
+                className="w-full py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {committing ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                Done ({pendingOps.length}건 적용)
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Sessions Section */}
+      {/* ========== Sessions Section ========== */}
       {activeSection === 'sessions' && !loading && (
         <div className="space-y-2 px-2">
           <p className="text-xs text-slate-500">
-            Total: {sessions.length} sessions
+            Total: {displaySessions.length} sessions
           </p>
-          {sessions.map(session => (
+          {displaySessions.map(session => (
             <div key={session.id} className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
               <div
                 className="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-750"
@@ -537,9 +850,12 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                         placeholder="Location"
                         className="flex-1 bg-slate-900 text-white p-1 rounded border border-slate-600 text-xs"
                         autoFocus
-                        onKeyDown={e => e.key === 'Enter' && handleUpdateSessionLocation(session.id)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleEditLocation(session.id);
+                          if (e.key === 'Escape') setEditingSessionId(null);
+                        }}
                       />
-                      <button onClick={() => handleUpdateSessionLocation(session.id)} className="p-1 bg-tennis-green text-slate-900 rounded">
+                      <button onClick={() => handleEditLocation(session.id)} className="p-1 bg-tennis-green text-slate-900 rounded">
                         <Save size={12} />
                       </button>
                       <button onClick={() => setEditingSessionId(null)} className="p-1 bg-slate-700 text-white rounded">
@@ -574,10 +890,10 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               {/* Expanded: Session Matches */}
               {expandedSessionId === session.id && (
                 <div className="border-t border-slate-700 p-3 space-y-2 bg-slate-900/50">
-                  {matches.length === 0 ? (
+                  {displayMatches.length === 0 ? (
                     <p className="text-xs text-slate-500 text-center py-2">No matches in this session</p>
                   ) : (
-                    matches.map((match, idx) => (
+                    displayMatches.map((match, idx) => (
                       <div key={match.id} className="bg-slate-800 rounded-lg p-2 border border-slate-700">
                         {editingMatchId === match.id ? (
                           <div className="space-y-2">
@@ -604,8 +920,8 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                               />
                             </div>
                             <div className="flex gap-1">
-                              <button onClick={() => handleUpdateMatchScore(match.id)} className="flex-1 text-xs bg-tennis-green text-slate-900 py-1 rounded font-bold">
-                                Save
+                              <button onClick={() => handleEditMatchScore(match.id)} className="flex-1 text-xs bg-tennis-green text-slate-900 py-1 rounded font-bold">
+                                OK
                               </button>
                               <button onClick={() => setEditingMatchId(null)} className="flex-1 text-xs bg-slate-700 text-white py-1 rounded">
                                 Cancel
@@ -651,10 +967,38 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               )}
             </div>
           ))}
+
+          {/* Pending changes summary for Sessions */}
+          {currentSectionOps.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <div className="border-t border-slate-700 pt-3">
+                <p className="text-xs font-bold text-yellow-400 mb-2">
+                  대기 중인 변경사항 ({currentSectionOps.length}건)
+                </p>
+                {currentSectionOps.map(op => (
+                  <div key={op.id} className={`flex items-center justify-between p-2 rounded-lg border text-xs mb-1 ${opColor(op)}`}>
+                    <span>{opDescription(op)}</span>
+                    <button onClick={() => undoOp(op.id)} className="p-1 hover:text-white" title="되돌리기">
+                      <Undo2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowConfirmModal(true)}
+                disabled={committing}
+                className="w-full py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {committing ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                Done ({pendingOps.length}건 적용)
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Quick Entry Section */}
+      {/* ========== Quick Entry Section ========== */}
       {activeSection === 'quick-entry' && !loading && (
         <div className="space-y-4 px-2">
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 space-y-4">
@@ -722,7 +1066,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                   className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
                 >
                   <option value="">Player 1</option>
-                  {players.map(p => (
+                  {displayPlayers.map(p => (
                     <option key={p.id} value={p.id} disabled={[qeTeamA2, qeTeamB1, qeTeamB2].includes(p.id)}>
                       {p.name}
                     </option>
@@ -734,7 +1078,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                   className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
                 >
                   <option value="">Player 2</option>
-                  {players.map(p => (
+                  {displayPlayers.map(p => (
                     <option key={p.id} value={p.id} disabled={[qeTeamA1, qeTeamB1, qeTeamB2].includes(p.id)}>
                       {p.name}
                     </option>
@@ -753,7 +1097,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                   className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
                 >
                   <option value="">Player 1</option>
-                  {players.map(p => (
+                  {displayPlayers.map(p => (
                     <option key={p.id} value={p.id} disabled={[qeTeamA1, qeTeamA2, qeTeamB2].includes(p.id)}>
                       {p.name}
                     </option>
@@ -765,7 +1109,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                   className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
                 >
                   <option value="">Player 2</option>
-                  {players.map(p => (
+                  {displayPlayers.map(p => (
                     <option key={p.id} value={p.id} disabled={[qeTeamA1, qeTeamA2, qeTeamB1].includes(p.id)}>
                       {p.name}
                     </option>
@@ -819,6 +1163,48 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               {qeSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
               {qeSaving ? 'Saving...' : 'Save Match Result'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========== Confirmation Modal ========== */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 max-w-sm w-full space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center gap-2 text-yellow-400">
+              <AlertTriangle size={20} />
+              <h3 className="font-bold text-lg">변경사항 확인</h3>
+            </div>
+
+            <p className="text-sm text-slate-300">
+              다음 {pendingOps.length}건의 변경사항을 데이터베이스에 적용합니다.
+              이 작업은 되돌릴 수 없습니다.
+            </p>
+
+            <div className="space-y-1.5 max-h-60 overflow-y-auto">
+              {pendingOps.map(op => (
+                <div key={op.id} className={`p-2 rounded border text-xs ${opColor(op)}`}>
+                  {opDescription(op)}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCommitAll}
+                disabled={committing}
+                className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                {committing ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                확인 적용
+              </button>
+            </div>
           </div>
         </div>
       )}
