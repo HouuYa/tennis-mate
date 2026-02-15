@@ -50,7 +50,8 @@ export enum Tab {
   PLAYERS = 'PLAYERS',
   MATCHES = 'MATCHES',
   STATS = 'STATS',
-  FEED = 'FEED'
+  FEED = 'FEED',
+  ADMIN = 'ADMIN'
 }
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';

@@ -8,11 +8,13 @@ import { StatsView } from './components/StatsView';
 import { LiveFeed } from './components/LiveFeed';
 import { ToastContainer } from './components/Toast';
 import { Tab } from './types';
+import { Shield } from 'lucide-react';
 import { useApp } from './context/AppContext';
 import { ModeSelection } from './components/ModeSelection';
 import { CloudSessionManager } from './components/CloudSessionManager';
 import { GoogleSheetsSessionManager } from './components/GoogleSheetsSessionManager';
 import { GuestSessionManager } from './components/GuestSessionManager';
+import { AdminPage } from './components/AdminPage';
 
 const GUEST_SESSION_READY_KEY = 'tennis-mate-guest-session-ready';
 const CLOUD_SESSION_READY_KEY = 'tennis-mate-cloud-session-ready';
@@ -98,12 +100,23 @@ const MainLayout = () => {
           TENNIS MATE
         </h1>
         {mode && (
-          <button
-            onClick={handleSwitchMode}
-            className="absolute right-4 text-[10px] uppercase font-bold text-slate-500 hover:text-white border border-slate-700 rounded px-2 py-1"
-          >
-            {mode === 'LOCAL' ? 'Guest' : mode === 'GOOGLE_SHEETS' ? 'Sheets' : 'Cloud'} Mode
-          </button>
+          <div className="absolute right-4 flex items-center gap-2">
+            {mode === 'CLOUD' && (
+              <button
+                onClick={() => setActiveTab(Tab.ADMIN)}
+                className={`p-1 rounded transition-colors ${activeTab === Tab.ADMIN ? 'text-tennis-green' : 'text-slate-600 hover:text-slate-400'}`}
+                title="Admin"
+              >
+                <Shield size={16} />
+              </button>
+            )}
+            <button
+              onClick={handleSwitchMode}
+              className="text-[10px] uppercase font-bold text-slate-500 hover:text-white border border-slate-700 rounded px-2 py-1"
+            >
+              {mode === 'LOCAL' ? 'Guest' : mode === 'GOOGLE_SHEETS' ? 'Sheets' : 'Cloud'} Mode
+            </button>
+          </div>
         )}
       </header>
 
@@ -112,6 +125,7 @@ const MainLayout = () => {
         {activeTab === Tab.MATCHES && <MatchSchedule setTab={setActiveTab} />}
         {activeTab === Tab.FEED && <LiveFeed />}
         {activeTab === Tab.STATS && <StatsView />}
+        {activeTab === Tab.ADMIN && <AdminPage setTab={setActiveTab} />}
       </main>
 
       <BottomNav activeTab={activeTab} setTab={setActiveTab} />
