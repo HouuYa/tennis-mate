@@ -334,6 +334,8 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
       return (order[a.type] ?? 2) - (order[b.type] ?? 2);
     });
 
+    console.log('[Admin] Committing ops:', sortedOps.map(o => o.type));
+
     for (const op of sortedOps) {
       try {
         switch (op.type) {
@@ -343,7 +345,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               .from('matches')
               .select('*');
             if (fetchErr) {
-              errors.push(`병합 매치 조회 실패: ${fetchErr.message}`);
+              errors.push(`병합 매치 조회 실패: ${fetchErr.message} (code: ${fetchErr.code})`);
               continue;
             }
 
@@ -353,6 +355,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               m.team_b.player1Id === op.removeId ||
               m.team_b.player2Id === op.removeId
             );
+            console.log(`[Admin] Merge: ${toUpdate.length} matches to update for removeId=${op.removeId}`);
 
             let matchUpdateFailed = false;
             for (const m of toUpdate) {
@@ -364,12 +367,18 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                 player1Id: m.team_b.player1Id === op.removeId ? op.keepId : m.team_b.player1Id,
                 player2Id: m.team_b.player2Id === op.removeId ? op.keepId : m.team_b.player2Id,
               };
-              const { error: updateErr } = await supabase
+              const { data: updated, error: updateErr } = await supabase
                 .from('matches')
                 .update({ team_a: newTeamA, team_b: newTeamB })
-                .eq('id', m.id);
+                .eq('id', m.id)
+                .select();
               if (updateErr) {
-                errors.push(`병합 매치 업데이트 실패: ${updateErr.message}`);
+                errors.push(`병합 매치 업데이트 실패: ${updateErr.message} (code: ${updateErr.code})`);
+                matchUpdateFailed = true;
+                break;
+              }
+              if (!updated || updated.length === 0) {
+                errors.push(`병합 매치 업데이트 실패: RLS 권한 부족 (match ${m.id})`);
                 matchUpdateFailed = true;
                 break;
               }
@@ -382,85 +391,108 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               .delete()
               .eq('player_id', op.removeId);
             if (spErr) {
-              errors.push(`병합 세션 플레이어 삭제 실패: ${spErr.message}`);
+              errors.push(`병합 세션 플레이어 삭제 실패: ${spErr.message} (code: ${spErr.code})`);
               continue;
             }
 
-            // 3. Delete the removed player
-            const { error: delErr } = await supabase
+            // 3. Delete the removed player (verify with .select())
+            const { data: deletedPlayer, error: delErr } = await supabase
               .from('players')
               .delete()
-              .eq('id', op.removeId);
+              .eq('id', op.removeId)
+              .select();
             if (delErr) {
-              errors.push(`병합 선수 삭제 실패: ${delErr.message}`);
+              errors.push(`병합 선수 삭제 실패: ${delErr.message} (code: ${delErr.code})`);
               continue;
             }
+            if (!deletedPlayer || deletedPlayer.length === 0) {
+              errors.push(`병합 선수 삭제 실패: RLS DELETE 권한 없음 (player ${op.removeId})`);
+              continue;
+            }
+            console.log(`[Admin] Merge OK: deleted player ${op.removeId}`);
             successCount++;
             break;
           }
 
           case 'rename': {
-            const { error } = await supabase
+            const { data: updated, error } = await supabase
               .from('players')
               .update({ name: op.newName })
-              .eq('id', op.playerId);
-            if (error) { errors.push(`이름 변경 실패: ${error.message}`); continue; }
+              .eq('id', op.playerId)
+              .select();
+            if (error) { errors.push(`이름 변경 실패: ${error.message} (code: ${error.code})`); continue; }
+            if (!updated || updated.length === 0) { errors.push(`이름 변경 실패: RLS UPDATE 권한 없음`); continue; }
             successCount++;
             break;
           }
 
           case 'delete-player': {
             // Explicitly delete session_players first (belt-and-suspenders with CASCADE)
-            await supabase
+            const { error: spErr } = await supabase
               .from('session_players')
               .delete()
               .eq('player_id', op.player.id);
+            console.log(`[Admin] delete-player: session_players delete result`, { spErr });
 
-            const { error } = await supabase
+            const { data: deleted, error } = await supabase
               .from('players')
               .delete()
-              .eq('id', op.player.id);
-            if (error) { errors.push(`선수 삭제 실패 (${op.player.name}): ${error.message}`); continue; }
+              .eq('id', op.player.id)
+              .select();
+            console.log(`[Admin] delete-player: players delete result`, { deleted, error });
+            if (error) { errors.push(`선수 삭제 실패 (${op.player.name}): ${error.message} (code: ${error.code})`); continue; }
+            if (!deleted || deleted.length === 0) {
+              errors.push(`선수 삭제 실패 (${op.player.name}): RLS DELETE 권한 없음 - Supabase Dashboard에서 players 테이블의 DELETE policy를 확인하세요`);
+              continue;
+            }
             successCount++;
             break;
           }
 
           case 'edit-location': {
-            const { error } = await supabase
+            const { data: updated, error } = await supabase
               .from('sessions')
               .update({ location: op.newLocation || null })
-              .eq('id', op.sessionId);
+              .eq('id', op.sessionId)
+              .select();
             if (error) { errors.push(`장소 변경 실패: ${error.message}`); continue; }
+            if (!updated || updated.length === 0) { errors.push(`장소 변경 실패: RLS UPDATE 권한 없음`); continue; }
             successCount++;
             break;
           }
 
           case 'delete-session': {
-            const { error } = await supabase
+            const { data: deleted, error } = await supabase
               .from('sessions')
               .delete()
-              .eq('id', op.session.id);
+              .eq('id', op.session.id)
+              .select();
             if (error) { errors.push(`세션 삭제 실패: ${error.message}`); continue; }
+            if (!deleted || deleted.length === 0) { errors.push(`세션 삭제 실패: RLS DELETE 권한 없음`); continue; }
             successCount++;
             break;
           }
 
           case 'edit-score': {
-            const { error } = await supabase
+            const { data: updated, error } = await supabase
               .from('matches')
               .update({ score_a: op.newScoreA, score_b: op.newScoreB })
-              .eq('id', op.matchId);
+              .eq('id', op.matchId)
+              .select();
             if (error) { errors.push(`점수 변경 실패: ${error.message}`); continue; }
+            if (!updated || updated.length === 0) { errors.push(`점수 변경 실패: RLS UPDATE 권한 없음`); continue; }
             successCount++;
             break;
           }
 
           case 'delete-match': {
-            const { error } = await supabase
+            const { data: deleted, error } = await supabase
               .from('matches')
               .delete()
-              .eq('id', op.match.id);
+              .eq('id', op.match.id)
+              .select();
             if (error) { errors.push(`매치 삭제 실패: ${error.message}`); continue; }
+            if (!deleted || deleted.length === 0) { errors.push(`매치 삭제 실패: RLS DELETE 권한 없음`); continue; }
             successCount++;
             break;
           }
@@ -468,18 +500,21 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         errors.push(`${op.type} 처리 중 예외: ${msg}`);
-        console.error(`Op ${op.type} failed:`, err);
+        console.error(`[Admin] Op ${op.type} exception:`, err);
       }
     }
 
+    console.log(`[Admin] Commit done: ${successCount} success, ${errors.length} errors`, errors);
+
     if (errors.length > 0) {
-      console.error('Commit errors:', errors);
       showToast(
         `${successCount}건 성공, ${errors.length}건 실패: ${errors[0]}`,
         errors.length === sortedOps.length ? 'error' : 'warning'
       );
-    } else {
+    } else if (successCount > 0) {
       showToast(`${successCount}건의 변경사항이 적용되었습니다.`, 'success');
+    } else {
+      showToast('적용할 변경사항이 없습니다.', 'warning');
     }
 
     setPendingOps([]);
