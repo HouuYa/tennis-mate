@@ -320,15 +320,32 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     setShowConfirmModal(false);
     setCommitting(true);
 
-    try {
-      for (const op of pendingOps) {
+    // Snapshot ops to avoid closure issues
+    const opsToCommit = [...pendingOps];
+    let successCount = 0;
+    const errors: string[] = [];
+
+    // Sort: merges first, then renames/edits, then deletes last
+    const sortedOps = [...opsToCommit].sort((a, b) => {
+      const order: Record<string, number> = {
+        'merge': 0, 'rename': 1, 'edit-score': 2, 'edit-location': 2,
+        'delete-match': 3, 'delete-session': 4, 'delete-player': 5
+      };
+      return (order[a.type] ?? 2) - (order[b.type] ?? 2);
+    });
+
+    for (const op of sortedOps) {
+      try {
         switch (op.type) {
           case 'merge': {
             // 1. Fetch ALL matches that reference the removeId
             const { data: allMatches, error: fetchErr } = await supabase
               .from('matches')
               .select('*');
-            if (fetchErr) throw fetchErr;
+            if (fetchErr) {
+              errors.push(`병합 매치 조회 실패: ${fetchErr.message}`);
+              continue;
+            }
 
             const toUpdate = (allMatches || []).filter((m: AdminMatch) =>
               m.team_a.player1Id === op.removeId ||
@@ -337,6 +354,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               m.team_b.player2Id === op.removeId
             );
 
+            let matchUpdateFailed = false;
             for (const m of toUpdate) {
               const newTeamA = {
                 player1Id: m.team_a.player1Id === op.removeId ? op.keepId : m.team_a.player1Id,
@@ -350,15 +368,34 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                 .from('matches')
                 .update({ team_a: newTeamA, team_b: newTeamB })
                 .eq('id', m.id);
-              if (updateErr) throw updateErr;
+              if (updateErr) {
+                errors.push(`병합 매치 업데이트 실패: ${updateErr.message}`);
+                matchUpdateFailed = true;
+                break;
+              }
+            }
+            if (matchUpdateFailed) continue;
+
+            // 2. Delete session_players for removed player
+            const { error: spErr } = await supabase
+              .from('session_players')
+              .delete()
+              .eq('player_id', op.removeId);
+            if (spErr) {
+              errors.push(`병합 세션 플레이어 삭제 실패: ${spErr.message}`);
+              continue;
             }
 
-            // 2. Update session_players
-            await supabase.from('session_players').delete().eq('player_id', op.removeId);
-
             // 3. Delete the removed player
-            const { error: delErr } = await supabase.from('players').delete().eq('id', op.removeId);
-            if (delErr) throw delErr;
+            const { error: delErr } = await supabase
+              .from('players')
+              .delete()
+              .eq('id', op.removeId);
+            if (delErr) {
+              errors.push(`병합 선수 삭제 실패: ${delErr.message}`);
+              continue;
+            }
+            successCount++;
             break;
           }
 
@@ -367,13 +404,24 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               .from('players')
               .update({ name: op.newName })
               .eq('id', op.playerId);
-            if (error) throw error;
+            if (error) { errors.push(`이름 변경 실패: ${error.message}`); continue; }
+            successCount++;
             break;
           }
 
           case 'delete-player': {
-            const { error } = await supabase.from('players').delete().eq('id', op.player.id);
-            if (error) throw error;
+            // Explicitly delete session_players first (belt-and-suspenders with CASCADE)
+            await supabase
+              .from('session_players')
+              .delete()
+              .eq('player_id', op.player.id);
+
+            const { error } = await supabase
+              .from('players')
+              .delete()
+              .eq('id', op.player.id);
+            if (error) { errors.push(`선수 삭제 실패 (${op.player.name}): ${error.message}`); continue; }
+            successCount++;
             break;
           }
 
@@ -382,13 +430,18 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               .from('sessions')
               .update({ location: op.newLocation || null })
               .eq('id', op.sessionId);
-            if (error) throw error;
+            if (error) { errors.push(`장소 변경 실패: ${error.message}`); continue; }
+            successCount++;
             break;
           }
 
           case 'delete-session': {
-            const { error } = await supabase.from('sessions').delete().eq('id', op.session.id);
-            if (error) throw error;
+            const { error } = await supabase
+              .from('sessions')
+              .delete()
+              .eq('id', op.session.id);
+            if (error) { errors.push(`세션 삭제 실패: ${error.message}`); continue; }
+            successCount++;
             break;
           }
 
@@ -397,27 +450,41 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               .from('matches')
               .update({ score_a: op.newScoreA, score_b: op.newScoreB })
               .eq('id', op.matchId);
-            if (error) throw error;
+            if (error) { errors.push(`점수 변경 실패: ${error.message}`); continue; }
+            successCount++;
             break;
           }
 
           case 'delete-match': {
-            const { error } = await supabase.from('matches').delete().eq('id', op.match.id);
-            if (error) throw error;
+            const { error } = await supabase
+              .from('matches')
+              .delete()
+              .eq('id', op.match.id);
+            if (error) { errors.push(`매치 삭제 실패: ${error.message}`); continue; }
+            successCount++;
             break;
           }
         }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`${op.type} 처리 중 예외: ${msg}`);
+        console.error(`Op ${op.type} failed:`, err);
       }
-
-      showToast(`${pendingOps.length}건의 변경사항이 적용되었습니다.`, 'success');
-      setPendingOps([]);
-      await loadAllData();
-    } catch (error) {
-      console.error('Failed to commit changes:', error);
-      showToast('변경사항 적용 중 오류가 발생했습니다.', 'error');
-    } finally {
-      setCommitting(false);
     }
+
+    if (errors.length > 0) {
+      console.error('Commit errors:', errors);
+      showToast(
+        `${successCount}건 성공, ${errors.length}건 실패: ${errors[0]}`,
+        errors.length === sortedOps.length ? 'error' : 'warning'
+      );
+    } else {
+      showToast(`${successCount}건의 변경사항이 적용되었습니다.`, 'success');
+    }
+
+    setPendingOps([]);
+    await loadAllData();
+    setCommitting(false);
   };
 
   // --- Quick Entry (immediate, not pending) ---
@@ -667,33 +734,19 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
                 <Merge size={14} /> 중복 이름 감지 ({duplicateGroups.length}건)
               </div>
               {duplicateGroups.map(([name, group]) => (
-                <div key={name} className="bg-slate-800/50 rounded-lg p-2 space-y-1">
-                  <p className="text-xs text-purple-300 font-medium">"{group[0].name}" x {group.length}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {group.length === 2 ? (
-                      <button
-                        onClick={() => handleMergePlayers(group[0].id, group[1].id)}
-                        className="text-[10px] px-2 py-1 bg-purple-700/50 text-purple-300 rounded hover:bg-purple-600/50 transition-colors"
-                      >
-                        "{group[0].name}" 으로 병합
-                      </button>
-                    ) : (
-                      group.map((p, i) => (
-                        <button
-                          key={p.id}
-                          onClick={() => {
-                            // Keep this one, merge all others into it
-                            group.filter(other => other.id !== p.id).forEach(other => {
-                              handleMergePlayers(p.id, other.id);
-                            });
-                          }}
-                          className="text-[10px] px-2 py-1 bg-purple-700/50 text-purple-300 rounded hover:bg-purple-600/50 transition-colors"
-                        >
-                          #{i + 1} 로 병합
-                        </button>
-                      ))
-                    )}
-                  </div>
+                <div key={name} className="bg-slate-800/50 rounded-lg p-2 flex items-center justify-between">
+                  <p className="text-xs text-purple-300 font-medium">"{group[0].name}" x {group.length}명</p>
+                  <button
+                    onClick={() => {
+                      // Keep the first one, merge all others into it
+                      group.slice(1).forEach(other => {
+                        handleMergePlayers(group[0].id, other.id);
+                      });
+                    }}
+                    className="text-[10px] px-2.5 py-1 bg-purple-700/50 text-purple-300 rounded hover:bg-purple-600/50 transition-colors font-bold"
+                  >
+                    {group.length}명 병합
+                  </button>
                 </div>
               ))}
             </div>
