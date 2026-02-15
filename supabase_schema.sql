@@ -56,14 +56,17 @@ alter table public.matches enable row level security;
 create policy "Allow public read access" on public.players for select using (true);
 create policy "Allow public insert access" on public.players for insert with check (true);
 create policy "Allow public update access" on public.players for update using (true);
+create policy "Allow public delete access" on public.players for delete using (true);
 
 create policy "Allow public read access" on public.sessions for select using (true);
 create policy "Allow public insert access" on public.sessions for insert with check (true);
 create policy "Allow public update access" on public.sessions for update using (true);
+create policy "Allow public delete access" on public.sessions for delete using (true);
 
 create policy "Allow public read access" on public.session_players for select using (true);
 create policy "Allow public insert access" on public.session_players for insert with check (true);
 create policy "Allow public update access" on public.session_players for update using (true);
+create policy "Allow public delete access" on public.session_players for delete using (true);
 
 create policy "Allow public read access" on public.matches for select using (true);
 create policy "Allow public insert access" on public.matches for insert with check (true);

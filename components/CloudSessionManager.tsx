@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Play, Clock, ChevronRight, Loader2, MapPin, Home, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Play, Clock, ChevronRight, Loader2, MapPin, Home, AlertTriangle, RefreshCw, Shield } from 'lucide-react';
 import { LocationPicker } from './LocationPicker';
 import { SessionSummary, SessionRecord, SessionLocationRecord } from '../types';
 import { supabase } from '../services/supabaseClient';
 
 interface CloudSessionManagerProps {
     onSessionReady?: () => void;
+    onAdminClick?: () => void;
 }
 
 const CLOUD_SESSION_ID_KEY = 'tennis-mate-current-session-id';
 
-export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSessionReady }) => {
+export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSessionReady, onAdminClick }) => {
     const { startCloudSession, loadCloudSession, sessionDate, setSessionDate, exitMode } = useApp();
     const { showToast } = useToast();
 
@@ -230,14 +231,25 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                 )}
             </div>
 
-            {/* Back to Mode Selection */}
-            <button
-                onClick={handleBackToModeSelection}
-                className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-sm"
-            >
-                <Home size={16} />
-                <span>Back to Mode Selection</span>
-            </button>
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between w-full">
+                <button
+                    onClick={handleBackToModeSelection}
+                    className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-sm"
+                >
+                    <Home size={16} />
+                    <span>Back to Mode Selection</span>
+                </button>
+                {onAdminClick && (
+                    <button
+                        onClick={onAdminClick}
+                        className="flex items-center gap-1 text-slate-500 hover:text-tennis-green transition-colors text-sm"
+                    >
+                        <Shield size={14} />
+                        <span>Admin</span>
+                    </button>
+                )}
+            </div>
 
             {/* Confirmation Dialog */}
             {showConfirmDialog && (

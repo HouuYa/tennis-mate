@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { UserPlus, Trash2, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw, AlertTriangle } from 'lucide-react';
-import { Tab } from '../types';
+import { UserPlus, Trash2, ArrowUp, ArrowDown, GripVertical, Check, PlayCircle, Shuffle, RotateCcw, AlertTriangle, Undo2 } from 'lucide-react';
+import { Tab, Player } from '../types';
 
 interface Props {
   setTab: (t: Tab) => void;
@@ -17,7 +17,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showScheduleConfirm, setShowScheduleConfirm] = useState(false); // New confirmation state
-  const [playerToDelete, setPlayerToDelete] = useState<string | null>(null);
+  const [pendingDeletes, setPendingDeletes] = useState<Player[]>([]);
 
   // Refs for Drag and Drop
   const dragItem = useRef<number | null>(null);
@@ -106,19 +106,33 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
   };
 
   const handleDeleteClick = (playerId: string) => {
-    setPlayerToDelete(playerId);
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+
+    const success = deletePlayer(playerId);
+    if (success) {
+      // Save player to pending deletes for potential restore
+      setPendingDeletes(prev => [...prev, player]);
+    } else {
+      showToast("Cannot delete player - in active/queued matches", "error");
+    }
   };
 
-  const handleConfirmDelete = () => {
-    if (playerToDelete) {
-      const success = deletePlayer(playerToDelete);
-      setPlayerToDelete(null);
-      if (success) {
-        showToast("Player deleted successfully", "success");
-      } else {
-        showToast("Cannot delete player - in active/queued matches", "error");
-      }
+  const handleRestorePlayer = async (player: Player) => {
+    try {
+      await addPlayer(player.name, player);
+      setPendingDeletes(prev => prev.filter(p => p.id !== player.id));
+    } catch (error) {
+      showToast("Failed to restore player", "error");
     }
+  };
+
+  const handleDoneEdit = () => {
+    if (pendingDeletes.length > 0) {
+      showToast(`${pendingDeletes.length} player(s) removed`, "success");
+    }
+    setPendingDeletes([]);
+    setIsEditMode(false);
   };
 
   const handleReset = () => {
@@ -260,7 +274,7 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
           {isEditMode ? 'Drag to Reorder & Rename' : 'Active Players & Rotation'}
         </p>
         <button
-          onClick={() => setIsEditMode(!isEditMode)}
+          onClick={() => isEditMode ? handleDoneEdit() : setIsEditMode(true)}
           className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isEditMode
             ? 'bg-tennis-green text-slate-900 shadow-[0_0_10px_rgba(212,225,87,0.4)]'
             : 'bg-slate-800 text-slate-400 border border-slate-700'
@@ -354,6 +368,34 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
         ))}
       </div>
 
+      {/* Pending Deletes (Removed Players) - shown in edit mode */}
+      {isEditMode && pendingDeletes.length > 0 && (
+        <div className="bg-red-900/10 border border-red-900/30 rounded-xl p-3 space-y-2">
+          <p className="text-xs text-red-400 font-bold uppercase tracking-wider flex items-center gap-1">
+            <Trash2 size={12} /> Removed ({pendingDeletes.length})
+          </p>
+          {pendingDeletes.map((player) => (
+            <div
+              key={player.id}
+              className="flex items-center justify-between p-2 rounded-lg bg-slate-900/50 border border-red-900/20"
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-red-900/30 flex items-center justify-center">
+                  <Trash2 size={12} className="text-red-400" />
+                </span>
+                <span className="text-sm text-slate-400 line-through">{player.name}</span>
+              </div>
+              <button
+                onClick={() => handleRestorePlayer(player)}
+                className="flex items-center gap-1 text-xs bg-slate-800 text-tennis-green px-2 py-1 rounded-lg border border-slate-700 hover:border-tennis-green transition-colors"
+              >
+                <Undo2 size={12} /> Restore
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!isEditMode && (
         <>
           <div className="mt-6 pt-4 border-t border-slate-800 space-y-3">
@@ -412,41 +454,6 @@ export const PlayerList: React.FC<Props> = ({ setTab }) => {
               </div>
             )}
           </div>
-
-          {/* Delete Player Confirmation Modal */}
-          {playerToDelete && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-              <div className="bg-slate-800 border border-red-500 rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in-95">
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-2">
-                    <AlertTriangle size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Delete Player?</h3>
-                  <p className="text-sm text-slate-300">
-                    Are you sure you want to delete <span className="text-tennis-green font-bold">{players.find(p => p.id === playerToDelete)?.name}</span>?
-                  </p>
-                  <p className="text-xs text-slate-500 bg-slate-900/50 p-2 rounded">
-                    This action cannot be undone.
-                  </p>
-
-                  <div className="flex gap-3 w-full mt-4">
-                    <button
-                      onClick={() => setPlayerToDelete(null)}
-                      className="flex-1 py-3 bg-slate-700 text-white font-bold rounded-xl hover:bg-slate-600"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleConfirmDelete}
-                      className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-500"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Schedule Overwrite Confirmation Modal (Absolute Centered) */}
           {showScheduleConfirm && (

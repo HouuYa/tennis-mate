@@ -42,13 +42,13 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
   // Fix: Reset/Sync scores when the active match changes
   useEffect(() => {
     if (activeMatch) {
-      setScoreA(activeMatch.scoreA || 0);
-      setScoreB(activeMatch.scoreB || 0);
+      setScoreA(activeMatch.scoreA ?? 0);
+      setScoreB(activeMatch.scoreB ?? 0);
     } else {
       setScoreA(0);
       setScoreB(0);
     }
-  }, [activeMatch?.id]);
+  }, [activeMatch?.id, activeMatch?.scoreA, activeMatch?.scoreB]);
 
   const startEditMatch = (match: Match) => {
     setEditingMatch(match.id);
@@ -69,7 +69,9 @@ export const MatchSchedule: React.FC<Props> = ({ setTab }) => {
       setIsFinishing(true);
       try {
         await finishMatch(activeMatch.id, scoreA, scoreB);
-        // Scores are reset via useEffect when activeMatch changes
+        // Explicitly reset scores for the next match
+        setScoreA(0);
+        setScoreB(0);
         showToast('Match finished successfully!', 'success');
       } catch (error) {
         showToast('Failed to save match result. Please try again.', 'error');

@@ -8,11 +8,13 @@ import { StatsView } from './components/StatsView';
 import { LiveFeed } from './components/LiveFeed';
 import { ToastContainer } from './components/Toast';
 import { Tab } from './types';
+import { Shield } from 'lucide-react';
 import { useApp } from './context/AppContext';
 import { ModeSelection } from './components/ModeSelection';
 import { CloudSessionManager } from './components/CloudSessionManager';
 import { GoogleSheetsSessionManager } from './components/GoogleSheetsSessionManager';
 import { GuestSessionManager } from './components/GuestSessionManager';
+import { AdminPage } from './components/AdminPage';
 
 const GUEST_SESSION_READY_KEY = 'tennis-mate-guest-session-ready';
 const CLOUD_SESSION_READY_KEY = 'tennis-mate-cloud-session-ready';
@@ -93,6 +95,19 @@ const MainLayout = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-tennis-green selection:text-slate-900">
       <header className="p-4 flex items-center justify-center bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-10">
+        {mode === 'CLOUD' && (
+          <button
+            onClick={() => setActiveTab(Tab.ADMIN)}
+            className={`absolute left-4 flex items-center gap-1 text-[10px] uppercase font-bold px-2 py-1 rounded border transition-colors ${
+              activeTab === Tab.ADMIN
+                ? 'text-tennis-green border-tennis-green'
+                : 'text-slate-500 border-slate-700 hover:text-white hover:border-slate-500'
+            }`}
+            title="Admin"
+          >
+            <Shield size={12} /> Admin
+          </button>
+        )}
         <h1 className="text-xl font-black italic tracking-tighter text-tennis-green flex items-center gap-2">
           <span className="w-3 h-3 bg-tennis-green rounded-full animate-pulse"></span>
           TENNIS MATE
@@ -112,6 +127,7 @@ const MainLayout = () => {
         {activeTab === Tab.MATCHES && <MatchSchedule setTab={setActiveTab} />}
         {activeTab === Tab.FEED && <LiveFeed />}
         {activeTab === Tab.STATS && <StatsView />}
+        {activeTab === Tab.ADMIN && <AdminPage setTab={setActiveTab} />}
       </main>
 
       <BottomNav activeTab={activeTab} setTab={setActiveTab} />
@@ -120,7 +136,7 @@ const MainLayout = () => {
       {showCloudSessionManager && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800 animate-in zoom-in-95 duration-200">
-            <CloudSessionManager onSessionReady={handleCloudSessionReady} />
+            <CloudSessionManager onSessionReady={handleCloudSessionReady} onAdminClick={() => { handleCloudSessionReady(); setActiveTab(Tab.ADMIN); }} />
           </div>
         </div>
       )}
