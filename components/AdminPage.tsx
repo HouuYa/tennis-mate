@@ -50,6 +50,9 @@ const nextOpId = () => `op-${++opCounter}`;
 
 const ADMIN_AUTH_KEY = 'tennis-mate-admin-auth';
 
+// RLS diagnostic result type
+type RlsDiag = { canSelect: boolean; canInsert: boolean; canUpdate: boolean; canDelete: boolean; error?: string };
+
 export const AdminPage: React.FC<Props> = ({ setTab }) => {
   const { showToast } = useToast();
 
@@ -72,6 +75,9 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   const [pendingOps, setPendingOps] = useState<PendingOp[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [committing, setCommitting] = useState(false);
+
+  // RLS diagnostic
+  const [rlsDiag, setRlsDiag] = useState<RlsDiag | null>(null);
 
   // Edit state
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -160,6 +166,42 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     return [];
   }, [pendingOps, activeSection]);
 
+  // --- RLS Diagnostic: tests INSERT/UPDATE/DELETE on players table ---
+  const runRlsDiagnostic = async () => {
+    const diag: RlsDiag = { canSelect: false, canInsert: false, canUpdate: false, canDelete: false };
+    try {
+      // 1. SELECT test
+      const { error: selErr } = await supabase.from('players').select('id').limit(1);
+      diag.canSelect = !selErr;
+      if (selErr) { diag.error = `SELECT: ${selErr.message}`; setRlsDiag(diag); return; }
+
+      // 2. INSERT test
+      const testName = `__rls_test_${Date.now()}`;
+      const { data: inserted, error: insErr } = await supabase
+        .from('players').insert({ name: testName }).select().single();
+      diag.canInsert = !insErr && !!inserted;
+      if (insErr || !inserted) { diag.error = `INSERT: ${insErr?.message || 'no data returned'}`; setRlsDiag(diag); return; }
+
+      const testId = inserted.id;
+
+      // 3. UPDATE test
+      const { data: updated, error: updErr } = await supabase
+        .from('players').update({ name: testName + '_upd' }).eq('id', testId).select();
+      diag.canUpdate = !updErr && (updated?.length ?? 0) > 0;
+      if (updErr || !updated?.length) { diag.error = `UPDATE: ${updErr?.message || 'RLS blocked - 0 rows affected'}`; }
+
+      // 4. DELETE test
+      const { data: deleted, error: delErr } = await supabase
+        .from('players').delete().eq('id', testId).select();
+      diag.canDelete = !delErr && (deleted?.length ?? 0) > 0;
+      if (delErr || !deleted?.length) { diag.error = `DELETE: ${delErr?.message || 'RLS blocked - 0 rows affected'}`; }
+    } catch (e) {
+      diag.error = `Exception: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    console.log('[Admin] RLS Diagnostic:', diag);
+    setRlsDiag(diag);
+  };
+
   // Check saved auth on mount
   useEffect(() => {
     const saved = sessionStorage.getItem(ADMIN_AUTH_KEY);
@@ -168,16 +210,21 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     }
   }, []);
 
-  // Load data when authenticated or switching section
+  // Load data when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       loadAllData();
+      runRlsDiagnostic();
     }
   }, [isAuthenticated]);
 
   const handleLogin = () => {
-    const envId = import.meta.env.VITE_ADMIN_ID || 'admin';
-    const envPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'tennis1234';
+    const envId = import.meta.env.VITE_ADMIN_ID;
+    const envPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+    if (!envId || !envPassword) {
+      setAuthError('VITE_ADMIN_ID / VITE_ADMIN_PASSWORD 환경변수가 설정되지 않았습니다');
+      return;
+    }
 
     if (adminId === envId && adminPassword === envPassword) {
       setIsAuthenticated(true);
@@ -319,6 +366,16 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   const handleCommitAll = async () => {
     setShowConfirmModal(false);
     setCommitting(true);
+
+    // Warn if RLS diagnostic failed
+    if (rlsDiag && !rlsDiag.canDelete) {
+      const proceed = window.confirm(
+        'Supabase DELETE 권한이 없는 것으로 진단되었습니다.\n' +
+        'Supabase Dashboard에서 RLS Policy를 먼저 확인하시겠습니까?\n\n' +
+        '계속 진행하려면 "확인"을 누르세요.'
+      );
+      if (!proceed) { setCommitting(false); return; }
+    }
 
     // Snapshot ops to avoid closure issues
     const opsToCommit = [...pendingOps];
@@ -507,10 +564,10 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     console.log(`[Admin] Commit done: ${successCount} success, ${errors.length} errors`, errors);
 
     if (errors.length > 0) {
-      showToast(
-        `${successCount}건 성공, ${errors.length}건 실패: ${errors[0]}`,
-        errors.length === sortedOps.length ? 'error' : 'warning'
-      );
+      const msg = `${successCount}건 성공, ${errors.length}건 실패:\n${errors.join('\n')}`;
+      showToast(msg, errors.length === sortedOps.length ? 'error' : 'warning');
+      // Alert as fallback so user definitely sees the error
+      window.alert(msg);
     } else if (successCount > 0) {
       showToast(`${successCount}건의 변경사항이 적용되었습니다.`, 'success');
     } else {
@@ -694,7 +751,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
           </button>
 
           <p className="text-[10px] text-slate-500 text-center">
-            Set VITE_ADMIN_ID and VITE_ADMIN_PASSWORD in .env to customize
+            .env에 VITE_ADMIN_ID, VITE_ADMIN_PASSWORD 설정 필요
           </p>
         </div>
       </div>
@@ -727,6 +784,25 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
           </button>
         </div>
       </div>
+
+      {/* RLS Diagnostic Banner */}
+      {rlsDiag && (!rlsDiag.canDelete || !rlsDiag.canUpdate) && (
+        <div className="mx-2 p-3 bg-red-900/30 border border-red-700/50 rounded-lg space-y-1">
+          <p className="text-xs font-bold text-red-400 flex items-center gap-1">
+            <AlertTriangle size={14} /> Supabase RLS 권한 문제 감지
+          </p>
+          <div className="flex gap-2 text-[10px]">
+            <span className={rlsDiag.canSelect ? 'text-green-400' : 'text-red-400'}>SELECT: {rlsDiag.canSelect ? 'OK' : 'FAIL'}</span>
+            <span className={rlsDiag.canInsert ? 'text-green-400' : 'text-red-400'}>INSERT: {rlsDiag.canInsert ? 'OK' : 'FAIL'}</span>
+            <span className={rlsDiag.canUpdate ? 'text-green-400' : 'text-red-400'}>UPDATE: {rlsDiag.canUpdate ? 'OK' : 'FAIL'}</span>
+            <span className={rlsDiag.canDelete ? 'text-green-400' : 'text-red-400'}>DELETE: {rlsDiag.canDelete ? 'OK' : 'FAIL'}</span>
+          </div>
+          {rlsDiag.error && <p className="text-[10px] text-red-300 break-all">{rlsDiag.error}</p>}
+          <p className="text-[10px] text-slate-400">
+            Supabase Dashboard &gt; Authentication &gt; Policies 에서 players 테이블에 DELETE/UPDATE policy를 추가하세요.
+          </p>
+        </div>
+      )}
 
       {/* Section Tabs */}
       <div className="flex gap-2 px-2">
