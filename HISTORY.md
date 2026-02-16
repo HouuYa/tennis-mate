@@ -152,13 +152,15 @@ This document serves as the master record for releases, daily summaries, and bug
   - 실패 시 구체적 에러 메시지 및 SQL 해결 방법 안내
 - **RLS 차단 감지**: `.select()` 체이닝으로 silent failure 방지
   - Supabase는 RLS 차단 시 에러 없이 0 rows 반환 → 이를 명시적 감지
-- **필수 RLS 정책**: 모든 테이블에 public delete 정책 추가
+- **필수 RLS 정책**: 모든 테이블에 4개 정책 (SELECT/INSERT/UPDATE/DELETE)
+  - ⚠️ `CREATE POLICY`는 동일 이름 정책 존재 시 에러 → `DROP POLICY IF EXISTS` 먼저 실행
+  - 전체 SQL: [`supabase_schema.sql`](./supabase_schema.sql) 참고
   ```sql
+  -- 예시 (각 테이블에 동일 패턴 적용)
+  DROP POLICY IF EXISTS "Allow public delete access" ON public.players;
   CREATE POLICY "Allow public delete access" ON public.players FOR DELETE USING (true);
-  CREATE POLICY "Allow public delete access" ON public.sessions FOR DELETE USING (true);
-  CREATE POLICY "Allow public delete access" ON public.session_players FOR DELETE USING (true);
-  CREATE POLICY "Allow public delete access" ON public.matches FOR DELETE USING (true);
   ```
+  - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`는 최초 1회만 필요 (이미 ON이면 무해)
 
 **Bug Fixes:**
 - Player 삭제된 플레이어 복원 리스트 추가

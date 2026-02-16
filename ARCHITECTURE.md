@@ -168,14 +168,21 @@ StatsView.tsx
 - Guest Mode 호환을 위해 Supabase Auth 미사용, anon key로 공개 접근
 - **필수 SQL** (Supabase SQL Editor에서 실행):
   ```sql
+  -- ⚠️ 이미 존재하는 정책이 있으면 CREATE가 에러 발생하므로 DROP IF EXISTS 먼저 실행
   -- 각 테이블에 4개 정책 필요 (SELECT, INSERT, UPDATE, DELETE)
+  -- 예시: players 테이블 (sessions, session_players, matches도 동일하게 설정)
+  DROP POLICY IF EXISTS "Allow public read access" ON public.players;
   CREATE POLICY "Allow public read access" ON public.players FOR SELECT USING (true);
+  DROP POLICY IF EXISTS "Allow public insert access" ON public.players;
   CREATE POLICY "Allow public insert access" ON public.players FOR INSERT WITH CHECK (true);
+  DROP POLICY IF EXISTS "Allow public update access" ON public.players;
   CREATE POLICY "Allow public update access" ON public.players FOR UPDATE USING (true);
+  DROP POLICY IF EXISTS "Allow public delete access" ON public.players;
   CREATE POLICY "Allow public delete access" ON public.players FOR DELETE USING (true);
-  -- sessions, session_players, matches 테이블도 동일하게 설정
   ```
+  전체 SQL은 [`supabase_schema.sql`](./supabase_schema.sql) 참고
 - ⚠️ DELETE 정책 누락 시 Admin 페이지에서 삭제 불가 (RLS가 silent하게 차단)
+- ⚠️ `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`는 최초 1회만 필요 (이미 ON이면 재실행해도 무해)
 
 **중요 설계 결정:**
 1. `team_a`, `team_b`는 JSONB로 저장 (유연성)
