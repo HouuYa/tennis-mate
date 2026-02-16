@@ -131,7 +131,34 @@
 
 ---
 
-## 🔜 v1.3.0 - Core Features Enhancement (예정)
+## ✅ v1.3.0 - Cloud Mode Fixes & Admin Dashboard (완료 - 2026-02-16)
+- [x] **Admin Dashboard**
+    - [x] AdminPage 컴포넌트 신규 구현 (1,377 lines)
+    - [x] 환경변수 기반 인증 (`VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`)
+    - [x] sessionStorage 기반 세션 유지
+    - [x] Players / Sessions / Quick Entry 3개 섹션
+    - [x] Pending Operations 패턴 (Undo/Commit 일괄 처리)
+    - [x] Player: 이름 변경, 삭제, 중복 병합 (Merge)
+    - [x] Session: 위치 편집, 삭제
+    - [x] Match: 점수 편집, 삭제
+    - [x] Quick Entry: 기존/새 세션에 경기 빠른 입력
+    - [x] Player Deduplication: 동일 이름 플레이어 자동 감지
+- [x] **Supabase RLS 진단 & 수정**
+    - [x] RLS Diagnostic Tool: SELECT/INSERT/UPDATE/DELETE 자동 테스트
+    - [x] `.select()` 체이닝으로 RLS silent failure 감지
+    - [x] 필수 RLS 정책 문서화 (모든 테이블 public delete 정책)
+- [x] **AdminETLPage**: 테니스 규칙 PDF ETL 관리 인터페이스
+- [x] **Bug Fixes**
+    - [x] Player 삭제 복원 리스트 추가
+    - [x] Score 리셋 버그 수정
+    - [x] 기본 admin 계정 하드코딩 제거 (보안)
+- [x] **인증 아키텍처 문서화**
+    - [x] Admin 인증은 Supabase Auth와 무관 (프론트엔드 전용)
+    - [x] RLS 정책은 `USING (true)` — Guest Mode 호환
+
+---
+
+## 🔜 v1.4.0 - Core Features Enhancement (예정)
 
 ### 우선순위: HIGH
 
@@ -195,7 +222,7 @@ const handleGetLocation = async (position) => {
 
 ---
 
-## 🎯 v1.2.0 - Multi-Court & Advanced Features (예정)
+## 🎯 v1.5.0 - Multi-Court & Advanced Features (예정)
 
 ### 우선순위: HIGH
 

@@ -6,6 +6,31 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-02-16 (Cloud Mode Fixes & Admin Page)
+- **Admin Page 신규 구현** (`AdminPage.tsx`, 1,377 lines):
+  - 환경변수 기반 인증 (`VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`)
+  - sessionStorage 기반 세션 유지 (탭 닫으면 자동 로그아웃)
+  - Players / Sessions / Quick Entry 3개 섹션
+  - **Pending Operations 패턴**: 변경사항을 미리보기 후 일괄 커밋 (Undo/Commit)
+  - Player 이름 변경, 삭제, 중복 병합 (Merge) 기능
+  - Session 위치 편집, 삭제 기능
+  - Match 점수 편집, 삭제 기능 (cascade 업데이트)
+  - Quick Entry: 기존 세션에 경기 추가 또는 새 세션 생성
+- **RLS Diagnostic 도구**: Supabase RLS 정책 자동 진단
+  - SELECT / INSERT / UPDATE / DELETE 각각 테스트
+  - 테스트용 레코드 자동 생성 후 삭제
+  - 실패 시 구체적 에러 메시지 표시
+- **Supabase RLS 정책 수정**:
+  - DELETE 정책 누락 문제 발견 → `USING (true)` 정책 추가 필요
+  - `.select()` 체이닝으로 RLS 차단 감지 (0 rows = RLS blocked)
+- **Admin 인증 구조 정리**:
+  - Supabase Auth와 무관한 프론트엔드 전용 인증
+  - 환경변수 미설정 시 명확한 에러 메시지
+  - 기본 계정 하드코딩 제거 → Netlify 환경변수 필수
+- **AdminETLPage**: 테니스 규칙 PDF ETL 관리 인터페이스 추가
+- **Player Delete Restore**: 삭제된 플레이어 복원 리스트 추가
+- **Score Reset Bug Fix**: 점수 리셋 버그 수정
+
 ### 2026-02-11 (Mobile Readability & Security Improvements)
 - **HTML Formatting**: Switched from plain text to HTML tags for better mobile indentation
   - Backend prompts now generate `<p>`, `<ul>`, `<li>`, `<hr>`, `<h3>`, `<sup>`, `<strong>` tags
@@ -103,6 +128,49 @@ This document serves as the master record for releases, daily summaries, and bug
 ---
 
 ## 🚀 전체 Changelog
+
+### [1.3.0] - 2026-02-16
+**🔧 Cloud Mode Fixes & Admin Dashboard**
+
+**Admin Dashboard (신규):**
+- **AdminPage 컴포넌트**: Supabase 데이터 관리를 위한 전체 관리자 대시보드
+  - 환경변수 기반 인증 (Supabase Auth 미사용, 프론트엔드 전용)
+  - `VITE_ADMIN_ID` / `VITE_ADMIN_PASSWORD`로 Netlify 환경변수 설정
+  - sessionStorage 기반 세션 유지 (브라우저 탭 닫으면 자동 로그아웃)
+- **Pending Operations 패턴**: 변경사항을 미리보기 후 Undo/Commit 일괄 처리
+  - Player: 이름 변경, 삭제, 중복 병합 (Merge with cascade match update)
+  - Session: 위치 편집, 삭제
+  - Match: 점수 편집, 삭제
+- **Quick Entry**: 기존 세션에 경기 추가 또는 새 세션 즉시 생성
+- **Player Deduplication**: 동일 이름 플레이어 자동 감지 및 병합 제안
+- **AdminETLPage**: 테니스 규칙 PDF ETL 관리 인터페이스
+
+**Supabase RLS 진단 & 수정:**
+- **RLS Diagnostic Tool**: 로그인 시 자동으로 SELECT/INSERT/UPDATE/DELETE 권한 테스트
+  - 테스트 레코드 자동 생성 후 삭제 (잔여 데이터 없음)
+  - 각 작업별 성공/실패 상태 시각적 표시
+  - 실패 시 구체적 에러 메시지 및 SQL 해결 방법 안내
+- **RLS 차단 감지**: `.select()` 체이닝으로 silent failure 방지
+  - Supabase는 RLS 차단 시 에러 없이 0 rows 반환 → 이를 명시적 감지
+- **필수 RLS 정책**: 모든 테이블에 public delete 정책 추가
+  ```sql
+  CREATE POLICY "Allow public delete access" ON public.players FOR DELETE USING (true);
+  CREATE POLICY "Allow public delete access" ON public.sessions FOR DELETE USING (true);
+  CREATE POLICY "Allow public delete access" ON public.session_players FOR DELETE USING (true);
+  CREATE POLICY "Allow public delete access" ON public.matches FOR DELETE USING (true);
+  ```
+
+**Bug Fixes:**
+- Player 삭제된 플레이어 복원 리스트 추가
+- Score 리셋 버그 수정
+- 기본 admin 계정 하드코딩 제거 (보안 개선)
+- Supabase delete/update 시 `.select()` 추가로 RLS 차단 감지
+
+**인증 아키텍처 설명:**
+- Admin 계정 (`admin/tennis1234`)은 Supabase Users에 등록 불필요
+- 프론트엔드 환경변수(`VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`)로만 인증
+- Supabase RLS 정책은 `USING (true)` — 모든 요청 공개 허용 (Guest Mode 호환)
+- Admin 로그인은 UI 접근 제어만 담당, 데이터 권한은 RLS 정책이 담당
 
 ### [1.2.0] - 2026-01-14
 **🎨 AI Coach UI/UX Redesign & RAG System**

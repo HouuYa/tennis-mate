@@ -22,7 +22,9 @@
 │   ├── GeminiApiKeySettings.tsx # Gemini API Key Configuration
 │   ├── ModeSelection.tsx # Storage Mode Selection (Guest/Sheets/Cloud) + Korean descriptions
 │   ├── GuestSessionManager.tsx # Guest Mode Session Manager (date/location selection)
-│   ├── CloudSessionManager.tsx # Cloud Mode Session Manager (Supabase)
+│   ├── CloudSessionManager.tsx # Cloud Mode Session Manager (Supabase) + Admin button
+│   ├── AdminPage.tsx     # Admin Dashboard: Player/Session/Match management (v1.3.0)
+│   ├── AdminETLPage.tsx  # Tennis Rules PDF ETL management (v1.3.0)
 │   ├── GoogleSheetsSessionManager.tsx # Google Sheets Setup & Connection
 │   ├── GoogleSheetsGuide.tsx # 6-Step Setup Guide Modal with screenshots
 │   ├── LocationPicker.tsx # Geolocation-based location input
@@ -162,8 +164,18 @@ StatsView.tsx
     *   `played_at`, `end_time` (timestamptz)
 
 **Row Level Security (RLS) Policies:**
-- 모든 테이블: Public read/insert/update/delete access
-- Production 환경에서는 사용자별 권한으로 변경 필요
+- 모든 테이블: Public read/insert/update/delete access (`USING (true)`)
+- Guest Mode 호환을 위해 Supabase Auth 미사용, anon key로 공개 접근
+- **필수 SQL** (Supabase SQL Editor에서 실행):
+  ```sql
+  -- 각 테이블에 4개 정책 필요 (SELECT, INSERT, UPDATE, DELETE)
+  CREATE POLICY "Allow public read access" ON public.players FOR SELECT USING (true);
+  CREATE POLICY "Allow public insert access" ON public.players FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Allow public update access" ON public.players FOR UPDATE USING (true);
+  CREATE POLICY "Allow public delete access" ON public.players FOR DELETE USING (true);
+  -- sessions, session_players, matches 테이블도 동일하게 설정
+  ```
+- ⚠️ DELETE 정책 누락 시 Admin 페이지에서 삭제 불가 (RLS가 silent하게 차단)
 
 **중요 설계 결정:**
 1. `team_a`, `team_b`는 JSONB로 저장 (유연성)
@@ -272,6 +284,74 @@ function doPost(e) {
 - Row Level Security는 Google Apps Script로 직접 구현 필요
 
 ---
+
+### E-3. Admin Authentication & Page Architecture (v1.3.0)
+
+**인증 구조:**
+- Admin 인증은 **Supabase Auth와 완전히 무관**한 프론트엔드 전용 인증
+- Supabase Users 탭에 admin 계정 등록 불필요
+- 환경변수 `VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`로 인증 (Netlify에서 설정)
+
+```
+[사용자 입력] → [환경변수 비교] → [sessionStorage 저장] → [Admin UI 접근 허용]
+                    ↓                       ↓
+              VITE_ADMIN_ID          'tennis-mate-admin-auth'
+              VITE_ADMIN_PASSWORD    (브라우저 탭 닫으면 자동 삭제)
+```
+
+**Admin vs RLS 권한 분리:**
+```
+┌──────────────────────────────────────────────────────┐
+│  Admin Login (프론트엔드)                              │
+│  - 역할: Admin UI 페이지 접근 제어                      │
+│  - 방식: 환경변수 비교 + sessionStorage                 │
+│  - Supabase Auth: 사용 안 함                           │
+└──────────────────────────────────────────────────────┘
+         ↓ (인증 후)
+┌──────────────────────────────────────────────────────┐
+│  Supabase RLS (데이터베이스)                            │
+│  - 역할: 데이터 CRUD 권한                               │
+│  - 방식: USING (true) — 모든 요청 허용 (anon key)       │
+│  - Admin 체크: 하지 않음 (Guest Mode 호환)              │
+└──────────────────────────────────────────────────────┘
+```
+
+**Pending Operations 패턴:**
+```
+[사용자 편집] → [pendingOps 배열에 추가] → [displayData = original + ops 적용]
+                                              ↓
+                                    [미리보기 화면 표시]
+                                              ↓
+                              [Commit 클릭] → [Supabase 일괄 실행]
+                              [Undo 클릭]  → [pendingOps에서 제거]
+```
+
+- 7가지 작업 타입: rename, delete-player, merge, edit-location, delete-session, edit-score, delete-match
+- `useMemo`로 displayPlayers/displaySessions/displayMatches 계산
+- Commit 시 작업 순서: merge → rename → delete-player → session ops → match ops
+
+**RLS Diagnostic Tool:**
+- 로그인 시 자동 실행 (`runRlsDiagnostic()`)
+- 테스트 순서: SELECT → INSERT (temp record) → UPDATE → DELETE (cleanup)
+- `.select()` 체이닝으로 Supabase의 silent RLS 차단 감지
+  - Supabase는 RLS 차단 시 에러 없이 빈 배열 반환 → `deleted?.length === 0`으로 감지
+
+**Component Structure (v1.3.0):**
+```
+CloudSessionManager.tsx
+  └── "Admin" 버튼 → AdminPage.tsx
+      ├── Login Form (환경변수 인증)
+      ├── RLS Diagnostic Banner
+      ├── Players Section
+      │   ├── Rename / Delete / Merge
+      │   └── Deduplication Alerts
+      ├── Sessions Section
+      │   ├── Location Edit / Delete
+      │   └── Expanded → Match List (Score Edit / Delete)
+      ├── Quick Entry Section
+      │   └── New Match Form (기존/새 세션)
+      └── Pending Ops Bar (Undo All / Commit)
+```
 
 ### F. Session Management & Persistence
 
