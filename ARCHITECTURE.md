@@ -364,11 +364,40 @@ ADMIN_JWT_SECRET=<random>   # JWT 서명 키 (32자+ 랜덤 문자열)
 - `.select()` 체이닝으로 Supabase의 silent RLS 차단 감지
   - Supabase는 RLS 차단 시 에러 없이 빈 배열 반환 → `deleted?.length === 0`으로 감지
 
-**Component Structure (v1.3.0):**
+**배포 및 환경변수 (v1.3.1):**
+
+Netlify 환경변수 설정 (Project settings → Environment variables):
+
+| Variable | Purpose | Scope | Example |
+|----------|---------|-------|---------|
+| `ADMIN_ID` | Admin 로그인 ID (서버 전용) | Production, Deploy Previews | `admin` |
+| `ADMIN_PASSWORD` | Admin 비밀번호 (서버 전용) | Production, Deploy Previews | `<strong password>` |
+| `ADMIN_JWT_SECRET` | JWT 서명 키 (서버 전용) | Production, Deploy Previews | `<32+ random chars>` |
+| `VITE_SUPABASE_URL` | Supabase 프로젝트 URL (클라이언트) | All | `https://xxx.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key (클라이언트) | All | `eyJhbG...` |
+| `VITE_GEMINI_API_KEY` | Gemini API 키 (클라이언트) | All | `AIza...` |
+
+**환경변수 생성 방법:**
+```bash
+# ADMIN_JWT_SECRET 생성 (32자 이상 랜덤 문자열)
+openssl rand -base64 32
+# 또는
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+**트러블슈팅:**
+- ❌ **"Server configuration error"** → Netlify에 `ADMIN_ID`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET` 누락
+  - 해결: Netlify Dashboard에서 3개 환경변수 추가 → **Trigger deploy** → **Clear cache and deploy site**
+- ❌ **로컬에서 Admin 로그인 실패** → `npm run dev`는 Netlify Functions 미지원
+  - 해결: `netlify dev` 사용 (Netlify CLI: `npm install -g netlify-cli`)
+- ❌ **JWT 만료 (4시간 후)** → 재로그인 필요
+  - 해결: Admin 페이지 새로고침 시 자동 재검증, 만료 시 로그인 화면으로 리다이렉트
+
+**Component Structure (v1.3.1):**
 ```
 CloudSessionManager.tsx
   └── "Admin" 버튼 → AdminPage.tsx
-      ├── Login Form (환경변수 인증)
+      ├── Login Form (서버사이드 JWT 인증 via /api/admin-auth)
       ├── RLS Diagnostic Banner
       ├── Players Section
       │   ├── Rename / Delete / Merge

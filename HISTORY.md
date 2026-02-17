@@ -129,13 +129,62 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 🚀 전체 Changelog
 
+### [1.3.1] - 2026-02-17
+**🔐 Admin Auth Security Enhancement**
+
+**보안 강화 (Gemini Code Assist 리뷰 대응):**
+- **서버사이드 Admin 인증**: `VITE_ADMIN_PASSWORD` 클라이언트 노출 문제 해결
+  - Netlify Function (`netlify/functions/admin-auth.ts`) 신규 생성
+  - `jose` 라이브러리로 JWT 토큰 생성/검증 (HS256, 4시간 만료)
+  - 인증 플로우: 사용자 입력 → Netlify Function 서버 검증 → JWT 반환 → sessionStorage 저장
+  - 페이지 새로고침 시 `/api/admin-auth/verify`로 토큰 검증
+- **환경변수 마이그레이션**:
+  - ❌ `VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD` (클라이언트 번들에 포함됨) → 제거
+  - ✅ `ADMIN_ID`, `ADMIN_PASSWORD` (서버 전용, `VITE_` 접두사 없음)
+  - ✅ `ADMIN_JWT_SECRET` (JWT 서명용 랜덤 문자열, 32자 이상)
+- **신규 파일**:
+  - `services/adminAuthService.ts` — 클라이언트 인증 API 래퍼
+  - `netlify/functions/admin-auth.ts` — 서버사이드 JWT 인증 함수
+- **AdminPage.tsx 마이그레이션**:
+  - 클라이언트측 `import.meta.env.VITE_ADMIN_*` 비교 제거
+  - `adminLogin()` async 서버 호출로 변경
+  - `verifyAdminToken()` 서버 검증으로 변경
+
+**RLS 보안 문서화:**
+- `supabase_schema.sql`에 의도적 설계 설명 추가
+  - `USING (true)` 정책은 Guest Mode를 위한 의도적 선택
+  - 소규모 신뢰 그룹 사용 전제, Admin UI는 서버사이드 JWT로 보호
+  - 프로덕션 강화 방법 안내 (Supabase Auth + RLS 정책 변경)
+- `ARCHITECTURE.md` 인증 아키텍처 섹션 재작성
+- `HISTORY.md`에서 하드코딩된 비밀번호 (`admin/tennis1234`) 제거
+
+**배포 시 필수 환경변수 (Netlify):**
+```bash
+# 서버사이드 전용 (VITE_ 접두사 없음)
+ADMIN_ID=your_admin_id
+ADMIN_PASSWORD=your_strong_password
+ADMIN_JWT_SECRET=your_random_32char_string
+
+# 클라이언트 전용 (기존과 동일)
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_GEMINI_API_KEY=your_gemini_api_key
+```
+
+**트러블슈팅:**
+- **"Server configuration error"**: Netlify 환경변수에 `ADMIN_ID`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET` 누락
+  → Netlify Dashboard에서 3개 환경변수 추가 후 재배포
+- **로컬 개발**: `npm run dev`는 Netlify Functions를 서빙하지 않음
+  → `netlify dev` 사용 (Netlify CLI 필요: `npm install -g netlify-cli`)
+
+---
+
 ### [1.3.0] - 2026-02-16
 **🔧 Cloud Mode Fixes & Admin Dashboard**
 
 **Admin Dashboard (신규):**
 - **AdminPage 컴포넌트**: Supabase 데이터 관리를 위한 전체 관리자 대시보드
-  - 환경변수 기반 인증 (Supabase Auth 미사용, 프론트엔드 전용)
-  - `VITE_ADMIN_ID` / `VITE_ADMIN_PASSWORD`로 Netlify 환경변수 설정
+  - ~~환경변수 기반 인증 (프론트엔드 전용)~~ → v1.3.1에서 서버사이드로 마이그레이션
   - sessionStorage 기반 세션 유지 (브라우저 탭 닫으면 자동 로그아웃)
 - **Pending Operations 패턴**: 변경사항을 미리보기 후 Undo/Commit 일괄 처리
   - Player: 이름 변경, 삭제, 중복 병합 (Merge with cascade match update)

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.1-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -14,7 +14,7 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
 
 공정한 로테이션, 직관적인 매치 큐(Queue), AI 코칭, 그리고 3가지 저장소 옵션을 제공합니다.
 
-[앱 보기](https://tennis-scoring-mate.netlify.app/) | [변경 내역](./HISTORY.md) | [아키텍처](./ARCHITECTURE.md) | [로드맵](./TODO.md)
+[앱 보기](https://tennis-scoring-mate.netlify.app/) | [배포 가이드](./DEPLOYMENT.md) | [변경 내역](./HISTORY.md) | [아키텍처](./ARCHITECTURE.md) | [로드맵](./TODO.md)
 
 </div>
 
@@ -159,12 +159,26 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 #### Admin Dashboard 사용 시 (v1.3.1+)
 Netlify 환경변수에 설정합니다 (서버사이드 인증, 클라이언트 번들에 미포함).
+
+**필수 환경변수 (서버사이드):**
 ```bash
 ADMIN_ID=admin
-ADMIN_PASSWORD=your_secure_password
-ADMIN_JWT_SECRET=your_random_secret_string_32chars
+ADMIN_PASSWORD=<strong_password>
+ADMIN_JWT_SECRET=<random_32char_string>
 ```
-> `VITE_` 접두사가 없으므로 서버사이드에서만 접근 가능합니다. 로컬 개발 시 `netlify dev`로 실행해야 Admin 로그인이 작동합니다.
+
+**JWT Secret 생성:**
+```bash
+# Mac/Linux
+openssl rand -base64 32
+
+# Windows (Node.js)
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+> **중요**: `VITE_` 접두사가 없으므로 서버사이드에서만 접근 가능합니다.
+> 로컬 개발 시 `netlify dev`로 실행해야 Admin 로그인이 작동합니다.
+> 자세한 배포 가이드: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ### 3. 실행
 ```bash
