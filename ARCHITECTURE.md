@@ -22,7 +22,9 @@
 │   ├── GeminiApiKeySettings.tsx # Gemini API Key Configuration
 │   ├── ModeSelection.tsx # Storage Mode Selection (Guest/Sheets/Cloud) + Korean descriptions
 │   ├── GuestSessionManager.tsx # Guest Mode Session Manager (date/location selection)
-│   ├── CloudSessionManager.tsx # Cloud Mode Session Manager (Supabase)
+│   ├── CloudSessionManager.tsx # Cloud Mode Session Manager (Supabase) + Admin button
+│   ├── AdminPage.tsx     # Admin Dashboard: Player/Session/Match management (v1.3.0)
+│   ├── AdminETLPage.tsx  # Tennis Rules PDF ETL management (v1.3.0)
 │   ├── GoogleSheetsSessionManager.tsx # Google Sheets Setup & Connection
 │   ├── GoogleSheetsGuide.tsx # 6-Step Setup Guide Modal with screenshots
 │   ├── LocationPicker.tsx # Geolocation-based location input
@@ -162,8 +164,27 @@ StatsView.tsx
     *   `played_at`, `end_time` (timestamptz)
 
 **Row Level Security (RLS) Policies:**
-- 모든 테이블: Public read/insert/update/delete access
-- Production 환경에서는 사용자별 권한으로 변경 필요
+- 모든 테이블: Public read/insert/update/delete access (`USING (true)`)
+- **의도적 설계**: Guest Mode 호환을 위해 Supabase Auth 미사용, anon key로 공개 접근
+- **보안 참고**: anon key를 가진 누구나 데이터 CRUD 가능 (소규모 그룹 사용 전제)
+- Admin 파괴적 작업은 서버사이드 JWT 인증으로 UI 접근 제어 (DB 레벨 제한은 아님)
+- **필수 SQL** (Supabase SQL Editor에서 실행):
+  ```sql
+  -- ⚠️ 이미 존재하는 정책이 있으면 CREATE가 에러 발생하므로 DROP IF EXISTS 먼저 실행
+  -- 각 테이블에 4개 정책 필요 (SELECT, INSERT, UPDATE, DELETE)
+  -- 예시: players 테이블 (sessions, session_players, matches도 동일하게 설정)
+  DROP POLICY IF EXISTS "Allow public read access" ON public.players;
+  CREATE POLICY "Allow public read access" ON public.players FOR SELECT USING (true);
+  DROP POLICY IF EXISTS "Allow public insert access" ON public.players;
+  CREATE POLICY "Allow public insert access" ON public.players FOR INSERT WITH CHECK (true);
+  DROP POLICY IF EXISTS "Allow public update access" ON public.players;
+  CREATE POLICY "Allow public update access" ON public.players FOR UPDATE USING (true);
+  DROP POLICY IF EXISTS "Allow public delete access" ON public.players;
+  CREATE POLICY "Allow public delete access" ON public.players FOR DELETE USING (true);
+  ```
+  전체 SQL은 [`supabase_schema.sql`](./supabase_schema.sql) 참고
+- ⚠️ DELETE 정책 누락 시 Admin 페이지에서 삭제 불가 (RLS가 silent하게 차단)
+- ⚠️ `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`는 최초 1회만 필요 (이미 ON이면 재실행해도 무해)
 
 **중요 설계 결정:**
 1. `team_a`, `team_b`는 JSONB로 저장 (유연성)
@@ -272,6 +293,122 @@ function doPost(e) {
 - Row Level Security는 Google Apps Script로 직접 구현 필요
 
 ---
+
+### E-3. Admin Authentication & Page Architecture (v1.3.0 → v1.3.1 보안 강화)
+
+**인증 구조:**
+- Admin 인증은 **서버사이드 Netlify Function**을 통해 처리 (클라이언트에 비밀번호 미노출)
+- Supabase Users 탭에 admin 계정 등록 불필요
+- 서버 환경변수 `ADMIN_ID`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET`으로 인증
+- `VITE_` 접두사 없음 → 클라이언트 JS 번들에 포함되지 않음
+
+```
+[사용자 입력] → [Netlify Function 호출] → [서버에서 환경변수 비교]
+                  POST /api/admin-auth         ↓ (성공 시)
+                                        [JWT 토큰 반환 (HS256, 4h)]
+                                               ↓
+                                        [sessionStorage 저장] → [Admin UI 접근 허용]
+                                               ↓ (페이지 새로고침 시)
+                                        [POST /api/admin-auth/verify로 토큰 검증]
+```
+
+**핵심 파일:**
+- `netlify/functions/admin-auth.ts` — 서버사이드 인증 함수 (JWT 생성/검증)
+- `services/adminAuthService.ts` — 클라이언트 인증 서비스 (API 호출 래퍼)
+- `components/AdminPage.tsx` — Admin UI (인증 후 접근)
+
+**Admin vs RLS 권한 분리:**
+```
+┌──────────────────────────────────────────────────────┐
+│  Admin Login (서버사이드 Netlify Function)               │
+│  - 역할: Admin UI 페이지 접근 제어                      │
+│  - 방식: Netlify Function + JWT (4시간 만료)            │
+│  - 비밀번호: 서버 환경변수에만 존재 (번들에 미포함)        │
+│  - Supabase Auth: 사용 안 함                           │
+└──────────────────────────────────────────────────────┘
+         ↓ (인증 후)
+┌──────────────────────────────────────────────────────┐
+│  Supabase RLS (데이터베이스)                            │
+│  - 역할: 데이터 CRUD 권한                               │
+│  - 방식: USING (true) — 모든 요청 허용 (anon key)       │
+│  - Admin 체크: 하지 않음 (Guest Mode 호환)              │
+│  ⚠️ 의도적 설계: 소규모 그룹용, 프로덕션 강화 시          │
+│     Supabase Auth + RLS 정책 변경 필요                  │
+└──────────────────────────────────────────────────────┘
+```
+
+**Netlify 환경변수 설정 (서버사이드, VITE_ 접두사 없음):**
+```bash
+ADMIN_ID=admin              # Admin 로그인 ID
+ADMIN_PASSWORD=<strong_pw>  # Admin 비밀번호
+ADMIN_JWT_SECRET=<random>   # JWT 서명 키 (32자+ 랜덤 문자열)
+```
+
+**Pending Operations 패턴:**
+```
+[사용자 편집] → [pendingOps 배열에 추가] → [displayData = original + ops 적용]
+                                              ↓
+                                    [미리보기 화면 표시]
+                                              ↓
+                              [Commit 클릭] → [Supabase 일괄 실행]
+                              [Undo 클릭]  → [pendingOps에서 제거]
+```
+
+- 7가지 작업 타입: rename, delete-player, merge, edit-location, delete-session, edit-score, delete-match
+- `useMemo`로 displayPlayers/displaySessions/displayMatches 계산
+- Commit 시 작업 순서: merge → rename → delete-player → session ops → match ops
+
+**RLS Diagnostic Tool:**
+- 로그인 시 자동 실행 (`runRlsDiagnostic()`)
+- 테스트 순서: SELECT → INSERT (temp record) → UPDATE → DELETE (cleanup)
+- `.select()` 체이닝으로 Supabase의 silent RLS 차단 감지
+  - Supabase는 RLS 차단 시 에러 없이 빈 배열 반환 → `deleted?.length === 0`으로 감지
+
+**배포 및 환경변수 (v1.3.1):**
+
+Netlify 환경변수 설정 (Project settings → Environment variables):
+
+| Variable | Purpose | Scope | Example |
+|----------|---------|-------|---------|
+| `ADMIN_ID` | Admin 로그인 ID (서버 전용) | Production, Deploy Previews | `admin` |
+| `ADMIN_PASSWORD` | Admin 비밀번호 (서버 전용) | Production, Deploy Previews | `<strong password>` |
+| `ADMIN_JWT_SECRET` | JWT 서명 키 (서버 전용) | Production, Deploy Previews | `<32+ random chars>` |
+| `VITE_SUPABASE_URL` | Supabase 프로젝트 URL (클라이언트) | All | `https://xxx.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key (클라이언트) | All | `eyJhbG...` |
+| `VITE_GEMINI_API_KEY` | Gemini API 키 (클라이언트) | All | `AIza...` |
+
+**환경변수 생성 방법:**
+```bash
+# ADMIN_JWT_SECRET 생성 (32자 이상 랜덤 문자열)
+openssl rand -base64 32
+# 또는
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+**트러블슈팅:**
+- ❌ **"Server configuration error"** → Netlify에 `ADMIN_ID`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET` 누락
+  - 해결: Netlify Dashboard에서 3개 환경변수 추가 → **Trigger deploy** → **Clear cache and deploy site**
+- ❌ **로컬에서 Admin 로그인 실패** → `npm run dev`는 Netlify Functions 미지원
+  - 해결: `netlify dev` 사용 (Netlify CLI: `npm install -g netlify-cli`)
+- ❌ **JWT 만료 (4시간 후)** → 재로그인 필요
+  - 해결: Admin 페이지 새로고침 시 자동 재검증, 만료 시 로그인 화면으로 리다이렉트
+
+**Component Structure (v1.3.1):**
+```
+CloudSessionManager.tsx
+  └── "Admin" 버튼 → AdminPage.tsx
+      ├── Login Form (서버사이드 JWT 인증 via /api/admin-auth)
+      ├── RLS Diagnostic Banner
+      ├── Players Section
+      │   ├── Rename / Delete / Merge
+      │   └── Deduplication Alerts
+      ├── Sessions Section
+      │   ├── Location Edit / Delete
+      │   └── Expanded → Match List (Score Edit / Delete)
+      ├── Quick Entry Section
+      │   └── New Match Form (기존/새 세션)
+      └── Pending Ops Bar (Undo All / Commit)
+```
 
 ### F. Session Management & Persistence
 

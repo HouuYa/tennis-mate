@@ -6,6 +6,31 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-02-16 (Cloud Mode Fixes & Admin Page)
+- **Admin Page 신규 구현** (`AdminPage.tsx`, 1,377 lines):
+  - 환경변수 기반 인증 (`VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`)
+  - sessionStorage 기반 세션 유지 (탭 닫으면 자동 로그아웃)
+  - Players / Sessions / Quick Entry 3개 섹션
+  - **Pending Operations 패턴**: 변경사항을 미리보기 후 일괄 커밋 (Undo/Commit)
+  - Player 이름 변경, 삭제, 중복 병합 (Merge) 기능
+  - Session 위치 편집, 삭제 기능
+  - Match 점수 편집, 삭제 기능 (cascade 업데이트)
+  - Quick Entry: 기존 세션에 경기 추가 또는 새 세션 생성
+- **RLS Diagnostic 도구**: Supabase RLS 정책 자동 진단
+  - SELECT / INSERT / UPDATE / DELETE 각각 테스트
+  - 테스트용 레코드 자동 생성 후 삭제
+  - 실패 시 구체적 에러 메시지 표시
+- **Supabase RLS 정책 수정**:
+  - DELETE 정책 누락 문제 발견 → `USING (true)` 정책 추가 필요
+  - `.select()` 체이닝으로 RLS 차단 감지 (0 rows = RLS blocked)
+- **Admin 인증 구조 정리**:
+  - Supabase Auth와 무관한 프론트엔드 전용 인증
+  - 환경변수 미설정 시 명확한 에러 메시지
+  - 기본 계정 하드코딩 제거 → Netlify 환경변수 필수
+- **AdminETLPage**: 테니스 규칙 PDF ETL 관리 인터페이스 추가
+- **Player Delete Restore**: 삭제된 플레이어 복원 리스트 추가
+- **Score Reset Bug Fix**: 점수 리셋 버그 수정
+
 ### 2026-02-11 (Mobile Readability & Security Improvements)
 - **HTML Formatting**: Switched from plain text to HTML tags for better mobile indentation
   - Backend prompts now generate `<p>`, `<ul>`, `<li>`, `<hr>`, `<h3>`, `<sup>`, `<strong>` tags
@@ -103,6 +128,100 @@ This document serves as the master record for releases, daily summaries, and bug
 ---
 
 ## 🚀 전체 Changelog
+
+### [1.3.1] - 2026-02-17
+**🔐 Admin Auth Security Enhancement**
+
+**보안 강화 (Gemini Code Assist 리뷰 대응):**
+- **서버사이드 Admin 인증**: `VITE_ADMIN_PASSWORD` 클라이언트 노출 문제 해결
+  - Netlify Function (`netlify/functions/admin-auth.ts`) 신규 생성
+  - `jose` 라이브러리로 JWT 토큰 생성/검증 (HS256, 4시간 만료)
+  - 인증 플로우: 사용자 입력 → Netlify Function 서버 검증 → JWT 반환 → sessionStorage 저장
+  - 페이지 새로고침 시 `/api/admin-auth/verify`로 토큰 검증
+- **환경변수 마이그레이션**:
+  - ❌ `VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD` (클라이언트 번들에 포함됨) → 제거
+  - ✅ `ADMIN_ID`, `ADMIN_PASSWORD` (서버 전용, `VITE_` 접두사 없음)
+  - ✅ `ADMIN_JWT_SECRET` (JWT 서명용 랜덤 문자열, 32자 이상)
+- **신규 파일**:
+  - `services/adminAuthService.ts` — 클라이언트 인증 API 래퍼
+  - `netlify/functions/admin-auth.ts` — 서버사이드 JWT 인증 함수
+- **AdminPage.tsx 마이그레이션**:
+  - 클라이언트측 `import.meta.env.VITE_ADMIN_*` 비교 제거
+  - `adminLogin()` async 서버 호출로 변경
+  - `verifyAdminToken()` 서버 검증으로 변경
+
+**RLS 보안 문서화:**
+- `supabase_schema.sql`에 의도적 설계 설명 추가
+  - `USING (true)` 정책은 Guest Mode를 위한 의도적 선택
+  - 소규모 신뢰 그룹 사용 전제, Admin UI는 서버사이드 JWT로 보호
+  - 프로덕션 강화 방법 안내 (Supabase Auth + RLS 정책 변경)
+- `ARCHITECTURE.md` 인증 아키텍처 섹션 재작성
+- `HISTORY.md`에서 하드코딩된 비밀번호 (`admin/tennis1234`) 제거
+
+**배포 시 필수 환경변수 (Netlify):**
+```bash
+# 서버사이드 전용 (VITE_ 접두사 없음)
+ADMIN_ID=your_admin_id
+ADMIN_PASSWORD=your_strong_password
+ADMIN_JWT_SECRET=your_random_32char_string
+
+# 클라이언트 전용 (기존과 동일)
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_GEMINI_API_KEY=your_gemini_api_key
+```
+
+**트러블슈팅:**
+- **"Server configuration error"**: Netlify 환경변수에 `ADMIN_ID`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET` 누락
+  → Netlify Dashboard에서 3개 환경변수 추가 후 재배포
+- **로컬 개발**: `npm run dev`는 Netlify Functions를 서빙하지 않음
+  → `netlify dev` 사용 (Netlify CLI 필요: `npm install -g netlify-cli`)
+
+---
+
+### [1.3.0] - 2026-02-16
+**🔧 Cloud Mode Fixes & Admin Dashboard**
+
+**Admin Dashboard (신규):**
+- **AdminPage 컴포넌트**: Supabase 데이터 관리를 위한 전체 관리자 대시보드
+  - ~~환경변수 기반 인증 (프론트엔드 전용)~~ → v1.3.1에서 서버사이드로 마이그레이션
+  - sessionStorage 기반 세션 유지 (브라우저 탭 닫으면 자동 로그아웃)
+- **Pending Operations 패턴**: 변경사항을 미리보기 후 Undo/Commit 일괄 처리
+  - Player: 이름 변경, 삭제, 중복 병합 (Merge with cascade match update)
+  - Session: 위치 편집, 삭제
+  - Match: 점수 편집, 삭제
+- **Quick Entry**: 기존 세션에 경기 추가 또는 새 세션 즉시 생성
+- **Player Deduplication**: 동일 이름 플레이어 자동 감지 및 병합 제안
+- **AdminETLPage**: 테니스 규칙 PDF ETL 관리 인터페이스
+
+**Supabase RLS 진단 & 수정:**
+- **RLS Diagnostic Tool**: 로그인 시 자동으로 SELECT/INSERT/UPDATE/DELETE 권한 테스트
+  - 테스트 레코드 자동 생성 후 삭제 (잔여 데이터 없음)
+  - 각 작업별 성공/실패 상태 시각적 표시
+  - 실패 시 구체적 에러 메시지 및 SQL 해결 방법 안내
+- **RLS 차단 감지**: `.select()` 체이닝으로 silent failure 방지
+  - Supabase는 RLS 차단 시 에러 없이 0 rows 반환 → 이를 명시적 감지
+- **필수 RLS 정책**: 모든 테이블에 4개 정책 (SELECT/INSERT/UPDATE/DELETE)
+  - ⚠️ `CREATE POLICY`는 동일 이름 정책 존재 시 에러 → `DROP POLICY IF EXISTS` 먼저 실행
+  - 전체 SQL: [`supabase_schema.sql`](./supabase_schema.sql) 참고
+  ```sql
+  -- 예시 (각 테이블에 동일 패턴 적용)
+  DROP POLICY IF EXISTS "Allow public delete access" ON public.players;
+  CREATE POLICY "Allow public delete access" ON public.players FOR DELETE USING (true);
+  ```
+  - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`는 최초 1회만 필요 (이미 ON이면 무해)
+
+**Bug Fixes:**
+- Player 삭제된 플레이어 복원 리스트 추가
+- Score 리셋 버그 수정
+- 기본 admin 계정 하드코딩 제거 (보안 개선)
+- Supabase delete/update 시 `.select()` 추가로 RLS 차단 감지
+
+**인증 아키텍처 설명:**
+- Admin 계정은 Supabase Users에 등록 불필요 (서버사이드 Netlify Function으로 인증)
+- 서버 환경변수(`ADMIN_ID`, `ADMIN_PASSWORD`)로 인증 — 클라이언트 번들에 미포함
+- Supabase RLS 정책은 `USING (true)` — 모든 요청 공개 허용 (Guest Mode 호환)
+- Admin 로그인은 UI 접근 제어만 담당, 데이터 권한은 RLS 정책이 담당
 
 ### [1.2.0] - 2026-01-14
 **🎨 AI Coach UI/UX Redesign & RAG System**

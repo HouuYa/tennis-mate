@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.2.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.1-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -14,7 +14,7 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
 
 공정한 로테이션, 직관적인 매치 큐(Queue), AI 코칭, 그리고 3가지 저장소 옵션을 제공합니다.
 
-[앱 보기](https://tennis-scoring-mate.netlify.app/) | [변경 내역](./HISTORY.md) | [아키텍처](./ARCHITECTURE.md) | [로드맵](./TODO.md)
+[앱 보기](https://tennis-scoring-mate.netlify.app/) | [배포 가이드](./DEPLOYMENT.md) | [변경 내역](./HISTORY.md) | [아키텍처](./ARCHITECTURE.md) | [로드맵](./TODO.md)
 
 </div>
 
@@ -157,6 +157,29 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
+#### Admin Dashboard 사용 시 (v1.3.1+)
+Netlify 환경변수에 설정합니다 (서버사이드 인증, 클라이언트 번들에 미포함).
+
+**필수 환경변수 (서버사이드):**
+```bash
+ADMIN_ID=admin
+ADMIN_PASSWORD=<strong_password>
+ADMIN_JWT_SECRET=<random_32char_string>
+```
+
+**JWT Secret 생성:**
+```bash
+# Mac/Linux
+openssl rand -base64 32
+
+# Windows (Node.js)
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+> **중요**: `VITE_` 접두사가 없으므로 서버사이드에서만 접근 가능합니다.
+> 로컬 개발 시 `netlify dev`로 실행해야 Admin 로그인이 작동합니다.
+> 자세한 배포 가이드: [DEPLOYMENT.md](./DEPLOYMENT.md)
+
 ### 3. 실행
 ```bash
 npm run dev
@@ -221,13 +244,27 @@ npm run dev
   - [x] RAG 설정 가이드 작성
 - [x] Type Safety 개선 (ChatMessageSource interface 분리)
 
-### 🔜 v1.3.0 (예정)
+### ✅ v1.3.0 (완료 - 2026-02-16)
+- [x] Cloud Mode Admin Dashboard
+  - [x] Admin 인증 (환경변수 기반, Supabase Auth 미사용)
+  - [x] Pending Operations 패턴 (Undo/Commit 일괄 처리)
+  - [x] Player 관리 (이름 변경, 삭제, 중복 병합)
+  - [x] Session/Match 관리 (위치/점수 편집, 삭제)
+  - [x] Quick Entry (경기 빠른 입력)
+- [x] Supabase RLS 진단 도구
+  - [x] SELECT/INSERT/UPDATE/DELETE 자동 테스트
+  - [x] RLS 차단 감지 (.select() 체이닝)
+- [x] AdminETLPage (테니스 규칙 PDF ETL 관리)
+- [x] Player 삭제 복원 리스트
+- [x] Score 리셋 버그 수정
+
+### 🔜 v1.4.0 (예정)
 - [ ] 다중 코트 지원 (2개 코트 동시 진행)
 - [ ] Tie-break 스코어 지원 (7-6 (4) 형식)
 - [ ] 플레이어 아바타 업로드
 - [ ] 한글 주소 지원 (Kakao/Naver Map API)
 
-### 🔮 v2.0.0 (미래)
+### 🔮 v2.0.0 (장기)
 - [ ] 실시간 동기화 (WebSocket)
 - [ ] 팀 대항전 모드
 - [ ] 토너먼트 브라켓 생성
@@ -267,7 +304,7 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 
 <div align="center">
 
-**Tennis Mate v1.2.0**
+**Tennis Mate v1.3.0**
 
 Made with ❤️ & 🎾 by [HouuYa](https://github.com/HouuYa)
 
