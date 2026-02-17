@@ -52,7 +52,28 @@ alter table public.sessions enable row level security;
 alter table public.session_players enable row level security;
 alter table public.matches enable row level security;
 
--- Create policies for public access (Anon key)
+-- ============================================================================
+-- SECURITY NOTE: Intentionally Permissive RLS Policies
+-- ============================================================================
+-- All tables below use USING (true) for all CRUD operations.
+-- This means ANYONE with the Supabase anon key can read, insert, update,
+-- and delete ALL data in these tables.
+--
+-- This is an INTENTIONAL design choice for "Guest Mode":
+--   - No user accounts or Supabase Auth integration
+--   - Anyone can use the app freely without signup
+--   - The app is designed for small trusted groups (tennis partners)
+--
+-- TRADE-OFF: Data integrity relies on the app UI, not database policies.
+-- Admin actions (destructive ops) are gated behind server-validated JWT auth
+-- (Netlify Function), but the anon key itself has full DB access.
+--
+-- For production apps requiring strict access control:
+--   1. Enable Supabase Auth
+--   2. Restrict INSERT/UPDATE/DELETE to authenticated users
+--   3. Keep SELECT with USING (true) for public read access
+-- ============================================================================
+--
 -- NOTE: DROP POLICY IF EXISTS를 사용하여 이미 존재하는 정책이 있어도 에러 없이 재생성 가능
 -- (Supabase에서 동일 이름 정책이 있으면 CREATE POLICY가 에러 발생하므로 DROP 먼저 실행)
 

@@ -157,12 +157,14 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-#### Admin Dashboard 사용 시 (v1.3.0+)
-Netlify 환경변수에 설정합니다 (Supabase Auth와 무관한 프론트엔드 전용 인증).
+#### Admin Dashboard 사용 시 (v1.3.1+)
+Netlify 환경변수에 설정합니다 (서버사이드 인증, 클라이언트 번들에 미포함).
 ```bash
-VITE_ADMIN_ID=admin
-VITE_ADMIN_PASSWORD=your_password
+ADMIN_ID=admin
+ADMIN_PASSWORD=your_secure_password
+ADMIN_JWT_SECRET=your_random_secret_string_32chars
 ```
+> `VITE_` 접두사가 없으므로 서버사이드에서만 접근 가능합니다. 로컬 개발 시 `netlify dev`로 실행해야 Admin 로그인이 작동합니다.
 
 ### 3. 실행
 ```bash

@@ -165,7 +165,9 @@ StatsView.tsx
 
 **Row Level Security (RLS) Policies:**
 - 모든 테이블: Public read/insert/update/delete access (`USING (true)`)
-- Guest Mode 호환을 위해 Supabase Auth 미사용, anon key로 공개 접근
+- **의도적 설계**: Guest Mode 호환을 위해 Supabase Auth 미사용, anon key로 공개 접근
+- **보안 참고**: anon key를 가진 누구나 데이터 CRUD 가능 (소규모 그룹 사용 전제)
+- Admin 파괴적 작업은 서버사이드 JWT 인증으로 UI 접근 제어 (DB 레벨 제한은 아님)
 - **필수 SQL** (Supabase SQL Editor에서 실행):
   ```sql
   -- ⚠️ 이미 존재하는 정책이 있으면 CREATE가 에러 발생하므로 DROP IF EXISTS 먼저 실행
@@ -292,26 +294,36 @@ function doPost(e) {
 
 ---
 
-### E-3. Admin Authentication & Page Architecture (v1.3.0)
+### E-3. Admin Authentication & Page Architecture (v1.3.0 → v1.3.1 보안 강화)
 
 **인증 구조:**
-- Admin 인증은 **Supabase Auth와 완전히 무관**한 프론트엔드 전용 인증
+- Admin 인증은 **서버사이드 Netlify Function**을 통해 처리 (클라이언트에 비밀번호 미노출)
 - Supabase Users 탭에 admin 계정 등록 불필요
-- 환경변수 `VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`로 인증 (Netlify에서 설정)
+- 서버 환경변수 `ADMIN_ID`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET`으로 인증
+- `VITE_` 접두사 없음 → 클라이언트 JS 번들에 포함되지 않음
 
 ```
-[사용자 입력] → [환경변수 비교] → [sessionStorage 저장] → [Admin UI 접근 허용]
-                    ↓                       ↓
-              VITE_ADMIN_ID          'tennis-mate-admin-auth'
-              VITE_ADMIN_PASSWORD    (브라우저 탭 닫으면 자동 삭제)
+[사용자 입력] → [Netlify Function 호출] → [서버에서 환경변수 비교]
+                  POST /api/admin-auth         ↓ (성공 시)
+                                        [JWT 토큰 반환 (HS256, 4h)]
+                                               ↓
+                                        [sessionStorage 저장] → [Admin UI 접근 허용]
+                                               ↓ (페이지 새로고침 시)
+                                        [POST /api/admin-auth/verify로 토큰 검증]
 ```
+
+**핵심 파일:**
+- `netlify/functions/admin-auth.ts` — 서버사이드 인증 함수 (JWT 생성/검증)
+- `services/adminAuthService.ts` — 클라이언트 인증 서비스 (API 호출 래퍼)
+- `components/AdminPage.tsx` — Admin UI (인증 후 접근)
 
 **Admin vs RLS 권한 분리:**
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Admin Login (프론트엔드)                              │
+│  Admin Login (서버사이드 Netlify Function)               │
 │  - 역할: Admin UI 페이지 접근 제어                      │
-│  - 방식: 환경변수 비교 + sessionStorage                 │
+│  - 방식: Netlify Function + JWT (4시간 만료)            │
+│  - 비밀번호: 서버 환경변수에만 존재 (번들에 미포함)        │
 │  - Supabase Auth: 사용 안 함                           │
 └──────────────────────────────────────────────────────┘
          ↓ (인증 후)
@@ -320,7 +332,16 @@ function doPost(e) {
 │  - 역할: 데이터 CRUD 권한                               │
 │  - 방식: USING (true) — 모든 요청 허용 (anon key)       │
 │  - Admin 체크: 하지 않음 (Guest Mode 호환)              │
+│  ⚠️ 의도적 설계: 소규모 그룹용, 프로덕션 강화 시          │
+│     Supabase Auth + RLS 정책 변경 필요                  │
 └──────────────────────────────────────────────────────┘
+```
+
+**Netlify 환경변수 설정 (서버사이드, VITE_ 접두사 없음):**
+```bash
+ADMIN_ID=admin              # Admin 로그인 ID
+ADMIN_PASSWORD=<strong_pw>  # Admin 비밀번호
+ADMIN_JWT_SECRET=<random>   # JWT 서명 키 (32자+ 랜덤 문자열)
 ```
 
 **Pending Operations 패턴:**

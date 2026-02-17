@@ -134,7 +134,7 @@
 ## ✅ v1.3.0 - Cloud Mode Fixes & Admin Dashboard (완료 - 2026-02-16)
 - [x] **Admin Dashboard**
     - [x] AdminPage 컴포넌트 신규 구현 (1,377 lines)
-    - [x] 환경변수 기반 인증 (`VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`)
+    - [x] ~~환경변수 기반 인증~~ → 서버사이드 Netlify Function + JWT 인증 (v1.3.1)
     - [x] sessionStorage 기반 세션 유지
     - [x] Players / Sessions / Quick Entry 3개 섹션
     - [x] Pending Operations 패턴 (Undo/Commit 일괄 처리)
@@ -155,6 +155,20 @@
 - [x] **인증 아키텍처 문서화**
     - [x] Admin 인증은 Supabase Auth와 무관 (프론트엔드 전용)
     - [x] RLS 정책은 `USING (true)` — Guest Mode 호환
+
+---
+
+## ✅ v1.3.1 - Admin Auth Security Fix (완료 - 2026-02-17)
+- [x] **서버사이드 Admin 인증** (Gemini Code Assist 보안 리뷰 대응)
+    - [x] Netlify Function (`netlify/functions/admin-auth.ts`) 생성
+    - [x] `jose` 라이브러리로 JWT 생성/검증 (HS256, 4시간 만료)
+    - [x] `VITE_ADMIN_*` → `ADMIN_*` (서버 전용 환경변수, 번들에 미포함)
+    - [x] `services/adminAuthService.ts` 클라이언트 인증 래퍼
+    - [x] `AdminPage.tsx` 인증 플로우 서버사이드로 마이그레이션
+- [x] **RLS 보안 문서화**
+    - [x] `supabase_schema.sql`에 의도적 설계 설명 추가
+    - [x] `ARCHITECTURE.md` 인증 아키텍처 재작성
+    - [x] `HISTORY.md`에서 하드코딩된 비밀번호 제거
 
 ---
 

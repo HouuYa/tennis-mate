@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { adminLogin, verifyAdminToken, adminLogout } from '../services/adminAuthService';
 import { useToast } from '../context/ToastContext';
 import { Shield, Users, Calendar, Trophy, Edit3, Trash2, Save, X, Plus, ChevronDown, ChevronUp, ArrowLeft, Loader2, Merge, Undo2, AlertTriangle, Check } from 'lucide-react';
 import { Tab } from '../types';
@@ -48,7 +49,7 @@ type PendingOp =
 let opCounter = 0;
 const nextOpId = () => `op-${++opCounter}`;
 
-const ADMIN_AUTH_KEY = 'tennis-mate-admin-auth';
+// Auth is now handled server-side via Netlify Function + JWT (adminAuthService.ts)
 
 // RLS diagnostic result type
 type RlsDiag = { canSelect: boolean; canInsert: boolean; canUpdate: boolean; canDelete: boolean; error?: string };
@@ -202,12 +203,17 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     setRlsDiag(diag);
   };
 
-  // Check saved auth on mount
+  // Verify saved token on mount (server-side validation)
+  const [loginLoading, setLoginLoading] = useState(false);
+
   useEffect(() => {
-    const saved = sessionStorage.getItem(ADMIN_AUTH_KEY);
-    if (saved === 'true') {
-      setIsAuthenticated(true);
-    }
+    const checkAuth = async () => {
+      const valid = await verifyAdminToken();
+      if (valid) {
+        setIsAuthenticated(true);
+      }
+    };
+    checkAuth();
   }, []);
 
   // Load data when authenticated
@@ -218,26 +224,28 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     }
   }, [isAuthenticated]);
 
-  const handleLogin = () => {
-    const envId = import.meta.env.VITE_ADMIN_ID;
-    const envPassword = import.meta.env.VITE_ADMIN_PASSWORD;
-    if (!envId || !envPassword) {
-      setAuthError('VITE_ADMIN_ID / VITE_ADMIN_PASSWORD 환경변수가 설정되지 않았습니다');
+  const handleLogin = async () => {
+    if (!adminId.trim() || !adminPassword.trim()) {
+      setAuthError('ID와 비밀번호를 입력하세요');
       return;
     }
+    setLoginLoading(true);
+    setAuthError('');
 
-    if (adminId === envId && adminPassword === envPassword) {
+    const result = await adminLogin(adminId, adminPassword);
+
+    if (result.success) {
       setIsAuthenticated(true);
-      sessionStorage.setItem(ADMIN_AUTH_KEY, 'true');
       setAuthError('');
     } else {
-      setAuthError('Invalid credentials');
+      setAuthError(result.error || 'Invalid credentials');
     }
+    setLoginLoading(false);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    sessionStorage.removeItem(ADMIN_AUTH_KEY);
+    adminLogout();
   };
 
   const loadAllData = async () => {
@@ -745,13 +753,15 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
 
           <button
             onClick={handleLogin}
-            className="w-full py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e] transition-colors"
+            disabled={loginLoading}
+            className="w-full py-3 bg-tennis-green text-slate-900 font-bold rounded-xl hover:bg-[#c0ce4e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            Login
+            {loginLoading && <Loader2 size={16} className="animate-spin" />}
+            {loginLoading ? 'Authenticating...' : 'Login'}
           </button>
 
           <p className="text-[10px] text-slate-500 text-center">
-            .env에 VITE_ADMIN_ID, VITE_ADMIN_PASSWORD 설정 필요
+            Netlify 환경변수에 ADMIN_ID, ADMIN_PASSWORD 설정 필요
           </p>
         </div>
       </div>

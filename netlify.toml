@@ -5,8 +5,19 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# Netlify Functions (서버사이드 Admin 인증)
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # SPA 라우팅을 위한 리다이렉트 설정
-# 모든 경로를 index.html로 리다이렉트하여 React Router가 처리하도록 함
+# /api/* 요청은 Netlify Functions로 라우팅 (SPA catch-all 보다 우선)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# 나머지 경로는 index.html로 리다이렉트하여 React Router가 처리
 [[redirects]]
   from = "/*"
   to = "/index.html"

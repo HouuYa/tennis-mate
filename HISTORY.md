@@ -169,8 +169,8 @@ This document serves as the master record for releases, daily summaries, and bug
 - Supabase delete/update 시 `.select()` 추가로 RLS 차단 감지
 
 **인증 아키텍처 설명:**
-- Admin 계정 (`admin/tennis1234`)은 Supabase Users에 등록 불필요
-- 프론트엔드 환경변수(`VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`)로만 인증
+- Admin 계정은 Supabase Users에 등록 불필요 (서버사이드 Netlify Function으로 인증)
+- 서버 환경변수(`ADMIN_ID`, `ADMIN_PASSWORD`)로 인증 — 클라이언트 번들에 미포함
 - Supabase RLS 정책은 `USING (true)` — 모든 요청 공개 허용 (Guest Mode 호환)
 - Admin 로그인은 UI 접근 제어만 담당, 데이터 권한은 RLS 정책이 담당
 
