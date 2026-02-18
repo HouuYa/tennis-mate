@@ -29,6 +29,7 @@ export const AdminETLPage: React.FC = () => {
   const [fullChunks, setFullChunks] = useState<FullChunk[]>([]);
   const [uploadResult, setUploadResult] = useState<{ inserted: number; errors: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [adminKey, setAdminKey] = useState('');
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
@@ -36,11 +37,12 @@ export const AdminETLPage: React.FC = () => {
     const apiKey = getStoredApiKey();
     if (!apiKey) throw new Error('API key not set. Configure it in Settings.');
     if (!supabaseUrl) throw new Error('Supabase URL not configured');
+    if (!adminKey) throw new Error('Admin key not available. Please re-login.');
 
-    const res = await fetch(`${supabaseUrl}/functions/v1/etl-tennis-rules`, {
+    const res = await fetch(`${supabaseUrl}/functions/v1/tennis-etl`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, gemini_api_key: apiKey, model: getStoredModel(), ...payload }),
+      body: JSON.stringify({ action, adminKey, gemini_api_key: apiKey, model: getStoredModel(), ...payload }),
     });
 
     const data = await res.json();
@@ -132,6 +134,18 @@ export const AdminETLPage: React.FC = () => {
       <p className="text-sm text-slate-400">
         Upload a tennis rules PDF to extract, chunk, and store in the RAG database.
       </p>
+
+      {/* Admin Key */}
+      <div>
+        <label className="block text-xs text-slate-400 mb-1">Admin Password (서버 인증용)</label>
+        <input
+          type="password"
+          value={adminKey}
+          onChange={(e) => setAdminKey(e.target.value)}
+          placeholder="Enter admin password"
+          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+        />
+      </div>
 
       {/* Language Selection */}
       <div className="flex gap-2">

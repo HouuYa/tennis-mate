@@ -31,19 +31,16 @@ Tennis Mate는 **소규모 신뢰 그룹(친구, 테니스 클럽)** 사용을 �
 
 ## ⚡ Supabase Edge Function 인증 (v1.3.2)
 
-### ETL Edge Function (`etl-tennis-rules`)
+### ETL Edge Function (`tennis-etl`)
 
 **인증 방식 (v1.3.2+):**
 ```typescript
-// 허용되는 토큰 (둘 중 하나):
-// 1. Supabase Service Role Key
-// 2. ADMIN_PASSWORD (Supabase Secret으로 설정)
-Authorization: Bearer <token>
+// request body에 adminKey 포함:
+{ "action": "...", "adminKey": "<SUPABASE_SERVICE_ROLE_KEY 또는 ADMIN_PASSWORD>" }
 ```
 
 **구현:**
-- `checkAuth()` 함수가 `Authorization: Bearer` 헤더 파싱
-- `SUPABASE_SERVICE_ROLE_KEY` (Supabase 자동 제공) 또는 `ADMIN_PASSWORD` (직접 설정)와 비교
+- request body의 `adminKey`를 `SUPABASE_SERVICE_ROLE_KEY` 또는 `ADMIN_PASSWORD`와 비교
 - 인증 실패 시 401 반환, 요청 처리 안 함
 
 **보안 특성:**

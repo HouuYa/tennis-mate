@@ -130,16 +130,19 @@ This document serves as the master record for releases, daily summaries, and bug
 ## 🚀 전체 Changelog
 
 ### [1.3.2] - 2026-02-18
-**⚡ Edge Function Auth Guard**
+**⚡ Edge Function 통합 & ETL 파이프라인 정비**
 
-**`etl-tennis-rules` Edge Function 인증 추가:**
-- **이전**: 인증 없이 누구나 ETL 함수 호출 가능 (완전 공개)
-- **이후**: `Authorization: Bearer <token>` 헤더 필수
-- **허용 토큰 2종:**
-  1. `SUPABASE_SERVICE_ROLE_KEY` (Supabase 자동 제공)
-  2. `ADMIN_PASSWORD` (Supabase Secret으로 직접 설정)
-- **인증 실패 시**: HTTP 401 반환, 요청 처리 안 함
-- **신규 함수**: `checkAuth(req: Request): boolean`
+**`etl-tennis-rules` 삭제 → `tennis-etl` 통합:**
+- **이전**: `etl-tennis-rules` (PDF ETL)와 `tennis-etl` (데이터 관리)이 별도 함수
+- **이후**: `tennis-etl` 하나로 5개 action 통합
+  - `list_sources` / `delete_source` (기존 데이터 관리)
+  - `extract_text` / `chunk_text` / `process_chunks` (PDF ETL 파이프라인)
+- **인증**: request body의 `adminKey` 필수 (Service Role Key 또는 ADMIN_PASSWORD)
+
+**AdminETLPage.tsx 수정:**
+- endpoint: `etl-tennis-rules` → `tennis-etl`
+- `adminKey` 입력 필드 추가 (Admin Password 입력)
+- 요청 body에 `adminKey` 포함하여 인증
 
 **환경변수:**
 - Supabase Secret에 `ADMIN_PASSWORD` 추가 필요 (Netlify의 값과 동일)
@@ -147,7 +150,10 @@ This document serves as the master record for releases, daily summaries, and bug
   supabase secrets set ADMIN_PASSWORD=<your_admin_password>
   ```
 
-**영향 범위:** `supabase/functions/etl-tennis-rules/index.ts`
+**영향 범위:**
+- `supabase/functions/etl-tennis-rules/` — 삭제
+- `supabase/functions/tennis-etl/index.ts` — ETL actions 통합
+- `components/AdminETLPage.tsx` — endpoint & 인증 수정
 
 ---
 

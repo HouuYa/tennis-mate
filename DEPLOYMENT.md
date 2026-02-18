@@ -73,7 +73,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ## 🔑 Supabase Edge Function Secrets
 
-ETL Edge Function (`etl-tennis-rules`)은 서비스 롤 키 또는 Admin 비밀번호로 인증합니다.
+ETL Edge Function (`tennis-etl`)은 서비스 롤 키 또는 Admin 비밀번호로 인증합니다.
 배포된 Edge Function을 호출하려면 Supabase Secrets에 `ADMIN_PASSWORD`를 등록해야 합니다.
 
 ### Supabase CLI로 설정
@@ -99,24 +99,22 @@ supabase secrets list
 ### Supabase Dashboard로 설정
 
 1. Supabase Dashboard → **Edge Functions** 탭
-2. `etl-tennis-rules` 함수 선택
+2. `tennis-etl` 함수 선택
 3. **Secrets** 탭 → **Add secret**
 4. `ADMIN_PASSWORD` = (Netlify의 `ADMIN_PASSWORD`와 동일한 값)
 
 ### Edge Function 호출 예시
 
 ```bash
-# 서비스 롤 키로 호출
-curl -X POST https://<project>.supabase.co/functions/v1/etl-tennis-rules \
-  -H "Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>" \
+# adminKey를 request body에 포함하여 인증
+curl -X POST https://<project>.supabase.co/functions/v1/tennis-etl \
   -H "Content-Type: application/json" \
-  -d '{"action": "chunk_text", "text": "...", "language": "ko"}'
+  -d '{"action": "list_sources", "adminKey": "<ADMIN_PASSWORD>"}'
 
-# Admin 비밀번호로 호출 (v1.3.2+)
-curl -X POST https://<project>.supabase.co/functions/v1/etl-tennis-rules \
-  -H "Authorization: Bearer <ADMIN_PASSWORD>" \
+# ETL 처리 예시 (chunk_text)
+curl -X POST https://<project>.supabase.co/functions/v1/tennis-etl \
   -H "Content-Type: application/json" \
-  -d '{"action": "chunk_text", "text": "...", "language": "ko"}'
+  -d '{"action": "chunk_text", "adminKey": "<ADMIN_PASSWORD>", "text": "...", "language": "ko"}'
 ```
 
 > **중요**: `ADMIN_PASSWORD`는 Netlify와 Supabase 양쪽에 동일한 값으로 설정해야 합니다.
@@ -159,12 +157,12 @@ Deploys → Trigger deploy → Clear cache and deploy site
 
 ### ❌ Edge Function 호출 시 401 "Unauthorized"
 
-**원인**: `Authorization: Bearer <token>` 헤더 누락, 또는 Supabase에 `ADMIN_PASSWORD` Secret 미설정
+**원인**: `adminKey` 누락/불일치, 또는 Supabase에 `ADMIN_PASSWORD` Secret 미설정
 
 **해결**:
-1. Supabase Dashboard → Edge Functions → `etl-tennis-rules` → **Secrets** 탭
+1. Supabase Dashboard → Edge Functions → `tennis-etl` → **Secrets** 탭
 2. `ADMIN_PASSWORD` 추가 (Netlify의 `ADMIN_PASSWORD`와 동일한 값)
-3. Edge Function 재배포: `supabase functions deploy etl-tennis-rules`
+3. Edge Function 재배포: `supabase functions deploy tennis-etl`
 
 ### ❌ Admin 페이지에서 데이터 삭제 불가
 
