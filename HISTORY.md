@@ -129,6 +129,28 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 🚀 전체 Changelog
 
+### [1.3.2] - 2026-02-18
+**⚡ Edge Function Auth Guard**
+
+**`etl-tennis-rules` Edge Function 인증 추가:**
+- **이전**: 인증 없이 누구나 ETL 함수 호출 가능 (완전 공개)
+- **이후**: `Authorization: Bearer <token>` 헤더 필수
+- **허용 토큰 2종:**
+  1. `SUPABASE_SERVICE_ROLE_KEY` (Supabase 자동 제공)
+  2. `ADMIN_PASSWORD` (Supabase Secret으로 직접 설정)
+- **인증 실패 시**: HTTP 401 반환, 요청 처리 안 함
+- **신규 함수**: `checkAuth(req: Request): boolean`
+
+**환경변수:**
+- Supabase Secret에 `ADMIN_PASSWORD` 추가 필요 (Netlify의 값과 동일)
+  ```bash
+  supabase secrets set ADMIN_PASSWORD=<your_admin_password>
+  ```
+
+**영향 범위:** `supabase/functions/etl-tennis-rules/index.ts`
+
+---
+
 ### [1.3.1] - 2026-02-17
 **🔐 Admin Auth Security Enhancement**
 

@@ -71,6 +71,58 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ---
 
+## 🔑 Supabase Edge Function Secrets
+
+ETL Edge Function (`etl-tennis-rules`)은 서비스 롤 키 또는 Admin 비밀번호로 인증합니다.
+배포된 Edge Function을 호출하려면 Supabase Secrets에 `ADMIN_PASSWORD`를 등록해야 합니다.
+
+### Supabase CLI로 설정
+
+```bash
+# Supabase CLI 설치 (최초 1회)
+npm install -g supabase
+
+# 로그인
+supabase login
+
+# Supabase 프로젝트 링크 (supabase/config.toml 자동 생성)
+supabase link --project-ref <your-project-ref>
+
+# Secret 추가 (VITE_ 접두사 없음, 서버 전용)
+supabase secrets set ADMIN_PASSWORD=<your_admin_password>
+supabase secrets set GEMINI_API_KEY=<your_gemini_api_key>
+
+# 설정 확인
+supabase secrets list
+```
+
+### Supabase Dashboard로 설정
+
+1. Supabase Dashboard → **Edge Functions** 탭
+2. `etl-tennis-rules` 함수 선택
+3. **Secrets** 탭 → **Add secret**
+4. `ADMIN_PASSWORD` = (Netlify의 `ADMIN_PASSWORD`와 동일한 값)
+
+### Edge Function 호출 예시
+
+```bash
+# 서비스 롤 키로 호출
+curl -X POST https://<project>.supabase.co/functions/v1/etl-tennis-rules \
+  -H "Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "chunk_text", "text": "...", "language": "ko"}'
+
+# Admin 비밀번호로 호출 (v1.3.2+)
+curl -X POST https://<project>.supabase.co/functions/v1/etl-tennis-rules \
+  -H "Authorization: Bearer <ADMIN_PASSWORD>" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "chunk_text", "text": "...", "language": "ko"}'
+```
+
+> **중요**: `ADMIN_PASSWORD`는 Netlify와 Supabase 양쪽에 동일한 값으로 설정해야 합니다.
+
+---
+
 ## 🔧 트러블슈팅
 
 ### ❌ Admin 로그인 시 "Server configuration error"
@@ -104,6 +156,15 @@ Deploys → Trigger deploy → Clear cache and deploy site
 1. Supabase Dashboard → Settings → API
 2. URL과 `anon` public key가 올바른지 확인 (Service Role Key가 아님!)
 3. Netlify 환경변수에 올바르게 입력되었는지 확인
+
+### ❌ Edge Function 호출 시 401 "Unauthorized"
+
+**원인**: `Authorization: Bearer <token>` 헤더 누락, 또는 Supabase에 `ADMIN_PASSWORD` Secret 미설정
+
+**해결**:
+1. Supabase Dashboard → Edge Functions → `etl-tennis-rules` → **Secrets** 탭
+2. `ADMIN_PASSWORD` 추가 (Netlify의 `ADMIN_PASSWORD`와 동일한 값)
+3. Edge Function 재배포: `supabase functions deploy etl-tennis-rules`
 
 ### ❌ Admin 페이지에서 데이터 삭제 불가
 
@@ -167,14 +228,25 @@ netlify dev
 
 ## 📊 환경변수 요약표
 
+### Netlify 환경변수
+
 | Variable | 위치 | 필수 | 설명 |
 |----------|------|------|------|
 | `VITE_SUPABASE_URL` | 클라이언트 | ✅ | Supabase 프로젝트 URL |
 | `VITE_SUPABASE_ANON_KEY` | 클라이언트 | ✅ | Supabase public anon key |
-| `ADMIN_ID` | 서버 | ✅ | Admin 로그인 ID |
-| `ADMIN_PASSWORD` | 서버 | ✅ | Admin 비밀번호 |
-| `ADMIN_JWT_SECRET` | 서버 | ✅ | JWT 서명 키 (32자+) |
+| `ADMIN_ID` | 서버 (Netlify Function) | ✅ | Admin 로그인 ID |
+| `ADMIN_PASSWORD` | 서버 (Netlify Function + Supabase Secret) | ✅ | Admin 비밀번호 |
+| `ADMIN_JWT_SECRET` | 서버 (Netlify Function) | ✅ | JWT 서명 키 (32자+) |
 | `VITE_GEMINI_API_KEY` | 클라이언트 | 선택 | AI 코치용 Gemini API 키 |
+
+### Supabase Secrets (Edge Functions용)
+
+| Secret | 필수 | 설명 |
+|--------|------|------|
+| `ADMIN_PASSWORD` | ✅ | Netlify의 `ADMIN_PASSWORD`와 동일한 값 (ETL 함수 인증) |
+| `GEMINI_API_KEY` | 선택 | Edge Function에서 Gemini 직접 호출 시 |
+
+> ⚠️ `ADMIN_PASSWORD`는 **Netlify와 Supabase 양쪽**에 동일한 값으로 설정해야 합니다.
 
 **주의**:
 - `VITE_` 접두사 = 클라이언트 JS 번들에 포함됨 (공개)

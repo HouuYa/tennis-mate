@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.1-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.2-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)

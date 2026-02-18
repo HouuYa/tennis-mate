@@ -21,6 +21,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-gemini-api-key',
 };
 
+// ============================================================
+// Authentication
+// Accepts: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+//       or Bearer <ADMIN_PASSWORD>  (set as Supabase secret)
+// ============================================================
+function checkAuth(req: Request): boolean {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return false;
+
+  const token = authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7).trim()
+    : authHeader.trim();
+
+  if (!token) return false;
+
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const adminPassword = Deno.env.get('ADMIN_PASSWORD');
+
+  return (!!serviceRoleKey && token === serviceRoleKey) ||
+         (!!adminPassword && token === adminPassword);
+}
+
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -244,6 +266,11 @@ async function processChunks(
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // ── Auth guard ──────────────────────────────────────────────
+  if (!checkAuth(req)) {
+    return jsonResponse({ error: 'Unauthorized: provide a valid Bearer token' }, 401);
   }
 
   try {

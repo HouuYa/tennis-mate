@@ -1,6 +1,6 @@
 # Security Policy
 
-## 보안 아키텍처 (v1.3.1)
+## 보안 아키텍처 (v1.3.2)
 
 Tennis Mate는 **소규모 신뢰 그룹(친구, 테니스 클럽)** 사용을 전제로 설계되었습니다. Guest Mode 호환을 위해 의도적으로 단순한 보안 정책을 채택하고 있습니다.
 
@@ -26,6 +26,39 @@ Tennis Mate는 **소규모 신뢰 그룹(친구, 테니스 클럽)** 사용을 �
 - 최소 12자 이상
 - 대소문자, 숫자, 특수문자 조합
 - 비밀번호 관리자 사용 권장
+
+---
+
+## ⚡ Supabase Edge Function 인증 (v1.3.2)
+
+### ETL Edge Function (`etl-tennis-rules`)
+
+**인증 방식 (v1.3.2+):**
+```typescript
+// 허용되는 토큰 (둘 중 하나):
+// 1. Supabase Service Role Key
+// 2. ADMIN_PASSWORD (Supabase Secret으로 설정)
+Authorization: Bearer <token>
+```
+
+**구현:**
+- `checkAuth()` 함수가 `Authorization: Bearer` 헤더 파싱
+- `SUPABASE_SERVICE_ROLE_KEY` (Supabase 자동 제공) 또는 `ADMIN_PASSWORD` (직접 설정)와 비교
+- 인증 실패 시 401 반환, 요청 처리 안 함
+
+**보안 특성:**
+- ✅ 인증 없이는 ETL 함수 호출 불가 (이전 버전은 완전 공개)
+- ✅ `ADMIN_PASSWORD`는 Supabase Secret으로 관리 (환경변수, 코드에 미노출)
+- ✅ Admin UI와 동일한 비밀번호로 통합 인증 가능
+- ⚠️ Rate limiting 없음 (Supabase Edge Runtime 제한에 의존)
+- ⚠️ 토큰 전송 시 HTTPS 필수 (Supabase는 기본 HTTPS 강제)
+
+**Supabase Secret 설정:**
+```bash
+supabase secrets set ADMIN_PASSWORD=<your_admin_password>
+```
+
+> **동일한 `ADMIN_PASSWORD`**를 Netlify (Admin UI 인증)와 Supabase (ETL 함수 인증) 양쪽에 설정합니다.
 
 ---
 
@@ -184,4 +217,4 @@ CREATE POLICY "Admins can delete" ON public.players
 
 ---
 
-**마지막 업데이트**: 2026-02-17 (v1.3.1)
+**마지막 업데이트**: 2026-02-18 (v1.3.2)
