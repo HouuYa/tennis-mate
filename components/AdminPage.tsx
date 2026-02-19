@@ -261,6 +261,26 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     adminLogout();
+    // Reset all form and data state on logout
+    setActiveSection('players');
+    setPlayers([]); setSessions([]); setMatches([]);
+    setPendingOps([]);
+    setEditingPlayerId(null); setEditPlayerName('');
+    setExpandedSessionId(null);
+    setEditingMatchId(null); setEditMatchScoreA(0); setEditMatchScoreB(0);
+    setEditingSessionId(null); setEditSessionLocation('');
+    setMergeSourceId(null); setMergeTargetId(null);
+    setRlsDiag(null);
+    // Quick Entry
+    setQeSessionId(''); setQeNewLocation('');
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    setQeNewDate(now.toISOString().slice(0, 16));
+    setQeTeamA1(''); setQeTeamA2(''); setQeTeamB1(''); setQeTeamB2('');
+    setQeScoreA(0); setQeScoreB(0);
+    setQeUseNewSession(false); setQeShowPlayerPicker(false);
+    setQeNewPlayerName(''); setQeTargetTeam(null);
+    setQeDragPlayerId(null); setQeDragFromSlot(null); setQeDragOverSlot(null);
   };
 
   const loadAllData = async () => {
