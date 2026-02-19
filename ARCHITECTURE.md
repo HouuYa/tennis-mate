@@ -19,7 +19,8 @@
 │   ├── AnalyticsView.tsx # Advanced Analytics Modal (Win Rates, Partners, Rivals)
 │   ├── StatsAnalysisModal.tsx # AI Stats Analysis Modal (v1.2.0)
 │   ├── TennisRulesChatModal.tsx # Tennis Rules Chat Modal (v1.2.0)
-│   ├── GeminiApiKeySettings.tsx # Gemini API Key Configuration
+│   ├── ModelSwitcher.tsx    # Dynamic Gemini Model Selector (v2.0.0)
+│   ├── GeminiApiKeySettings.tsx # Gemini API Key Configuration (two-step flow)
 │   ├── ModeSelection.tsx # Storage Mode Selection (Guest/Sheets/Cloud) + Korean descriptions
 │   ├── GuestSessionManager.tsx # Guest Mode Session Manager (date/location selection)
 │   ├── CloudSessionManager.tsx # Cloud Mode Session Manager (Supabase) + Admin button
@@ -37,6 +38,8 @@
 │   ├── GoogleSheetsDataService.ts # Google Apps Script Implementation
 │   ├── SupabaseDataService.ts # Supabase Implementation
 │   └── geminiService.ts  # Google GenAI Integration
+├── hooks/
+│   └── useTennisChat.ts  # Shared hook for AI chat state & model management (v2.0.0)
 ├── utils/
 │   ├── matchmaking.ts    # Pairing Logic (Rotation & Fairness)
 │   └── playerUtils.ts    # Shared Helper Functions (Formatting, Sorting)
@@ -95,11 +98,39 @@ The app implements a **Repository/Adapter Pattern** via the `DataService` interf
   3.  Next Set (Preview card showing resting player).
 - **Mobile First**: Large touch targets, dark mode for outdoor visibility.
 
-### D. AI Integration (Enhanced in v1.2.0)
+### D. AI Integration (Enhanced in v2.0.0)
 
 **AI Coach Features:**
 1. **Stats Analysis**: Google Gemini API analyzes match data to generate insights (MVPs, team chemistry, performance trends)
 2. **Tennis Rules Chat**: RAG-based Q&A system using Supabase pgvector for tennis rules search
+
+**Dynamic Model Selection (v2.0.0):**
+- `fetchAvailableModels(apiKey)` calls `GET /v1beta/models?key={apiKey}` from Gemini REST API
+- Filters: only `generateContent`-capable, non-preview, non-gemma, `gemini-*` models
+- Deprecation detection: from API `deprecationDate` field or `KNOWN_DEPRECATION_DATES` fallback map
+- Sorting: Recommended → Active → Near-EOL (< 90 days) → Deprecated
+- Fallback: `FALLBACK_GEMINI_MODELS` (4 models) used when no API key or fetch fails
+- `GeminiModelId` type: `typeof FALLBACK_GEMINI_MODELS[number]['id'] | (string & {})` — preserves IDE autocompletion while allowing dynamic IDs
+
+**Two-Step API Key Flow (v2.0.0):**
+- `GeminiApiKeySettings` manages `step: 'key' | 'model'` state
+- Step 1: Enter & validate key only
+- Step 2: After validation — dynamic model dropdown + "저장 후 시작"
+- `forceKeyStep={true}` prop: forces Step 1 even when key already exists (used by "키 변경" button)
+- `onModelsLoaded` callback: propagates fetched models to parent without a second network call
+
+**Component Relationships (v2.0.0):**
+```
+useTennisChat (hook)
+  ├── availableModels: DynamicGeminiModel[]  ← fetchAvailableModels() on mount
+  ├── setAvailableModels  ← exposed for external updates (from GeminiApiKeySettings)
+  └── Used by:
+      ├── TennisRulesChatModal
+      │   ├── ModelSwitcher (models={availableModels})
+      │   └── "키 변경" → GeminiApiKeySettings (forceKeyStep, onModelsLoaded={setAvailableModels})
+      └── AIChatInterface
+          └── ModelSwitcher (models={availableModels})
+```
 
 **UI Design Pattern (v1.2.0):**
 - **Collapsible Section**: AI Coach appears as a compact button (similar to Advanced Analytics)

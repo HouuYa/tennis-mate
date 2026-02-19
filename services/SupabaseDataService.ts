@@ -27,7 +27,6 @@ export class SupabaseDataService implements DataService {
             const savedSessionId = localStorage.getItem(SupabaseDataService.SESSION_STORAGE_KEY);
             if (savedSessionId) {
                 this.currentSessionId = savedSessionId;
-                console.log('Restored session ID from localStorage:', savedSessionId);
             }
         } catch (error) {
             console.warn('Failed to restore session ID from localStorage:', error);
@@ -38,7 +37,6 @@ export class SupabaseDataService implements DataService {
         this.currentSessionId = sessionId;
         try {
             localStorage.setItem(SupabaseDataService.SESSION_STORAGE_KEY, sessionId);
-            console.log('Set current session ID:', sessionId);
         } catch (error) {
             console.warn('Failed to save session ID to localStorage:', error);
         }
@@ -48,7 +46,6 @@ export class SupabaseDataService implements DataService {
         this.currentSessionId = null;
         try {
             localStorage.removeItem(SupabaseDataService.SESSION_STORAGE_KEY);
-            console.log('Cleared current session ID');
         } catch (error) {
             console.warn('Failed to clear session ID from localStorage:', error);
         }

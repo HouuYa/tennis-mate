@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { BarChart3, Users, Swords, User, TrendingUp, Trophy } from 'lucide-react';
+import { BarChart3, Users, Swords, Trophy } from 'lucide-react';
 import { Player, Match } from '../types';
 
 export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {

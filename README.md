@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.4.0-brightgreen)
+![Version](https://img.shields.io/badge/version-2.0.0-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -50,7 +50,6 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
   - 완전한 데이터 소유권
   - 무료 무제한 저장
   - Excel/CSV 언제든지 내보내기
-  - Excel/CSV 언제든지 내보내기
   - 최근 100경기 자동 동기화
   - **Batch Save**: 세션 종료 시 모든 경기를 한 번에 저장 (속도 & 안정성 개선)
 - **설정**: 단계별 가이드 제공 (Google Apps Script 배포)
@@ -79,16 +78,16 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
   - 승/무/패 통계 및 승률 시각화
   - 라이벌 관계 분석
 
-### 5. 🤖 AI 코치 (Powered by Gemini) - v1.4.0 동적 모델 선택!
+### 5. 🤖 AI 코치 (Powered by Gemini)
 ![AI 코치 메뉴 위치](./files/ai%20coach%202.png)
 
 
-- **동적 모델 선택 (NEW in v1.4.0!)**:
+- **동적 모델 선택**:
   - Gemini API에서 실시간으로 사용 가능한 모델 목록 자동 조회
   - Preview·Gemma 등 불안정 모델 자동 필터링
   - Deprecated 모델 🟡 / 종료 임박(90일) 모델 🟠 시각적 표시
   - API 키 없을 때는 정적 폴백 목록 사용
-- **2단계 API 키 설정 (NEW in v1.4.0!)**:
+- **2단계 API 키 설정**:
   - Step 1: API 키 입력 → 유효성 검증
   - Step 2: 검증 완료 후 동적 모델 목록에서 선택 → 저장
   - 채팅 헤더 "키 변경" 버튼으로 언제든 재설정 가능
@@ -267,13 +266,20 @@ npm run dev
 - [x] Player 삭제 복원 리스트
 - [x] Score 리셋 버그 수정
 
-### 🔜 v1.4.0 (예정)
+### ✅ v1.4.0 / v2.0.0 (완료 - 2026-02-19)
+- [x] 동적 Gemini 모델 선택 (실시간 API 조회, 자동 필터링)
+- [x] 2단계 API 키 설정 UX (키 입력 → 모델 선택)
+- [x] 채팅 헤더 "키 변경" 버튼
+- [x] ModelSwitcher Deprecated / Near-EOL 배지
+- [x] 코드 정리 (미사용 import, console.log, 중복 타입, recharts 제거)
+
+### 🔜 v2.1.0 (예정)
 - [ ] 다중 코트 지원 (2개 코트 동시 진행)
 - [ ] Tie-break 스코어 지원 (7-6 (4) 형식)
 - [ ] 플레이어 아바타 업로드
-- [ ] 한글 주소 지원 (Kakao/Naver Map API)
+- [ ] 한글 주소 지원
 
-### 🔮 v2.0.0 (장기)
+### 🔮 v3.0.0 (장기)
 - [ ] 실시간 동기화 (WebSocket)
 - [ ] 팀 대항전 모드
 - [ ] 토너먼트 브라켓 생성
@@ -313,7 +319,7 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 
 <div align="center">
 
-**Tennis Mate v1.3.0**
+**Tennis Mate v2.0.0**
 
 Made with ❤️ & 🎾 by [HouuYa](https://github.com/HouuYa)
 

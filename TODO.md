@@ -201,39 +201,13 @@
 
 ---
 
-## 🔜 v1.5.0 - Core Features Enhancement (예정)
+## 🔜 v2.1.0 - Core Features Enhancement (예정)
 
 ### 우선순위: HIGH
 
 #### 📍 한글 주소 지원 (Korean Address Support)
-**현재 상태**: OpenStreetMap Nominatim 사용 (영어 주소 반환)
-**목표**: 한글 주소 지원 (Kakao 또는 Naver Map API)
-
-**옵션 1: Kakao Map API (추천)**
-- 무료 범위: 일 300,000건
-- 장점: 완벽한 한글 지원, 간단한 REST API
-
-구현 계획:
-```typescript
-// CloudSessionManager.tsx
-const handleGetLocation = async (position) => {
-  const response = await fetch(
-    `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`,
-    {
-      headers: {
-        Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_API_KEY}`
-      }
-    }
-  );
-  const data = await response.json();
-  const address = data.documents[0]?.address?.address_name;
-  setLocation(address); // "서울특별시 강남구 역삼동"
-};
-```
-
-**옵션 2: Naver Map API**
-- 무료 범위: 일 100,000건 (Mobile), 50,000건 (Web)
-- 장점: 상세한 한국 지도 데이터
+- [ ] Reverse geocoding API 연동 (한글 주소 반환)
+- [ ] 현재 위치 기반 자동 입력
 
 #### 🎾 Tie-break 스코어 지원
 - [ ] "7-6 (4)" 형식의 스코어 입력 UI
@@ -265,7 +239,7 @@ const handleGetLocation = async (position) => {
 
 ---
 
-## 🎯 v1.6.0 - Multi-Court & Advanced Features (예정)
+## 🎯 v2.2.0 - Multi-Court & Advanced Features (예정)
 
 ### 우선순위: HIGH
 
@@ -297,7 +271,7 @@ const handleGetLocation = async (position) => {
 
 ---
 
-## 🚀 v2.0.0 - Next Generation (장기)
+## 🚀 v3.0.0 - Next Generation (장기)
 
 ### 실시간 동기화
 - [ ] WebSocket 연동
@@ -362,19 +336,18 @@ const handleGetLocation = async (position) => {
 
 ## 📝 참고 문서
 
-- [Kakao Developers](https://developers.kakao.com/docs/latest/ko/local/dev-guide#coord-to-address)
-- [Naver Cloud Platform](https://api.ncloud-docs.com/docs/ai-naver-mapsreversegeocoding-gc)
 - [Supabase Documentation](https://supabase.com/docs)
 - [Google Apps Script](https://developers.google.com/apps-script)
+- [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 ---
 
 ## 🎯 기여 가이드
 
 우선순위가 높은 항목부터 작업하면 좋습니다:
-1. v1.1.0의 HIGH 우선순위 항목
-2. v1.1.0의 MEDIUM 우선순위 항목
-3. v1.2.0 항목
-4. v2.0.0 장기 계획
+1. v2.1.0의 HIGH 우선순위 항목
+2. v2.1.0의 MEDIUM 우선순위 항목
+3. v2.2.0 항목
+4. v3.0.0 장기 계획
 
 풀 리퀘스트는 언제나 환영합니다! 🙌

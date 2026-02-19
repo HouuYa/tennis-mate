@@ -6,6 +6,22 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-02-19 (v2.0.0 — Code Cleanup & Codebase Housekeeping)
+- **Version bump**: `package.json` version `1.4.0` → `2.0.0`
+- **Dependency removal**: `recharts` 패키지 제거 (코드베이스에서 미사용 확인)
+- **Type cleanup** (`types.ts`): `Match` 인터페이스의 중복 `courtNumber` 필드 제거
+- **Unused imports** 제거:
+  - `AnalyticsView.tsx`: `User`, `TrendingUp` (lucide-react)
+  - `CurrentMatch.tsx`: `RefreshCw` (lucide-react)
+  - `CloudSessionManager.tsx`: `RefreshCw` (lucide-react)
+- **`console.log` 정리** (에러 로그만 유지):
+  - `TennisRulesChatModal.tsx`: 디버그 로그 제거
+  - `GoogleSheetsDataService.ts`: 연결 로그 제거
+  - `SupabaseDataService.ts`: 세션 ID 라이프사이클 로그 제거
+  - `AdminPage.tsx`: 작업 디버그 로그 제거 (7개)
+- **MD 파일 전체 정비**: README, HISTORY, TODO, ARCHITECTURE, DEPLOYMENT v2.0.0 기준으로 업데이트
+  - `TODO.md`: Kakao/Naver Map API 구현 세부 항목 제거, 로드맵 버전 번호 재조정
+
 ### 2026-02-19 (Dynamic Gemini Model Selection & API Key UX)
 - **Dynamic Model Fetching** (`services/geminiService.ts`):
   - `fetchAvailableModels(apiKey)` 신규 — Gemini REST API (`/v1beta/models`)에서 실시간 모델 목록 조회
@@ -154,6 +170,23 @@ This document serves as the master record for releases, daily summaries, and bug
 ---
 
 ## 🚀 전체 Changelog
+
+### [2.0.0] - 2026-02-19
+**🧹 Codebase Cleanup & Maintenance Release**
+
+**코드 정리:**
+- **중복 타입 제거**: `Match` 인터페이스의 중복 `courtNumber` 필드 제거 (`types.ts`)
+- **미사용 import 제거**: `AnalyticsView`, `CurrentMatch`, `CloudSessionManager`의 lucide-react 아이콘
+- **`console.log` 정리**: `TennisRulesChatModal`, `GoogleSheetsDataService`, `SupabaseDataService`, `AdminPage`에서 디버그 로그 제거 (프로덕션 노이즈 감소)
+- **미사용 패키지 제거**: `recharts` (코드베이스에서 실제 import 없음 확인 후 삭제)
+
+**문서 정비:**
+- `README.md`: 버전 배지 v2.0.0, AI Coach 동적 모델 설명 업데이트
+- `TODO.md`: Kakao/Naver Map API 구현 세부 항목 삭제, 로드맵 버전 번호 재정렬 (v2.1.0 / v2.2.0 / v3.0.0)
+- `HISTORY.md`: v2.0.0 릴리스 항목 추가
+- `ARCHITECTURE.md`: 디렉토리 구조 및 AI 동적 모델 섹션 업데이트
+
+---
 
 ### [1.4.0] - 2026-02-19
 **🤖 Dynamic Gemini Model Selection & Two-Step API Key UX**

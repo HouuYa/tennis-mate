@@ -27,7 +27,6 @@ export interface Match {
   scoreB: number;
   isFinished: boolean;
   courtNumber: number;
-  courtNumber: number;
   endTime?: number;
   location?: string;
 }

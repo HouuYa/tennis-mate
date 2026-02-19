@@ -128,14 +128,6 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       // Use currentModel from hook (already initialized with getStoredModel())
       const model = currentModel;
 
-      console.log('[Tennis Rules] Preparing request:', {
-        language,
-        model,
-        hasApiKey: !!apiKey,
-        supabaseUrl,
-        questionLength: question.trim().length,
-      });
-
       if (!supabaseUrl) {
         throw new Error('Supabase URL not configured');
       }
@@ -143,8 +135,6 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       if (!apiKey) {
         throw new Error('API key not found');
       }
-
-      console.log('[Tennis Rules] Calling edge function...');
 
       const response = await fetch(
         `${supabaseUrl}/functions/v1/tennis-rag-query`,
@@ -163,15 +153,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         }
       );
 
-      console.log('[Tennis Rules] Response status:', response.status, response.statusText);
-
       const data = await response.json();
-
-      console.log('[Tennis Rules] Response data:', {
-        hasAnswer: !!data.answer,
-        sourceCount: data.sources?.length || 0,
-        error: data.error,
-      });
 
       if (!response.ok) {
         const errorMsg = data.error || 'Unknown error';

@@ -199,7 +199,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     } catch (e) {
       diag.error = `Exception: ${e instanceof Error ? e.message : String(e)}`;
     }
-    console.log('[Admin] RLS Diagnostic:', diag);
     setRlsDiag(diag);
   };
 
@@ -399,8 +398,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
       return (order[a.type] ?? 2) - (order[b.type] ?? 2);
     });
 
-    console.log('[Admin] Committing ops:', sortedOps.map(o => o.type));
-
     for (const op of sortedOps) {
       try {
         switch (op.type) {
@@ -420,8 +417,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               m.team_b.player1Id === op.removeId ||
               m.team_b.player2Id === op.removeId
             );
-            console.log(`[Admin] Merge: ${toUpdate.length} matches to update for removeId=${op.removeId}`);
-
             let matchUpdateFailed = false;
             for (const m of toUpdate) {
               const newTeamA = {
@@ -474,7 +469,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               errors.push(`병합 선수 삭제 실패: RLS DELETE 권한 없음 (player ${op.removeId})`);
               continue;
             }
-            console.log(`[Admin] Merge OK: deleted player ${op.removeId}`);
             successCount++;
             break;
           }
@@ -497,14 +491,11 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               .from('session_players')
               .delete()
               .eq('player_id', op.player.id);
-            console.log(`[Admin] delete-player: session_players delete result`, { spErr });
-
             const { data: deleted, error } = await supabase
               .from('players')
               .delete()
               .eq('id', op.player.id)
               .select();
-            console.log(`[Admin] delete-player: players delete result`, { deleted, error });
             if (error) { errors.push(`선수 삭제 실패 (${op.player.name}): ${error.message} (code: ${error.code})`); continue; }
             if (!deleted || deleted.length === 0) {
               errors.push(`선수 삭제 실패 (${op.player.name}): RLS DELETE 권한 없음 - Supabase Dashboard에서 players 테이블의 DELETE policy를 확인하세요`);
@@ -568,8 +559,6 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
         console.error(`[Admin] Op ${op.type} exception:`, err);
       }
     }
-
-    console.log(`[Admin] Commit done: ${successCount} success, ${errors.length} errors`, errors);
 
     if (errors.length > 0) {
       const msg = `${successCount}건 성공, ${errors.length}건 실패:\n${errors.join('\n')}`;

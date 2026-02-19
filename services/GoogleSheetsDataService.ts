@@ -258,7 +258,6 @@ export class GoogleSheetsDataService implements DataService {
      */
     async saveState(state: AppState): Promise<void> {
         // No-op: Google Sheets mode uses granular saveMatch instead
-        console.log('saveState called in Google Sheets mode - no action taken');
     }
 
     /**
@@ -336,8 +335,6 @@ export class GoogleSheetsDataService implements DataService {
                 body: JSON.stringify(payload)
             })
         ));
-
-        console.log(`${matches.length} matches saved to Google Sheets`);
     }
 
     async getAllPlayers(): Promise<Player[]> {

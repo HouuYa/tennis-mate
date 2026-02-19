@@ -41,7 +41,7 @@ Netlify가 `netlify.toml`을 자동 감지합니다:
 | `VITE_SUPABASE_URL` | Supabase 프로젝트 URL (예: `https://xxx.supabase.co`) | All |
 | `VITE_SUPABASE_ANON_KEY` | Supabase public anon key (예: `eyJhbGci...`) | All |
 
-#### 필수 - Admin 인증 (v1.3.1+)
+#### 필수 - Admin 인증
 | Variable | Value | Scopes |
 |----------|-------|--------|
 | `ADMIN_ID` | Admin 로그인 ID (예: `admin`) | Production, Deploy Previews |
