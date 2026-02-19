@@ -172,7 +172,36 @@
 
 ---
 
-## 🔜 v1.4.0 - Core Features Enhancement (예정)
+## ✅ v1.4.0 - Dynamic Gemini Model Selection & API Key UX (완료 - 2026-02-19)
+- [x] **동적 Gemini 모델 선택** (`services/geminiService.ts`)
+    - [x] `fetchAvailableModels(apiKey)`: `/v1beta/models` API 실시간 조회
+    - [x] preview·gemma·비generateContent 모델 자동 필터링
+    - [x] `KNOWN_DEPRECATION_DATES` 맵으로 종료 예정 모델 감지
+    - [x] `FALLBACK_GEMINI_MODELS` 자동 폴백 (fetch 실패·키 없음)
+    - [x] `GeminiModelId` 교차 타입으로 자동완성 유지 + 동적 ID 허용
+    - [x] `encodeURIComponent(apiKey)` URL 안전 처리
+- [x] **2단계 API 키 설정 모달** (`components/GeminiApiKeySettings.tsx`)
+    - [x] Step 1 (키 입력): API 키 입력 → 검증 → 다음 단계로 이동
+    - [x] Step 2 (모델 선택): "✅ 인증 완료" 배지 + 동적 모델 드롭다운 + "저장 후 시작"
+    - [x] `forceKeyStep={true}` prop: 기존 키 있어도 Step 1부터 강제 시작
+    - [x] "← 키 변경" 버튼: Step 2 → Step 1 복귀
+- [x] **채팅 헤더 API 키 변경 기능** (`components/TennisRulesChatModal.tsx`)
+    - [x] 모델 드롭다운 옆 "키 변경" 버튼 추가
+    - [x] 클릭 시 기존 키 초기화 + Step 1부터 설정 모달 팝업
+    - [x] 새 키 저장 후 `handleApiKeyUpdated()` 호출로 모델 목록 자동 갱신
+- [x] **ModelSwitcher 개선** (`components/ModelSwitcher.tsx`)
+    - [x] `models?: DynamicGeminiModel[]` prop (동적 목록 우선, 없으면 폴백)
+    - [x] 🟠 "Retiring MM/YYYY" 배지 (종료 임박 모델)
+    - [x] 🟡 "Deprecated" 배지 + 비활성화 (종료된 모델)
+    - [x] `isNearEOL()` 내부에서 동적 날짜 계산 (`Date.now()` 기반)
+- [x] **Code Review 반영** (Gemini Code Assist)
+    - [x] `useTennisChat`: `DEFAULT_GEMINI_MODEL` import + 모델 유효성 검사
+    - [x] `useTennisChat`: `React.Dispatch` → `Dispatch<SetStateAction<>>` 직접 import
+    - [x] `ModelSwitcher`: 모듈 레벨 stale 날짜 상수 제거
+
+---
+
+## 🔜 v1.5.0 - Core Features Enhancement (예정)
 
 ### 우선순위: HIGH
 
@@ -236,7 +265,7 @@ const handleGetLocation = async (position) => {
 
 ---
 
-## 🎯 v1.5.0 - Multi-Court & Advanced Features (예정)
+## 🎯 v1.6.0 - Multi-Court & Advanced Features (예정)
 
 ### 우선순위: HIGH
 

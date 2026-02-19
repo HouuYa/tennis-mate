@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
 import DOMPurify from 'dompurify';
-import { getStoredApiKey } from '../services/geminiService';
+import { getStoredApiKey, clearApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useTennisChat } from '../hooks/useTennisChat';
@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../services/supabaseClient';
 import { ErrorActionPanel } from './ErrorActionPanel';
 import { ModelSwitcher } from './ModelSwitcher';
+import { GeminiApiKeySettings } from './GeminiApiKeySettings';
 
 interface ChatMessageSource {
   rule_id: string;
@@ -55,6 +56,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     count: 0,
     checking: true,
   });
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
@@ -299,6 +301,17 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                 showInHeader={true}
                 models={availableModels}
               />
+              {/* API Key Reset */}
+              <button
+                onClick={() => {
+                  clearApiKey();
+                  setShowApiKeyModal(true);
+                }}
+                className="text-slate-500 hover:text-indigo-400 text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors whitespace-nowrap"
+                title="Gemini API 키 변경"
+              >
+                키 변경
+              </button>
               {/* Clear Button */}
               {chatMessages.length > 0 && (
                 <button
@@ -427,6 +440,20 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
           </p>
         </div>
       </div>
+
+      {/* API Key Change Modal — opens on top of this modal */}
+      {showApiKeyModal && (
+        <GeminiApiKeySettings
+          forceKeyStep={true}
+          onClose={() => {
+            setShowApiKeyModal(false);
+            handleApiKeyUpdated();
+          }}
+          onKeyUpdate={(hasKey) => {
+            if (!hasKey) setShowApiKeyModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

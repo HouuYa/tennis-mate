@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.1-brightgreen)
+![Version](https://img.shields.io/badge/version-1.4.0-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -79,11 +79,20 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
   - 승/무/패 통계 및 승률 시각화
   - 라이벌 관계 분석
 
-### 5. 🤖 AI 코치 (Powered by Gemini) - v1.2.0 UI 개선!
+### 5. 🤖 AI 코치 (Powered by Gemini) - v1.4.0 동적 모델 선택!
 ![AI 코치 메뉴 위치](./files/ai%20coach%202.png)
 
 
-- **컴팩트 디자인 (NEW!)**:
+- **동적 모델 선택 (NEW in v1.4.0!)**:
+  - Gemini API에서 실시간으로 사용 가능한 모델 목록 자동 조회
+  - Preview·Gemma 등 불안정 모델 자동 필터링
+  - Deprecated 모델 🟡 / 종료 임박(90일) 모델 🟠 시각적 표시
+  - API 키 없을 때는 정적 폴백 목록 사용
+- **2단계 API 키 설정 (NEW in v1.4.0!)**:
+  - Step 1: API 키 입력 → 유효성 검증
+  - Step 2: 검증 완료 후 동적 모델 목록에서 선택 → 저장
+  - 채팅 헤더 "키 변경" 버튼으로 언제든 재설정 가능
+- **컴팩트 디자인**:
   - 기본적으로 작은 버튼만 표시 (공간 효율성 향상)
   - 클릭하여 확장/축소 가능
   - Progressive Disclosure: 필요한 기능만 단계적으로 표시
