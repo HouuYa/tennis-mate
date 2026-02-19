@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader, BookOpen, CheckCircle2, AlertCircle } from 'lucide-react';
 import DOMPurify from 'dompurify';
-import { getStoredApiKey, clearApiKey } from '../services/geminiService';
+import { getStoredApiKey } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useTennisChat } from '../hooks/useTennisChat';
@@ -41,6 +41,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     setChatMessages,
     currentModel,
     availableModels,
+    setAvailableModels,
     lastError,
     setLastError,
     handleModelChange,
@@ -303,10 +304,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
               />
               {/* API Key Reset */}
               <button
-                onClick={() => {
-                  clearApiKey();
-                  setShowApiKeyModal(true);
-                }}
+                onClick={() => setShowApiKeyModal(true)}
                 className="text-slate-500 hover:text-indigo-400 text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors whitespace-nowrap"
                 title="Gemini API 키 변경"
               >
@@ -445,6 +443,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       {showApiKeyModal && (
         <GeminiApiKeySettings
           forceKeyStep={true}
+          onModelsLoaded={setAvailableModels}
           onClose={() => {
             setShowApiKeyModal(false);
             handleApiKeyUpdated();

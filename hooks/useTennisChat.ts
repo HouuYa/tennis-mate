@@ -34,6 +34,7 @@ interface UseTennisChatReturn {
   // Actions
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   setLastError: Dispatch<SetStateAction<LastError | null>>;
+  setAvailableModels: Dispatch<SetStateAction<DynamicGeminiModel[]>>;
   handleModelChange: (newModel: GeminiModelId) => void;
   handleApiKeyUpdated: () => void;
   handleRetry: (retryFn: () => void) => void;
@@ -117,6 +118,7 @@ export function useTennisChat(): UseTennisChatReturn {
     lastError,
 
     // Actions
+    setAvailableModels,
     setChatMessages,
     setLastError,
     handleModelChange,

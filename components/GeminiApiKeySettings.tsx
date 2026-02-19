@@ -11,6 +11,7 @@ import { useToast } from '../context/ToastContext';
 interface GeminiApiKeySettingsProps {
   onClose?: () => void;
   onKeyUpdate?: (hasKey: boolean) => void;
+  onModelsLoaded?: (models: DynamicGeminiModel[]) => void; // Lets parent receive freshly fetched models
   compact?: boolean; // For inline display in StatsView
   inline?: boolean; // For embedding in error panels (minimal UI)
   forceKeyStep?: boolean; // Full modal: always start at key-entry step (e.g. "키 변경" flow)
@@ -32,6 +33,7 @@ function getModelOptionLabel(model: DynamicGeminiModel): string {
 export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   onClose,
   onKeyUpdate,
+  onModelsLoaded,
   compact = false,
   inline = false,
   forceKeyStep = false,
@@ -61,6 +63,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
     try {
       const models = await fetchAvailableModels(key);
       setDynamicModels(models);
+      onModelsLoaded?.(models); // Propagate to parent (e.g. chat header dropdown)
       // If the stored model is no longer in the dynamic list, reset to default
       if (models.length > 0 && !models.some(m => m.id === selectedModel)) {
         setSelectedModel(DEFAULT_GEMINI_MODEL);
@@ -71,7 +74,7 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
     } finally {
       setLoadingModels(false);
     }
-  }, [selectedModel]);
+  }, [selectedModel, onModelsLoaded]);
 
   useEffect(() => {
     const stored = getStoredApiKey();
@@ -238,25 +241,28 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
           </button>
         </div>
 
-        <div className="relative">
-          <select
-            value={selectedModel}
-            onChange={(e) => handleModelChange(e.target.value)}
-            disabled={loadingModels}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 pr-8 text-white text-xs focus:border-indigo-500 outline-none appearance-none disabled:opacity-60"
-          >
-            {loadingModels ? (
-              <option value="">모델 목록 불러오는 중...</option>
-            ) : (
-              modelList.map((m) => (
-                <option key={m.id} value={m.id} disabled={m.deprecated}>
-                  {getModelOptionLabel(m)}
-                </option>
-              ))
-            )}
-          </select>
-          <ChevronDown size={14} className="absolute right-2 top-2.5 text-slate-500 pointer-events-none" />
-        </div>
+        {/* Model selector — only after key is confirmed */}
+        {hasStoredKey && (
+          <div className="relative">
+            <select
+              value={selectedModel}
+              onChange={(e) => handleModelChange(e.target.value)}
+              disabled={loadingModels}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 pr-8 text-white text-xs focus:border-indigo-500 outline-none appearance-none disabled:opacity-60"
+            >
+              {loadingModels ? (
+                <option value="">모델 목록 불러오는 중...</option>
+              ) : (
+                modelList.map((m) => (
+                  <option key={m.id} value={m.id} disabled={m.deprecated}>
+                    {getModelOptionLabel(m)}
+                  </option>
+                ))
+              )}
+            </select>
+            <ChevronDown size={14} className="absolute right-2 top-2.5 text-slate-500 pointer-events-none" />
+          </div>
+        )}
 
         <div className="flex gap-2">
           <button
@@ -292,8 +298,13 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   }
 
   // Full modal view — two-step: [Step 1: key entry] → [Step 2: model selection]
+  // stopPropagation on the backdrop prevents clicks from bubbling to any parent
+  // modal's backdrop handler (e.g. TennisRulesChatModal's onClick={onClose} wrapper).
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in"
+    >
       <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-6 animate-in slide-in-from-bottom-4">
 
         {/* ── STEP 1: API Key Entry ── */}
