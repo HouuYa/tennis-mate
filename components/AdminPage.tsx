@@ -2,11 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { adminLogin, verifyAdminToken, adminLogout } from '../services/adminAuthService';
 import { useToast } from '../context/ToastContext';
-import { Shield, Users, Calendar, Trophy, Edit3, Trash2, Save, X, Plus, ChevronDown, ChevronUp, ArrowLeft, Loader2, Merge, Undo2, AlertTriangle, Check } from 'lucide-react';
+import { Shield, Users, Calendar, Trophy, Edit3, Trash2, Save, X, Plus, ChevronDown, ChevronUp, ArrowLeft, Loader2, Merge, Undo2, AlertTriangle, Check, Clock } from 'lucide-react';
 import { Tab } from '../types';
+import { LocationPicker } from './LocationPicker';
 
 interface Props {
   setTab: (t: Tab) => void;
+  onExitAdmin?: () => void;
 }
 
 interface AdminPlayer {
@@ -54,7 +56,7 @@ const nextOpId = () => `op-${++opCounter}`;
 // RLS diagnostic result type
 type RlsDiag = { canSelect: boolean; canInsert: boolean; canUpdate: boolean; canDelete: boolean; error?: string };
 
-export const AdminPage: React.FC<Props> = ({ setTab }) => {
+export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
   const { showToast } = useToast();
 
   // Auth state
@@ -97,7 +99,11 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   // Quick Entry state
   const [qeSessionId, setQeSessionId] = useState('');
   const [qeNewLocation, setQeNewLocation] = useState('');
-  const [qeNewDate, setQeNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [qeNewDate, setQeNewDate] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
   const [qeTeamA1, setQeTeamA1] = useState('');
   const [qeTeamA2, setQeTeamA2] = useState('');
   const [qeTeamB1, setQeTeamB1] = useState('');
@@ -106,6 +112,9 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
   const [qeScoreB, setQeScoreB] = useState(0);
   const [qeUseNewSession, setQeUseNewSession] = useState(false);
   const [qeSaving, setQeSaving] = useState(false);
+  const [qeShowPlayerPicker, setQeShowPlayerPicker] = useState(false);
+  const [qeNewPlayerName, setQeNewPlayerName] = useState('');
+  const [qeAddingPlayer, setQeAddingPlayer] = useState(false);
 
   // --- Computed: apply pending ops to get display data ---
   const displayPlayers = useMemo(() => {
@@ -646,6 +655,36 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     }
   };
 
+  const handleQeAddNewPlayer = async () => {
+    if (!qeNewPlayerName.trim()) return;
+    setQeAddingPlayer(true);
+    try {
+      const { error } = await supabase
+        .from('players')
+        .insert({ name: qeNewPlayerName.trim() })
+        .select()
+        .single();
+      if (error) throw error;
+      showToast(`${qeNewPlayerName.trim()} 추가됨`, 'success');
+      setQeNewPlayerName('');
+      await loadAllData();
+    } catch {
+      showToast('선수 추가 실패', 'error');
+    } finally {
+      setQeAddingPlayer(false);
+    }
+  };
+
+  const handleQePlayerPillClick = (playerId: string) => {
+    const slots = [qeTeamA1, qeTeamA2, qeTeamB1, qeTeamB2];
+    const setters = [setQeTeamA1, setQeTeamA2, setQeTeamB1, setQeTeamB2];
+    const idx = slots.indexOf(playerId);
+    if (idx !== -1) { setters[idx](''); return; }
+    for (let i = 0; i < 4; i++) {
+      if (!slots[i]) { setters[i](playerId); return; }
+    }
+  };
+
   const getPlayerName = (id: string) => {
     // Check pending renames first
     const renameOp = pendingOps.find(op => op.type === 'rename' && op.playerId === id);
@@ -695,7 +734,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
     return (
       <div className="pb-24 space-y-6">
         <div className="flex items-center gap-2 px-2">
-          <button onClick={() => setTab(Tab.STATS)} className="text-slate-400 hover:text-white">
+          <button onClick={() => { onExitAdmin?.(); setTab(Tab.PLAYERS); }} className="text-slate-400 hover:text-white">
             <ArrowLeft size={20} />
           </button>
           <Shield size={20} className="text-tennis-green" />
@@ -763,7 +802,7 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
       {/* Header */}
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
-          <button onClick={() => setTab(Tab.STATS)} className="text-slate-400 hover:text-white">
+          <button onClick={() => { onExitAdmin?.(); setTab(Tab.PLAYERS); }} className="text-slate-400 hover:text-white">
             <ArrowLeft size={20} />
           </button>
           <Shield size={20} className="text-tennis-green" />
@@ -1188,19 +1227,25 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               </div>
 
               {qeUseNewSession ? (
-                <div className="space-y-2">
-                  <input
-                    type="text"
+                <div className="space-y-3">
+                  {/* Date & Time — same style as SESSION MANAGER */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Date & Time</label>
+                    <div className="relative">
+                      <input
+                        type="datetime-local"
+                        value={qeNewDate}
+                        onChange={e => setQeNewDate(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:border-tennis-green outline-none font-mono pr-8"
+                      />
+                      <Clock size={14} className="absolute right-2.5 top-3 text-tennis-green pointer-events-none" />
+                    </div>
+                  </div>
+                  {/* Location — same as SESSION MANAGER */}
+                  <LocationPicker
                     value={qeNewLocation}
-                    onChange={e => setQeNewLocation(e.target.value)}
-                    placeholder="Location (optional)"
-                    className="w-full bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
-                  />
-                  <input
-                    type="date"
-                    value={qeNewDate}
-                    onChange={e => setQeNewDate(e.target.value)}
-                    className="w-full bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
+                    onChange={setQeNewLocation}
+                    loadHistory={true}
                   />
                 </div>
               ) : (
@@ -1219,65 +1264,110 @@ export const AdminPage: React.FC<Props> = ({ setTab }) => {
               )}
             </div>
 
-            {/* Team A */}
+            {/* Players — Add Player style (same as Players tab) */}
             <div className="space-y-2">
-              <label className="text-xs text-tennis-green font-bold uppercase">Team A (Winners if score higher)</label>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={qeTeamA1}
-                  onChange={e => setQeTeamA1(e.target.value)}
-                  className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-slate-400 font-bold uppercase">Players</label>
+                <button
+                  type="button"
+                  onClick={() => setQeShowPlayerPicker(!qeShowPlayerPicker)}
+                  className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300 hover:text-white transition-colors"
                 >
-                  <option value="">Player 1</option>
-                  {displayPlayers.map(p => (
-                    <option key={p.id} value={p.id} disabled={[qeTeamA2, qeTeamB1, qeTeamB2].includes(p.id)}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={qeTeamA2}
-                  onChange={e => setQeTeamA2(e.target.value)}
-                  className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
-                >
-                  <option value="">Player 2</option>
-                  {displayPlayers.map(p => (
-                    <option key={p.id} value={p.id} disabled={[qeTeamA1, qeTeamB1, qeTeamB2].includes(p.id)}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  {qeShowPlayerPicker ? 'Close List' : 'From Global List'}
+                </button>
               </div>
-            </div>
 
-            {/* Team B */}
-            <div className="space-y-2">
-              <label className="text-xs text-orange-400 font-bold uppercase">Team B</label>
+              {/* Global list pills */}
+              {qeShowPlayerPicker && (
+                <div className="bg-slate-900 rounded-lg p-2 max-h-36 overflow-y-auto border border-slate-700">
+                  <p className="text-[10px] text-slate-500 mb-2 px-1">탭하여 배정 · 🟢 A팀 · 🟠 B팀</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {displayPlayers.map(p => {
+                      const isTeamA = [qeTeamA1, qeTeamA2].includes(p.id);
+                      const isTeamB = [qeTeamB1, qeTeamB2].includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleQePlayerPillClick(p.id)}
+                          className={`text-xs px-2 py-1 rounded border transition-colors ${
+                            isTeamA
+                              ? 'bg-tennis-green/20 text-tennis-green border-tennis-green'
+                              : isTeamB
+                              ? 'bg-orange-500/20 text-orange-400 border-orange-500'
+                              : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-tennis-green hover:text-tennis-green'
+                          }`}
+                        >
+                          {isTeamA ? 'A· ' : isTeamB ? 'B· ' : '+ '}{p.name}
+                        </button>
+                      );
+                    })}
+                    {displayPlayers.length === 0 && (
+                      <span className="text-xs text-slate-500 pl-1">선수가 없습니다</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Add new player inline */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={qeNewPlayerName}
+                  onChange={e => setQeNewPlayerName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQeAddNewPlayer(); } }}
+                  placeholder="새 선수 이름..."
+                  className="flex-1 bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm focus:border-tennis-green outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleQeAddNewPlayer}
+                  disabled={qeAddingPlayer || !qeNewPlayerName.trim()}
+                  className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 flex items-center gap-1 text-sm"
+                >
+                  {qeAddingPlayer ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                  Add
+                </button>
+              </div>
+
+              {/* Team assignment display */}
               <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={qeTeamB1}
-                  onChange={e => setQeTeamB1(e.target.value)}
-                  className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
-                >
-                  <option value="">Player 1</option>
-                  {displayPlayers.map(p => (
-                    <option key={p.id} value={p.id} disabled={[qeTeamA1, qeTeamA2, qeTeamB2].includes(p.id)}>
-                      {p.name}
-                    </option>
+                <div>
+                  <p className="text-xs text-tennis-green font-bold mb-1 uppercase">Team A</p>
+                  {([{ id: qeTeamA1, setter: setQeTeamA1 }, { id: qeTeamA2, setter: setQeTeamA2 }] as const).map(({ id, setter }, i) => (
+                    <div
+                      key={i}
+                      className={`text-xs rounded px-2 py-1.5 mb-1 flex items-center justify-between border ${
+                        id ? 'border-tennis-green/40 bg-tennis-green/10' : 'border-slate-700 bg-slate-900/50'
+                      }`}
+                    >
+                      <span className={id ? 'text-white' : 'text-slate-500'}>
+                        {id ? displayPlayers.find(p => p.id === id)?.name : `P${i + 1} 비어있음`}
+                      </span>
+                      {id && (
+                        <button type="button" onClick={() => setter('')} className="text-red-400 ml-1 hover:text-red-300 leading-none">×</button>
+                      )}
+                    </div>
                   ))}
-                </select>
-                <select
-                  value={qeTeamB2}
-                  onChange={e => setQeTeamB2(e.target.value)}
-                  className="bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm"
-                >
-                  <option value="">Player 2</option>
-                  {displayPlayers.map(p => (
-                    <option key={p.id} value={p.id} disabled={[qeTeamA1, qeTeamA2, qeTeamB1].includes(p.id)}>
-                      {p.name}
-                    </option>
+                </div>
+                <div>
+                  <p className="text-xs text-orange-400 font-bold mb-1 uppercase">Team B</p>
+                  {([{ id: qeTeamB1, setter: setQeTeamB1 }, { id: qeTeamB2, setter: setQeTeamB2 }] as const).map(({ id, setter }, i) => (
+                    <div
+                      key={i}
+                      className={`text-xs rounded px-2 py-1.5 mb-1 flex items-center justify-between border ${
+                        id ? 'border-orange-500/40 bg-orange-500/10' : 'border-slate-700 bg-slate-900/50'
+                      }`}
+                    >
+                      <span className={id ? 'text-white' : 'text-slate-500'}>
+                        {id ? displayPlayers.find(p => p.id === id)?.name : `P${i + 1} 비어있음`}
+                      </span>
+                      {id && (
+                        <button type="button" onClick={() => setter('')} className="text-red-400 ml-1 hover:text-red-300 leading-none">×</button>
+                      )}
+                    </div>
                   ))}
-                </select>
+                </div>
               </div>
             </div>
 
