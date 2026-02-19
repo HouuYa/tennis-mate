@@ -117,6 +117,12 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
   const [qeAddingPlayer, setQeAddingPlayer] = useState(false);
   const [qeTargetTeam, setQeTargetTeam] = useState<'A' | 'B' | null>(null);
 
+  // Drag & Drop
+  type SlotKey = 'A1' | 'A2' | 'B1' | 'B2';
+  const [qeDragPlayerId, setQeDragPlayerId] = useState<string | null>(null);
+  const [qeDragFromSlot, setQeDragFromSlot] = useState<SlotKey | null>(null);
+  const [qeDragOverSlot, setQeDragOverSlot] = useState<SlotKey | null>(null);
+
   // --- Computed: apply pending ops to get display data ---
   const displayPlayers = useMemo(() => {
     let result = [...players];
@@ -674,14 +680,14 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
       // Lightweight players-only refresh — avoids setting loading=true which would unmount Quick Entry
       const { data: refreshed } = await supabase.from('players').select('*').order('name');
       if (refreshed) setPlayers(refreshed as AdminPlayer[]);
-      // Auto-assign to the selected target team's next empty slot
+      // Auto-assign to the selected target team's next empty slot; deselect when full
       if (data?.id) {
         if (qeTargetTeam === 'A') {
-          if (!qeTeamA1) setQeTeamA1(data.id);
-          else if (!qeTeamA2) setQeTeamA2(data.id);
+          if (!qeTeamA1) { setQeTeamA1(data.id); if (qeTeamA2) setQeTargetTeam(null); }
+          else if (!qeTeamA2) { setQeTeamA2(data.id); setQeTargetTeam(null); }
         } else if (qeTargetTeam === 'B') {
-          if (!qeTeamB1) setQeTeamB1(data.id);
-          else if (!qeTeamB2) setQeTeamB2(data.id);
+          if (!qeTeamB1) { setQeTeamB1(data.id); if (qeTeamB2) setQeTargetTeam(null); }
+          else if (!qeTeamB2) { setQeTeamB2(data.id); setQeTargetTeam(null); }
         }
       }
     } catch {
@@ -697,18 +703,50 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
     const allSetters = [setQeTeamA1, setQeTeamA2, setQeTeamB1, setQeTeamB2];
     const idx = allSlots.indexOf(playerId);
     if (idx !== -1) { allSetters[idx](''); return; }
-    // Assign to selected target team
+    // Assign to selected target team; auto-deselect team when it becomes full
     if (qeTargetTeam === 'A') {
-      if (!qeTeamA1) { setQeTeamA1(playerId); return; }
-      if (!qeTeamA2) { setQeTeamA2(playerId); return; }
+      if (!qeTeamA1) { setQeTeamA1(playerId); if (qeTeamA2) setQeTargetTeam(null); return; }
+      if (!qeTeamA2) { setQeTeamA2(playerId); setQeTargetTeam(null); return; }
       showToast('Team A is full (2/2)', 'warning');
     } else if (qeTargetTeam === 'B') {
-      if (!qeTeamB1) { setQeTeamB1(playerId); return; }
-      if (!qeTeamB2) { setQeTeamB2(playerId); return; }
+      if (!qeTeamB1) { setQeTeamB1(playerId); if (qeTeamB2) setQeTargetTeam(null); return; }
+      if (!qeTeamB2) { setQeTeamB2(playerId); setQeTargetTeam(null); return; }
       showToast('Team B is full (2/2)', 'warning');
     } else {
       showToast('TEAM A 또는 B를 먼저 선택하세요', 'warning');
     }
+  };
+
+  // Slot helpers for drag & drop
+  const getQeSlotId = (slot: SlotKey): string => {
+    if (slot === 'A1') return qeTeamA1;
+    if (slot === 'A2') return qeTeamA2;
+    if (slot === 'B1') return qeTeamB1;
+    return qeTeamB2;
+  };
+  const setQeSlotId = (slot: SlotKey, id: string) => {
+    if (slot === 'A1') setQeTeamA1(id);
+    else if (slot === 'A2') setQeTeamA2(id);
+    else if (slot === 'B1') setQeTeamB1(id);
+    else setQeTeamB2(id);
+  };
+  const handleQeSlotDrop = (targetSlot: SlotKey) => {
+    if (!qeDragPlayerId) return;
+    const targetCurrent = getQeSlotId(targetSlot);
+    if (qeDragFromSlot) {
+      // Slot-to-slot: swap contents
+      setQeSlotId(qeDragFromSlot, targetCurrent);
+      setQeSlotId(targetSlot, qeDragPlayerId);
+    } else {
+      // Pill-to-slot: find if player already occupies a slot and swap, then assign
+      const allSlotKeys: SlotKey[] = ['A1', 'A2', 'B1', 'B2'];
+      const sourceSlot = allSlotKeys.find(s => getQeSlotId(s) === qeDragPlayerId) ?? null;
+      if (sourceSlot) setQeSlotId(sourceSlot, targetCurrent);
+      setQeSlotId(targetSlot, qeDragPlayerId);
+    }
+    setQeDragPlayerId(null);
+    setQeDragFromSlot(null);
+    setQeDragOverSlot(null);
   };
 
   const getPlayerName = (id: string) => {
@@ -1303,34 +1341,52 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
                 </button>
               </div>
 
-              {/* Team A / Team B selection — must choose before assigning */}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setQeTargetTeam(qeTargetTeam === 'A' ? null : 'A')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
-                    qeTargetTeam === 'A'
-                      ? 'bg-tennis-green/20 border-tennis-green text-tennis-green'
-                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-tennis-green hover:text-tennis-green'
-                  }`}
-                >
-                  {qeTargetTeam === 'A' ? '✓ ' : ''}TEAM A 선택
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQeTargetTeam(qeTargetTeam === 'B' ? null : 'B')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
-                    qeTargetTeam === 'B'
-                      ? 'bg-orange-500/20 border-orange-500 text-orange-400'
-                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-orange-500 hover:text-orange-400'
-                  }`}
-                >
-                  {qeTargetTeam === 'B' ? '✓ ' : ''}TEAM B 선택
-                </button>
-              </div>
-              {!qeTargetTeam && (
-                <p className="text-[10px] text-slate-500 text-center">팀을 선택한 후 선수를 추가할 수 있습니다</p>
-              )}
+              {/* Team A / Team B selection — disabled when team is full */}
+              {(() => {
+                const teamAFull = !!(qeTeamA1 && qeTeamA2);
+                const teamBFull = !!(qeTeamB1 && qeTeamB2);
+                const currentTeamFull = (qeTargetTeam === 'A' && teamAFull) || (qeTargetTeam === 'B' && teamBFull);
+                return (
+                  <>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => !teamAFull && setQeTargetTeam(qeTargetTeam === 'A' ? null : 'A')}
+                        disabled={teamAFull}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                          teamAFull
+                            ? 'bg-tennis-green/10 border-tennis-green/40 text-tennis-green/60 cursor-default'
+                            : qeTargetTeam === 'A'
+                            ? 'bg-tennis-green/20 border-tennis-green text-tennis-green'
+                            : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-tennis-green hover:text-tennis-green'
+                        }`}
+                      >
+                        {teamAFull ? '✓ TEAM A (완료)' : qeTargetTeam === 'A' ? '✓ TEAM A 선택중' : 'TEAM A 선택'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => !teamBFull && setQeTargetTeam(qeTargetTeam === 'B' ? null : 'B')}
+                        disabled={teamBFull}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                          teamBFull
+                            ? 'bg-orange-500/10 border-orange-500/40 text-orange-400/60 cursor-default'
+                            : qeTargetTeam === 'B'
+                            ? 'bg-orange-500/20 border-orange-500 text-orange-400'
+                            : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-orange-500 hover:text-orange-400'
+                        }`}
+                      >
+                        {teamBFull ? '✓ TEAM B (완료)' : qeTargetTeam === 'B' ? '✓ TEAM B 선택중' : 'TEAM B 선택'}
+                      </button>
+                    </div>
+                    {!qeTargetTeam && !teamAFull && !teamBFull && (
+                      <p className="text-[10px] text-slate-500 text-center">팀을 선택한 후 선수를 추가할 수 있습니다</p>
+                    )}
+                    {currentTeamFull && (
+                      <p className="text-[10px] text-tennis-green/70 text-center">이 팀은 가득 찼습니다. 다른 팀을 선택하세요.</p>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Global list pills */}
               {qeShowPlayerPicker && (
@@ -1346,14 +1402,21 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
                         <button
                           key={p.id}
                           type="button"
+                          draggable={true}
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = 'move';
+                            setQeDragPlayerId(p.id);
+                            setQeDragFromSlot(null);
+                          }}
+                          onDragEnd={() => { setQeDragPlayerId(null); setQeDragFromSlot(null); setQeDragOverSlot(null); }}
                           onClick={() => handleQePlayerPillClick(p.id)}
-                          className={`text-xs px-2 py-1 rounded border transition-colors ${
+                          className={`text-xs px-2 py-1 rounded border transition-colors cursor-grab active:cursor-grabbing ${
                             isTeamA
                               ? 'bg-tennis-green/20 text-tennis-green border-tennis-green'
                               : isTeamB
                               ? 'bg-orange-500/20 text-orange-400 border-orange-500'
                               : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-tennis-green hover:text-tennis-green'
-                          }`}
+                          } ${qeDragPlayerId === p.id ? 'opacity-50' : ''}`}
                         >
                           {isTeamA ? 'A· ' : isTeamB ? 'B· ' : '+ '}{p.name}
                         </button>
@@ -1366,66 +1429,94 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
                 </div>
               )}
 
-              {/* Add new player inline — disabled until team selected */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={qeNewPlayerName}
-                  onChange={e => setQeNewPlayerName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQeAddNewPlayer(); } }}
-                  placeholder={qeTargetTeam ? `${qeTargetTeam === 'A' ? 'Team A' : 'Team B'} 선수 이름...` : '팀 선택 후 입력'}
-                  disabled={!qeTargetTeam}
-                  className="flex-1 bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm focus:border-tennis-green outline-none disabled:opacity-40 disabled:cursor-not-allowed"
-                />
-                <button
-                  type="button"
-                  onClick={handleQeAddNewPlayer}
-                  disabled={qeAddingPlayer || !qeNewPlayerName.trim() || !qeTargetTeam}
-                  className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 flex items-center gap-1 text-sm"
-                >
-                  {qeAddingPlayer ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                  Add
-                </button>
-              </div>
+              {/* Add new player inline — disabled until team selected or team full */}
+              {(() => {
+                const teamAFull = !!(qeTeamA1 && qeTeamA2);
+                const teamBFull = !!(qeTeamB1 && qeTeamB2);
+                const currentTeamFull = (qeTargetTeam === 'A' && teamAFull) || (qeTargetTeam === 'B' && teamBFull);
+                const inputDisabled = !qeTargetTeam || currentTeamFull;
+                return (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={qeNewPlayerName}
+                      onChange={e => setQeNewPlayerName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQeAddNewPlayer(); } }}
+                      placeholder={
+                        currentTeamFull ? `Team ${qeTargetTeam} 완료 (2/2)` :
+                        qeTargetTeam ? `Team ${qeTargetTeam} 선수 이름...` : '팀 선택 후 입력'
+                      }
+                      disabled={inputDisabled}
+                      className="flex-1 bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm focus:border-tennis-green outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleQeAddNewPlayer}
+                      disabled={qeAddingPlayer || !qeNewPlayerName.trim() || inputDisabled}
+                      className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 flex items-center gap-1 text-sm"
+                    >
+                      {qeAddingPlayer ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                      Add
+                    </button>
+                  </div>
+                );
+              })()}
 
-              {/* Team assignment display */}
+              {/* Team assignment display — draggable slots */}
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-xs text-tennis-green font-bold mb-1 uppercase">Team A</p>
-                  {([{ id: qeTeamA1, setter: setQeTeamA1 }, { id: qeTeamA2, setter: setQeTeamA2 }] as const).map(({ id, setter }, i) => (
-                    <div
-                      key={i}
-                      className={`text-xs rounded px-2 py-1.5 mb-1 flex items-center justify-between border ${
-                        id ? 'border-tennis-green/40 bg-tennis-green/10' : 'border-slate-700 bg-slate-900/50'
-                      }`}
-                    >
-                      <span className={id ? 'text-white' : 'text-slate-500'}>
-                        {id ? displayPlayers.find(p => p.id === id)?.name : `P${i + 1} 비어있음`}
-                      </span>
-                      {id && (
-                        <button type="button" onClick={() => setter('')} className="text-red-400 ml-1 hover:text-red-300 leading-none">×</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <p className="text-xs text-orange-400 font-bold mb-1 uppercase">Team B</p>
-                  {([{ id: qeTeamB1, setter: setQeTeamB1 }, { id: qeTeamB2, setter: setQeTeamB2 }] as const).map(({ id, setter }, i) => (
-                    <div
-                      key={i}
-                      className={`text-xs rounded px-2 py-1.5 mb-1 flex items-center justify-between border ${
-                        id ? 'border-orange-500/40 bg-orange-500/10' : 'border-slate-700 bg-slate-900/50'
-                      }`}
-                    >
-                      <span className={id ? 'text-white' : 'text-slate-500'}>
-                        {id ? displayPlayers.find(p => p.id === id)?.name : `P${i + 1} 비어있음`}
-                      </span>
-                      {id && (
-                        <button type="button" onClick={() => setter('')} className="text-red-400 ml-1 hover:text-red-300 leading-none">×</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                {(['A', 'B'] as const).map(team => (
+                  <div key={team}>
+                    <p className={`text-xs font-bold mb-1 uppercase ${team === 'A' ? 'text-tennis-green' : 'text-orange-400'}`}>
+                      Team {team}
+                    </p>
+                    {(['1', '2'] as const).map(pos => {
+                      const slotKey = `${team}${pos}` as SlotKey;
+                      const slotId = getQeSlotId(slotKey);
+                      const isOver = qeDragOverSlot === slotKey;
+                      const isDragging = qeDragPlayerId === slotId && !!slotId;
+                      return (
+                        <div
+                          key={slotKey}
+                          draggable={!!slotId}
+                          onDragStart={slotId ? (e) => {
+                            e.dataTransfer.effectAllowed = 'move';
+                            setQeDragPlayerId(slotId);
+                            setQeDragFromSlot(slotKey);
+                          } : undefined}
+                          onDragEnd={() => { setQeDragPlayerId(null); setQeDragFromSlot(null); setQeDragOverSlot(null); }}
+                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setQeDragOverSlot(slotKey); }}
+                          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setQeDragOverSlot(null); }}
+                          onDrop={(e) => { e.preventDefault(); handleQeSlotDrop(slotKey); }}
+                          className={`text-xs rounded px-2 py-1.5 mb-1 flex items-center justify-between border transition-all ${
+                            isDragging ? 'opacity-40' :
+                            slotId
+                              ? team === 'A'
+                                ? 'border-tennis-green/40 bg-tennis-green/10 cursor-grab active:cursor-grabbing'
+                                : 'border-orange-500/40 bg-orange-500/10 cursor-grab active:cursor-grabbing'
+                              : isOver
+                                ? team === 'A'
+                                  ? 'border-tennis-green border-dashed bg-tennis-green/5'
+                                  : 'border-orange-500 border-dashed bg-orange-500/5'
+                                : 'border-slate-700 border-dashed bg-slate-900/50'
+                          } ${isOver && !slotId ? 'scale-[1.02]' : ''}`}
+                        >
+                          <span className={slotId ? 'text-white' : `text-[10px] ${isOver ? (team === 'A' ? 'text-tennis-green' : 'text-orange-400') : 'text-slate-600'}`}>
+                            {slotId
+                              ? displayPlayers.find(p => p.id === slotId)?.name ?? slotId.substring(0, 8)
+                              : `P${pos} — 드래그`}
+                          </span>
+                          {slotId && (
+                            <button
+                              type="button"
+                              onClick={() => setQeSlotId(slotKey, '')}
+                              className="text-red-400 ml-1 hover:text-red-300 leading-none"
+                            >×</button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
 
