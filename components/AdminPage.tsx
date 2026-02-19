@@ -659,7 +659,7 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
     if (!qeNewPlayerName.trim()) return;
     setQeAddingPlayer(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('players')
         .insert({ name: qeNewPlayerName.trim() })
         .select()
@@ -667,6 +667,14 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
       if (error) throw error;
       showToast(`${qeNewPlayerName.trim()} 추가됨`, 'success');
       setQeNewPlayerName('');
+      // Auto-assign the new player to the next empty team slot
+      if (data?.id) {
+        const slots = [qeTeamA1, qeTeamA2, qeTeamB1, qeTeamB2];
+        const setters = [setQeTeamA1, setQeTeamA2, setQeTeamB1, setQeTeamB2];
+        for (let i = 0; i < 4; i++) {
+          if (!slots[i]) { setters[i](data.id); break; }
+        }
+      }
       await loadAllData();
     } catch {
       showToast('선수 추가 실패', 'error');
