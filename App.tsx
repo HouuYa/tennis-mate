@@ -32,6 +32,8 @@ const MainLayout = () => {
   const [sheetsSessionReady, setSheetsSessionReady] = useState<boolean>(() => {
     return localStorage.getItem(SHEETS_SESSION_READY_KEY) === 'true';
   });
+  // Track whether Admin was opened from the CloudSessionManager (before a session was started)
+  const [adminFromSessionManager, setAdminFromSessionManager] = useState(false);
 
   // Show Session Manager modals based on mode and session ready state
   const showCloudSessionManager = mode === 'CLOUD' && !cloudSessionReady;
@@ -81,6 +83,17 @@ const MainLayout = () => {
     setActiveTab(Tab.PLAYERS);
   };
 
+  // Called when user exits AdminPage via the back button
+  const handleExitAdmin = () => {
+    if (adminFromSessionManager) {
+      // User entered Admin from the CloudSessionManager without starting a session.
+      // Reset ready flag so the SESSION MANAGER appears again for a proper session start.
+      setAdminFromSessionManager(false);
+      localStorage.removeItem(CLOUD_SESSION_READY_KEY);
+      setCloudSessionReady(false);
+    }
+  };
+
   const handleSwitchMode = () => {
     // Clear all session ready flags when switching modes
     localStorage.removeItem(GUEST_SESSION_READY_KEY);
@@ -127,7 +140,7 @@ const MainLayout = () => {
         {activeTab === Tab.MATCHES && <MatchSchedule setTab={setActiveTab} />}
         {activeTab === Tab.FEED && <LiveFeed />}
         {activeTab === Tab.STATS && <StatsView />}
-        {activeTab === Tab.ADMIN && <AdminPage setTab={setActiveTab} />}
+        {activeTab === Tab.ADMIN && <AdminPage setTab={setActiveTab} onExitAdmin={handleExitAdmin} />}
       </main>
 
       <BottomNav activeTab={activeTab} setTab={setActiveTab} />
@@ -136,7 +149,17 @@ const MainLayout = () => {
       {showCloudSessionManager && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800 animate-in zoom-in-95 duration-200">
-            <CloudSessionManager onSessionReady={handleCloudSessionReady} onAdminClick={() => { handleCloudSessionReady(); setActiveTab(Tab.ADMIN); }} />
+            <CloudSessionManager
+              onSessionReady={handleCloudSessionReady}
+              onAdminClick={() => {
+                // Temporarily mark ready so the modal doesn't overlay the Admin page,
+                // but remember that no real session was started yet.
+                setAdminFromSessionManager(true);
+                localStorage.setItem(CLOUD_SESSION_READY_KEY, 'true');
+                setCloudSessionReady(true);
+                setActiveTab(Tab.ADMIN);
+              }}
+            />
           </div>
         </div>
       )}

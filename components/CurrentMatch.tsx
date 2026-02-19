@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Trophy, CheckCircle, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { Trophy, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 export const CurrentMatch: React.FC = () => {
   const { activeMatch, players, finishMatch, createNextMatch } = useApp();

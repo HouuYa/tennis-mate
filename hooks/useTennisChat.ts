@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
+import {
+  getStoredModel, saveModel, getStoredApiKey, fetchAvailableModels, DEFAULT_GEMINI_MODEL,
+  type GeminiModelId, type DynamicGeminiModel,
+} from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 
 interface ChatMessage {
@@ -25,11 +28,13 @@ interface UseTennisChatReturn {
   // State
   chatMessages: ChatMessage[];
   currentModel: GeminiModelId;
+  availableModels: DynamicGeminiModel[];
   lastError: LastError | null;
 
   // Actions
-  setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-  setLastError: React.Dispatch<React.SetStateAction<LastError | null>>;
+  setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  setLastError: Dispatch<SetStateAction<LastError | null>>;
+  setAvailableModels: Dispatch<SetStateAction<DynamicGeminiModel[]>>;
   handleModelChange: (newModel: GeminiModelId) => void;
   handleApiKeyUpdated: () => void;
   handleRetry: (retryFn: () => void) => void;
@@ -37,8 +42,9 @@ interface UseTennisChatReturn {
 }
 
 /**
- * Custom hook for managing tennis chat state and actions
- * Shared between TennisRulesChatModal and AIChatInterface
+ * Custom hook for managing tennis chat state and actions.
+ * Shared between TennisRulesChatModal and AIChatInterface.
+ * Fetches available Gemini models dynamically when an API key is present.
  */
 export function useTennisChat(): UseTennisChatReturn {
   const { showToast } = useToast();
@@ -46,6 +52,24 @@ export function useTennisChat(): UseTennisChatReturn {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [currentModel, setCurrentModel] = useState<GeminiModelId>(getStoredModel());
   const [lastError, setLastError] = useState<LastError | null>(null);
+  const [availableModels, setAvailableModels] = useState<DynamicGeminiModel[]>([]);
+
+  // Fetch the live model list on mount (requires stored API key)
+  useEffect(() => {
+    const key = getStoredApiKey();
+    if (key) {
+      fetchAvailableModels(key)
+        .then(models => {
+          setAvailableModels(models);
+          // If the stored model is no longer in the dynamic list, reset to default
+          if (models.length > 0 && !models.some(m => m.id === currentModel)) {
+            handleModelChange(DEFAULT_GEMINI_MODEL);
+          }
+        })
+        .catch(() => {}); // silent fallback — ModelSwitcher uses FALLBACK_GEMINI_MODELS
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleModelChange = (newModel: GeminiModelId) => {
     setCurrentModel(newModel);
@@ -57,6 +81,18 @@ export function useTennisChat(): UseTennisChatReturn {
   const handleApiKeyUpdated = () => {
     showToast('API key updated successfully', 'success');
     setLastError(null); // Clear error when API key is updated
+    // Re-fetch model list with the new key
+    const key = getStoredApiKey();
+    if (key) {
+      fetchAvailableModels(key)
+        .then(models => {
+          setAvailableModels(models);
+          if (models.length > 0 && !models.some(m => m.id === currentModel)) {
+            handleModelChange(DEFAULT_GEMINI_MODEL);
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   const handleRetry = (retryFn: () => void) => {
@@ -78,9 +114,11 @@ export function useTennisChat(): UseTennisChatReturn {
     // State
     chatMessages,
     currentModel,
+    availableModels,
     lastError,
 
     // Actions
+    setAvailableModels,
     setChatMessages,
     setLastError,
     handleModelChange,

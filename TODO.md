@@ -172,39 +172,42 @@
 
 ---
 
-## 🔜 v1.4.0 - Core Features Enhancement (예정)
+## ✅ v1.4.0 - Dynamic Gemini Model Selection & API Key UX (완료 - 2026-02-19)
+- [x] **동적 Gemini 모델 선택** (`services/geminiService.ts`)
+    - [x] `fetchAvailableModels(apiKey)`: `/v1beta/models` API 실시간 조회
+    - [x] preview·gemma·비generateContent 모델 자동 필터링
+    - [x] `KNOWN_DEPRECATION_DATES` 맵으로 종료 예정 모델 감지
+    - [x] `FALLBACK_GEMINI_MODELS` 자동 폴백 (fetch 실패·키 없음)
+    - [x] `GeminiModelId` 교차 타입으로 자동완성 유지 + 동적 ID 허용
+    - [x] `encodeURIComponent(apiKey)` URL 안전 처리
+- [x] **2단계 API 키 설정 모달** (`components/GeminiApiKeySettings.tsx`)
+    - [x] Step 1 (키 입력): API 키 입력 → 검증 → 다음 단계로 이동
+    - [x] Step 2 (모델 선택): "✅ 인증 완료" 배지 + 동적 모델 드롭다운 + "저장 후 시작"
+    - [x] `forceKeyStep={true}` prop: 기존 키 있어도 Step 1부터 강제 시작
+    - [x] "← 키 변경" 버튼: Step 2 → Step 1 복귀
+- [x] **채팅 헤더 API 키 변경 기능** (`components/TennisRulesChatModal.tsx`)
+    - [x] 모델 드롭다운 옆 "키 변경" 버튼 추가
+    - [x] 클릭 시 기존 키 초기화 + Step 1부터 설정 모달 팝업
+    - [x] 새 키 저장 후 `handleApiKeyUpdated()` 호출로 모델 목록 자동 갱신
+- [x] **ModelSwitcher 개선** (`components/ModelSwitcher.tsx`)
+    - [x] `models?: DynamicGeminiModel[]` prop (동적 목록 우선, 없으면 폴백)
+    - [x] 🟠 "Retiring MM/YYYY" 배지 (종료 임박 모델)
+    - [x] 🟡 "Deprecated" 배지 + 비활성화 (종료된 모델)
+    - [x] `isNearEOL()` 내부에서 동적 날짜 계산 (`Date.now()` 기반)
+- [x] **Code Review 반영** (Gemini Code Assist)
+    - [x] `useTennisChat`: `DEFAULT_GEMINI_MODEL` import + 모델 유효성 검사
+    - [x] `useTennisChat`: `React.Dispatch` → `Dispatch<SetStateAction<>>` 직접 import
+    - [x] `ModelSwitcher`: 모듈 레벨 stale 날짜 상수 제거
+
+---
+
+## 🔜 v2.1.0 - Core Features Enhancement (예정)
 
 ### 우선순위: HIGH
 
 #### 📍 한글 주소 지원 (Korean Address Support)
-**현재 상태**: OpenStreetMap Nominatim 사용 (영어 주소 반환)
-**목표**: 한글 주소 지원 (Kakao 또는 Naver Map API)
-
-**옵션 1: Kakao Map API (추천)**
-- 무료 범위: 일 300,000건
-- 장점: 완벽한 한글 지원, 간단한 REST API
-
-구현 계획:
-```typescript
-// CloudSessionManager.tsx
-const handleGetLocation = async (position) => {
-  const response = await fetch(
-    `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`,
-    {
-      headers: {
-        Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_API_KEY}`
-      }
-    }
-  );
-  const data = await response.json();
-  const address = data.documents[0]?.address?.address_name;
-  setLocation(address); // "서울특별시 강남구 역삼동"
-};
-```
-
-**옵션 2: Naver Map API**
-- 무료 범위: 일 100,000건 (Mobile), 50,000건 (Web)
-- 장점: 상세한 한국 지도 데이터
+- [ ] Reverse geocoding API 연동 (한글 주소 반환)
+- [ ] 현재 위치 기반 자동 입력
 
 #### 🎾 Tie-break 스코어 지원
 - [ ] "7-6 (4)" 형식의 스코어 입력 UI
@@ -236,7 +239,7 @@ const handleGetLocation = async (position) => {
 
 ---
 
-## 🎯 v1.5.0 - Multi-Court & Advanced Features (예정)
+## 🎯 v2.2.0 - Multi-Court & Advanced Features (예정)
 
 ### 우선순위: HIGH
 
@@ -268,7 +271,7 @@ const handleGetLocation = async (position) => {
 
 ---
 
-## 🚀 v2.0.0 - Next Generation (장기)
+## 🚀 v3.0.0 - Next Generation (장기)
 
 ### 실시간 동기화
 - [ ] WebSocket 연동
@@ -333,19 +336,18 @@ const handleGetLocation = async (position) => {
 
 ## 📝 참고 문서
 
-- [Kakao Developers](https://developers.kakao.com/docs/latest/ko/local/dev-guide#coord-to-address)
-- [Naver Cloud Platform](https://api.ncloud-docs.com/docs/ai-naver-mapsreversegeocoding-gc)
 - [Supabase Documentation](https://supabase.com/docs)
 - [Google Apps Script](https://developers.google.com/apps-script)
+- [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 ---
 
 ## 🎯 기여 가이드
 
 우선순위가 높은 항목부터 작업하면 좋습니다:
-1. v1.1.0의 HIGH 우선순위 항목
-2. v1.1.0의 MEDIUM 우선순위 항목
-3. v1.2.0 항목
-4. v2.0.0 장기 계획
+1. v2.1.0의 HIGH 우선순위 항목
+2. v2.1.0의 MEDIUM 우선순위 항목
+3. v2.2.0 항목
+4. v3.0.0 장기 계획
 
 풀 리퀘스트는 언제나 환영합니다! 🙌

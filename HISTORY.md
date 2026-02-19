@@ -6,6 +6,48 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-02-19 (v2.0.0 — Code Cleanup & Codebase Housekeeping)
+- **Version bump**: `package.json` version `1.4.0` → `2.0.0`
+- **Dependency removal**: `recharts` 패키지 제거 (코드베이스에서 미사용 확인)
+- **Type cleanup** (`types.ts`): `Match` 인터페이스의 중복 `courtNumber` 필드 제거
+- **Unused imports** 제거:
+  - `AnalyticsView.tsx`: `User`, `TrendingUp` (lucide-react)
+  - `CurrentMatch.tsx`: `RefreshCw` (lucide-react)
+  - `CloudSessionManager.tsx`: `RefreshCw` (lucide-react)
+- **`console.log` 정리** (에러 로그만 유지):
+  - `TennisRulesChatModal.tsx`: 디버그 로그 제거
+  - `GoogleSheetsDataService.ts`: 연결 로그 제거
+  - `SupabaseDataService.ts`: 세션 ID 라이프사이클 로그 제거
+  - `AdminPage.tsx`: 작업 디버그 로그 제거 (7개)
+- **MD 파일 전체 정비**: README, HISTORY, TODO, ARCHITECTURE, DEPLOYMENT v2.0.0 기준으로 업데이트
+  - `TODO.md`: Kakao/Naver Map API 구현 세부 항목 제거, 로드맵 버전 번호 재조정
+
+### 2026-02-19 (Dynamic Gemini Model Selection & API Key UX)
+- **Dynamic Model Fetching** (`services/geminiService.ts`):
+  - `fetchAvailableModels(apiKey)` 신규 — Gemini REST API (`/v1beta/models`)에서 실시간 모델 목록 조회
+  - preview·gemma·비 generateContent 모델 자동 필터링
+  - `KNOWN_DEPRECATION_DATES` 맵으로 종료 임박 모델 감지 (90일 이내)
+  - `FALLBACK_GEMINI_MODELS`로 폴백 (키 없거나 fetch 실패 시)
+  - `GeminiModelId` 타입: 교차 타입 `typeof FALLBACK_GEMINI_MODELS[number]['id'] | (string & {})` (자동완성 유지 + 동적 ID 허용)
+  - `encodeURIComponent(apiKey)` URL 안전 처리
+- **Two-Step API Key Modal** (`components/GeminiApiKeySettings.tsx`):
+  - Step 1 (키 입력): API 키 입력 → "검증 후 다음 →" 버튼 → 유효성 검사
+  - Step 2 (모델 선택): 검증 완료 배지 + 동적 모델 목록 + "저장 후 시작" 버튼
+  - "← 키 변경" 버튼으로 Step 1로 복귀 가능
+  - 기존 키 있으면 Step 2에서 시작, `forceKeyStep={true}` prop으로 Step 1 강제 시작
+- **API 키 변경 기능** (`components/TennisRulesChatModal.tsx`):
+  - 채팅 헤더의 모델 드롭다운 옆 "키 변경" 버튼 추가
+  - 클릭 시: 기존 키 초기화 + Step 1부터 시작하는 설정 모달 팝업
+  - 새 키 저장 후 모델 목록 자동 갱신
+- **ModelSwitcher 개선** (`components/ModelSwitcher.tsx`):
+  - `models?` prop 추가 — 동적 목록 사용, 없으면 폴백 목록
+  - Deprecated 모델: 🟡 "Deprecated" 배지 + 비활성화
+  - 종료 임박 모델 (90일 이내): 🟠 "Retiring MM/YYYY" 배지
+  - 모듈 레벨 날짜 상수 제거 → `isNearEOL()` 내부에서 동적 계산
+- **Code Review 반영** (Gemini Code Assist):
+  - `useTennisChat`: `DEFAULT_GEMINI_MODEL` import + 양쪽 fetch 호출에 모델 유효성 검사
+  - `useTennisChat`: `React.Dispatch` → 직접 `Dispatch<SetStateAction<>>` import
+
 ### 2026-02-16 (Cloud Mode Fixes & Admin Page)
 - **Admin Page 신규 구현** (`AdminPage.tsx`, 1,377 lines):
   - 환경변수 기반 인증 (`VITE_ADMIN_ID`, `VITE_ADMIN_PASSWORD`)
@@ -128,6 +170,58 @@ This document serves as the master record for releases, daily summaries, and bug
 ---
 
 ## 🚀 전체 Changelog
+
+### [2.0.0] - 2026-02-19
+**🧹 Codebase Cleanup & Maintenance Release**
+
+**코드 정리:**
+- **중복 타입 제거**: `Match` 인터페이스의 중복 `courtNumber` 필드 제거 (`types.ts`)
+- **미사용 import 제거**: `AnalyticsView`, `CurrentMatch`, `CloudSessionManager`의 lucide-react 아이콘
+- **`console.log` 정리**: `TennisRulesChatModal`, `GoogleSheetsDataService`, `SupabaseDataService`, `AdminPage`에서 디버그 로그 제거 (프로덕션 노이즈 감소)
+- **미사용 패키지 제거**: `recharts` (코드베이스에서 실제 import 없음 확인 후 삭제)
+
+**문서 정비:**
+- `README.md`: 버전 배지 v2.0.0, AI Coach 동적 모델 설명 업데이트
+- `TODO.md`: Kakao/Naver Map API 구현 세부 항목 삭제, 로드맵 버전 번호 재정렬 (v2.1.0 / v2.2.0 / v3.0.0)
+- `HISTORY.md`: v2.0.0 릴리스 항목 추가
+- `ARCHITECTURE.md`: 디렉토리 구조 및 AI 동적 모델 섹션 업데이트
+
+---
+
+### [1.4.0] - 2026-02-19
+**🤖 Dynamic Gemini Model Selection & Two-Step API Key UX**
+
+**동적 모델 선택:**
+- **`fetchAvailableModels(apiKey)`**: Gemini `/v1beta/models` API로 실시간 모델 목록 조회
+  - `generateContent` 지원 모델만 포함 (preview·gemma 제외)
+  - `KNOWN_DEPRECATION_DATES` 맵으로 종료 예정 모델 자동 감지
+  - 정렬: 추천 모델 → 활성 → 종료 임박 → 종료됨 순
+  - Fetch 실패 시 `FALLBACK_GEMINI_MODELS` (4개)로 자동 폴백
+- **`GeminiModelId` 타입**: `typeof FALLBACK_GEMINI_MODELS[number]['id'] | (string & {})`
+  - IDE 자동완성 유지 + 동적 모델 ID 허용
+- **`encodeURIComponent(apiKey)`**: URL 특수문자 처리
+
+**2단계 API 키 설정 모달:**
+- **Step 1 (키 입력)**: API 키만 입력 → 검증 → 다음으로 이동
+- **Step 2 (모델 선택)**: "✅ API 키 인증 완료" 배지 + 동적 모델 드롭다운 + "저장 후 시작"
+- `forceKeyStep={true}` prop: 기존 키가 있어도 Step 1에서 시작
+- "← 키 변경" 버튼: Step 2 → Step 1 복귀
+
+**AI 채팅 헤더 API 키 변경 기능:**
+- `TennisRulesChatModal` 헤더: 모델 드롭다운 옆 "키 변경" 버튼 추가
+- 클릭 → 기존 키 초기화 + 2단계 설정 모달 팝업 (forceKeyStep)
+- 새 키 저장 후 `handleApiKeyUpdated()` 호출로 모델 목록 자동 갱신
+
+**ModelSwitcher 개선:**
+- `models?: DynamicGeminiModel[]` prop 추가 (동적 목록 우선, 없으면 폴백)
+- 시각적 상태 배지: 🟢 Recommended · 🟠 Retiring MM/YYYY · 🟡 Deprecated
+- `isNearEOL()` 날짜 계산: 모듈 레벨 고정값 제거 → 매 호출 시 `Date.now()` 동적 계산
+
+**Code Review 반영 (Gemini Code Assist):**
+- `useTennisChat`: `DEFAULT_GEMINI_MODEL` import + 모델 유효성 검사 (동적 목록에 없으면 기본값 리셋)
+- `useTennisChat`: `React.Dispatch<React.SetStateAction<>>` → `Dispatch<SetStateAction<>>` 직접 import
+
+---
 
 ### [1.3.1] - 2026-02-17
 **🔐 Admin Auth Security Enhancement**

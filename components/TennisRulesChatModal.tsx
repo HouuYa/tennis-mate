@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../services/supabaseClient';
 import { ErrorActionPanel } from './ErrorActionPanel';
 import { ModelSwitcher } from './ModelSwitcher';
+import { GeminiApiKeySettings } from './GeminiApiKeySettings';
 
 interface ChatMessageSource {
   rule_id: string;
@@ -39,6 +40,8 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     chatMessages,
     setChatMessages,
     currentModel,
+    availableModels,
+    setAvailableModels,
     lastError,
     setLastError,
     handleModelChange,
@@ -54,6 +57,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     count: 0,
     checking: true,
   });
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
@@ -124,14 +128,6 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       // Use currentModel from hook (already initialized with getStoredModel())
       const model = currentModel;
 
-      console.log('[Tennis Rules] Preparing request:', {
-        language,
-        model,
-        hasApiKey: !!apiKey,
-        supabaseUrl,
-        questionLength: question.trim().length,
-      });
-
       if (!supabaseUrl) {
         throw new Error('Supabase URL not configured');
       }
@@ -139,8 +135,6 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
       if (!apiKey) {
         throw new Error('API key not found');
       }
-
-      console.log('[Tennis Rules] Calling edge function...');
 
       const response = await fetch(
         `${supabaseUrl}/functions/v1/tennis-rag-query`,
@@ -159,15 +153,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
         }
       );
 
-      console.log('[Tennis Rules] Response status:', response.status, response.statusText);
-
       const data = await response.json();
-
-      console.log('[Tennis Rules] Response data:', {
-        hasAnswer: !!data.answer,
-        sourceCount: data.sources?.length || 0,
-        error: data.error,
-      });
 
       if (!response.ok) {
         const errorMsg = data.error || 'Unknown error';
@@ -296,7 +282,16 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                 currentModel={currentModel}
                 onModelChange={handleModelChange}
                 showInHeader={true}
+                models={availableModels}
               />
+              {/* API Key Reset */}
+              <button
+                onClick={() => setShowApiKeyModal(true)}
+                className="text-slate-500 hover:text-indigo-400 text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors whitespace-nowrap"
+                title="Gemini API 키 변경"
+              >
+                키 변경
+              </button>
               {/* Clear Button */}
               {chatMessages.length > 0 && (
                 <button
@@ -380,6 +375,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                         onModelChange={handleModelChange}
                         onApiKeyUpdated={handleApiKeyUpdated}
                         onRetry={handleRetry}
+                        models={availableModels}
                       />
                     </div>
                   </div>
@@ -424,6 +420,21 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
           </p>
         </div>
       </div>
+
+      {/* API Key Change Modal — opens on top of this modal */}
+      {showApiKeyModal && (
+        <GeminiApiKeySettings
+          forceKeyStep={true}
+          onModelsLoaded={setAvailableModels}
+          onClose={() => {
+            setShowApiKeyModal(false);
+            handleApiKeyUpdated();
+          }}
+          onKeyUpdate={(hasKey) => {
+            if (!hasKey) setShowApiKeyModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

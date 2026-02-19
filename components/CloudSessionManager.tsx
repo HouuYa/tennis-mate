@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Play, Clock, ChevronRight, Loader2, MapPin, Home, AlertTriangle, RefreshCw, Shield } from 'lucide-react';
+import { Play, Clock, ChevronRight, Loader2, MapPin, Home, AlertTriangle, Shield } from 'lucide-react';
 import { LocationPicker } from './LocationPicker';
 import { SessionSummary, SessionRecord, SessionLocationRecord } from '../types';
 import { supabase } from '../services/supabaseClient';
