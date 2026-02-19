@@ -39,6 +39,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
     chatMessages,
     setChatMessages,
     currentModel,
+    availableModels,
     lastError,
     setLastError,
     handleModelChange,
@@ -296,6 +297,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                 currentModel={currentModel}
                 onModelChange={handleModelChange}
                 showInHeader={true}
+                models={availableModels}
               />
               {/* Clear Button */}
               {chatMessages.length > 0 && (
@@ -380,6 +382,7 @@ export const TennisRulesChatModal: React.FC<TennisRulesChatModalProps> = ({
                         onModelChange={handleModelChange}
                         onApiKeyUpdated={handleApiKeyUpdated}
                         onRetry={handleRetry}
+                        models={availableModels}
                       />
                     </div>
                   </div>

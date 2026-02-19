@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
+import { useState, useEffect } from 'react';
+import {
+  getStoredModel, saveModel, getStoredApiKey, fetchAvailableModels,
+  type GeminiModelId, type DynamicGeminiModel,
+} from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 
 interface ChatMessage {
@@ -25,6 +28,7 @@ interface UseTennisChatReturn {
   // State
   chatMessages: ChatMessage[];
   currentModel: GeminiModelId;
+  availableModels: DynamicGeminiModel[];
   lastError: LastError | null;
 
   // Actions
@@ -37,8 +41,9 @@ interface UseTennisChatReturn {
 }
 
 /**
- * Custom hook for managing tennis chat state and actions
- * Shared between TennisRulesChatModal and AIChatInterface
+ * Custom hook for managing tennis chat state and actions.
+ * Shared between TennisRulesChatModal and AIChatInterface.
+ * Fetches available Gemini models dynamically when an API key is present.
  */
 export function useTennisChat(): UseTennisChatReturn {
   const { showToast } = useToast();
@@ -46,6 +51,17 @@ export function useTennisChat(): UseTennisChatReturn {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [currentModel, setCurrentModel] = useState<GeminiModelId>(getStoredModel());
   const [lastError, setLastError] = useState<LastError | null>(null);
+  const [availableModels, setAvailableModels] = useState<DynamicGeminiModel[]>([]);
+
+  // Fetch the live model list on mount (requires stored API key)
+  useEffect(() => {
+    const key = getStoredApiKey();
+    if (key) {
+      fetchAvailableModels(key)
+        .then(setAvailableModels)
+        .catch(() => {}); // silent fallback — ModelSwitcher uses FALLBACK_GEMINI_MODELS
+    }
+  }, []);
 
   const handleModelChange = (newModel: GeminiModelId) => {
     setCurrentModel(newModel);
@@ -57,6 +73,13 @@ export function useTennisChat(): UseTennisChatReturn {
   const handleApiKeyUpdated = () => {
     showToast('API key updated successfully', 'success');
     setLastError(null); // Clear error when API key is updated
+    // Re-fetch model list with the new key
+    const key = getStoredApiKey();
+    if (key) {
+      fetchAvailableModels(key)
+        .then(setAvailableModels)
+        .catch(() => {});
+    }
   };
 
   const handleRetry = (retryFn: () => void) => {
@@ -78,6 +101,7 @@ export function useTennisChat(): UseTennisChatReturn {
     // State
     chatMessages,
     currentModel,
+    availableModels,
     lastError,
 
     // Actions

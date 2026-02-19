@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Key, Check, X, Loader2, Eye, EyeOff, ExternalLink, ChevronDown } from 'lucide-react';
-import { getStoredApiKey, saveApiKey, clearApiKey, testApiKey, GEMINI_MODELS, getStoredModel, saveModel, type GeminiModelId } from '../services/geminiService';
+import {
+  getStoredApiKey, saveApiKey, clearApiKey, testApiKey,
+  FALLBACK_GEMINI_MODELS, fetchAvailableModels,
+  getStoredModel, saveModel, DEFAULT_GEMINI_MODEL,
+  type GeminiModelId, type DynamicGeminiModel,
+} from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
 
 interface GeminiApiKeySettingsProps {
@@ -8,6 +13,19 @@ interface GeminiApiKeySettingsProps {
   onKeyUpdate?: (hasKey: boolean) => void;
   compact?: boolean; // For inline display in StatsView
   inline?: boolean; // For embedding in error panels (minimal UI)
+}
+
+// Format the option label for a model, including deprecation/near-EOL hints
+function getModelOptionLabel(model: DynamicGeminiModel): string {
+  const now = new Date();
+  const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  if (model.deprecated) {
+    return `${model.name} — 서비스 종료됨`;
+  }
+  if (model.deprecationDate && new Date(model.deprecationDate) <= ninetyDaysFromNow) {
+    return `${model.name} — ${model.description} ⚠️ ${model.deprecationDate} 종료`;
+  }
+  return `${model.name} — ${model.description}`;
 }
 
 export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
@@ -25,14 +43,41 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
   const [hasStoredKey, setHasStoredKey] = useState(false);
   const [selectedModel, setSelectedModel] = useState<GeminiModelId>(getStoredModel());
 
+  const [dynamicModels, setDynamicModels] = useState<DynamicGeminiModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  // Fetch available models from the Gemini API using the provided key.
+  // Falls back silently to the static list on failure.
+  const loadModels = useCallback(async (key: string) => {
+    setLoadingModels(true);
+    try {
+      const models = await fetchAvailableModels(key);
+      setDynamicModels(models);
+      // If the stored model is no longer in the dynamic list, reset to default
+      if (models.length > 0 && !models.some(m => m.id === selectedModel)) {
+        setSelectedModel(DEFAULT_GEMINI_MODEL);
+        saveModel(DEFAULT_GEMINI_MODEL);
+      }
+    } catch {
+      // Silent fallback — keep dynamicModels empty so FALLBACK_GEMINI_MODELS is used
+    } finally {
+      setLoadingModels(false);
+    }
+  }, [selectedModel]);
+
   useEffect(() => {
     const stored = getStoredApiKey();
     if (stored) {
       setApiKey(stored);
       setHasStoredKey(true);
       setIsValid(true); // Assume valid if stored
+      loadModels(stored);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The model list to render: prefer dynamic, fall back to static
+  const modelList = dynamicModels.length > 0 ? dynamicModels : FALLBACK_GEMINI_MODELS;
 
   const handleTest = async () => {
     if (!apiKey.trim()) {
@@ -55,6 +100,8 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
       saveApiKey(apiKey.trim());
       saveModel(selectedModel);
       setHasStoredKey(true);
+      // Fetch fresh model list with the validated key
+      loadModels(apiKey.trim());
       // Notify parent that key is available
       onKeyUpdate?.(true);
       // Call onClose to refresh parent component
@@ -74,15 +121,21 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
     setIsValid(null);
     setErrorMessage('');
     setHasStoredKey(false);
+    setDynamicModels([]);
     onKeyUpdate?.(false);
     showToast('API key removed', 'info');
+  };
+
+  const handleModelChange = (value: string) => {
+    setSelectedModel(value as GeminiModelId);
+    saveModel(value as GeminiModelId);
   };
 
   const getGeminiApiKeyUrl = () => {
     return 'https://aistudio.google.com/app/apikey';
   };
 
-  // Inline mode for error panels (most minimal)
+  // Inline mode for error panels (most minimal — no model selector)
   if (inline) {
     return (
       <div className="space-y-2">
@@ -169,14 +222,19 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
         <div className="relative">
           <select
             value={selectedModel}
-            onChange={(e) => { setSelectedModel(e.target.value as GeminiModelId); saveModel(e.target.value as GeminiModelId); }}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 pr-8 text-white text-xs focus:border-indigo-500 outline-none appearance-none"
+            onChange={(e) => handleModelChange(e.target.value)}
+            disabled={loadingModels}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 pr-8 text-white text-xs focus:border-indigo-500 outline-none appearance-none disabled:opacity-60"
           >
-            {GEMINI_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} — {m.description}
-              </option>
-            ))}
+            {loadingModels ? (
+              <option value="">모델 목록 불러오는 중...</option>
+            ) : (
+              modelList.map((m) => (
+                <option key={m.id} value={m.id} disabled={m.deprecated}>
+                  {getModelOptionLabel(m)}
+                </option>
+              ))
+            )}
           </select>
           <ChevronDown size={14} className="absolute right-2 top-2.5 text-slate-500 pointer-events-none" />
         </div>
@@ -263,21 +321,38 @@ export const GeminiApiKeySettings: React.FC<GeminiApiKeySettingsProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1.5">AI Model</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm text-slate-400">AI Model</label>
+              {loadingModels && (
+                <span className="text-xs text-slate-500 flex items-center gap-1">
+                  <Loader2 size={12} className="animate-spin" /> 모델 목록 불러오는 중...
+                </span>
+              )}
+            </div>
             <div className="relative">
               <select
                 value={selectedModel}
-                onChange={(e) => { setSelectedModel(e.target.value as GeminiModelId); saveModel(e.target.value as GeminiModelId); }}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 pr-10 text-white text-sm focus:border-indigo-500 outline-none appearance-none"
+                onChange={(e) => handleModelChange(e.target.value)}
+                disabled={loadingModels}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 pr-10 text-white text-sm focus:border-indigo-500 outline-none appearance-none disabled:opacity-60"
               >
-                {GEMINI_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} — {m.description}
-                  </option>
-                ))}
+                {loadingModels ? (
+                  <option value="">모델 목록 불러오는 중...</option>
+                ) : (
+                  modelList.map((m) => (
+                    <option key={m.id} value={m.id} disabled={m.deprecated}>
+                      {getModelOptionLabel(m)}
+                    </option>
+                  ))
+                )}
               </select>
               <ChevronDown size={16} className="absolute right-3 top-3.5 text-slate-500 pointer-events-none" />
             </div>
+            {!loadingModels && dynamicModels.length > 0 && (
+              <p className="text-xs text-slate-500 mt-1">
+                실시간으로 {dynamicModels.length}개 모델을 불러왔습니다.
+              </p>
+            )}
           </div>
 
           {isValid === true && (

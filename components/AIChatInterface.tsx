@@ -42,6 +42,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
     chatMessages,
     setChatMessages,
     currentModel,
+    availableModels,
     lastError,
     setLastError,
     handleModelChange,
@@ -296,6 +297,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
                 currentModel={currentModel}
                 onModelChange={handleModelChange}
                 showInHeader={true}
+                models={availableModels}
               />
             </div>
 
@@ -362,6 +364,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
                           onModelChange={handleModelChange}
                           onApiKeyUpdated={handleApiKeyUpdated}
                           onRetry={handleRetry}
+                          models={availableModels}
                         />
                       </div>
                     </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw, Edit3 } from 'lucide-react';
 import { GeminiApiKeySettings } from './GeminiApiKeySettings';
 import { ModelSwitcher } from './ModelSwitcher';
-import type { GeminiModelId } from '../services/geminiService';
+import type { GeminiModelId, DynamicGeminiModel } from '../services/geminiService';
 
 interface ErrorActionPanelProps {
   errorType: 'quota' | 'invalid_key' | 'network' | 'generic';
@@ -11,6 +11,7 @@ interface ErrorActionPanelProps {
   onModelChange: (model: GeminiModelId) => void;
   onApiKeyUpdated: () => void;
   onRetry: () => void;
+  models?: DynamicGeminiModel[]; // Dynamic model list for the inline switcher
 }
 
 export function ErrorActionPanel({
@@ -19,7 +20,8 @@ export function ErrorActionPanel({
   currentModel,
   onModelChange,
   onApiKeyUpdated,
-  onRetry
+  onRetry,
+  models,
 }: ErrorActionPanelProps) {
   const [showModelSwitcher, setShowModelSwitcher] = useState(false);
   const [showApiKeySettings, setShowApiKeySettings] = useState(false);
@@ -133,6 +135,7 @@ export function ErrorActionPanel({
             currentModel={currentModel}
             onModelChange={handleModelSwitch}
             compact={true}
+            models={models}
           />
         </div>
       )}
