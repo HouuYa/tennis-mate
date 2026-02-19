@@ -115,6 +115,7 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
   const [qeShowPlayerPicker, setQeShowPlayerPicker] = useState(false);
   const [qeNewPlayerName, setQeNewPlayerName] = useState('');
   const [qeAddingPlayer, setQeAddingPlayer] = useState(false);
+  const [qeTargetTeam, setQeTargetTeam] = useState<'A' | 'B' | null>(null);
 
   // --- Computed: apply pending ops to get display data ---
   const displayPlayers = useMemo(() => {
@@ -312,6 +313,9 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
   const handleDeletePlayer = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
     if (!player) return;
+    // Clear any active edit/merge UI so it doesn't conflict with the deleted row
+    if (editingPlayerId === playerId) setEditingPlayerId(null);
+    if (mergeSourceId === playerId) { setMergeSourceId(null); setMergeTargetId(null); }
     setPendingOps(prev => [
       ...prev,
       { id: nextOpId(), type: 'delete-player', player }
@@ -667,15 +671,19 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
       if (error) throw error;
       showToast(`${qeNewPlayerName.trim()} 추가됨`, 'success');
       setQeNewPlayerName('');
-      // Auto-assign the new player to the next empty team slot
+      // Lightweight players-only refresh — avoids setting loading=true which would unmount Quick Entry
+      const { data: refreshed } = await supabase.from('players').select('*').order('name');
+      if (refreshed) setPlayers(refreshed as AdminPlayer[]);
+      // Auto-assign to the selected target team's next empty slot
       if (data?.id) {
-        const slots = [qeTeamA1, qeTeamA2, qeTeamB1, qeTeamB2];
-        const setters = [setQeTeamA1, setQeTeamA2, setQeTeamB1, setQeTeamB2];
-        for (let i = 0; i < 4; i++) {
-          if (!slots[i]) { setters[i](data.id); break; }
+        if (qeTargetTeam === 'A') {
+          if (!qeTeamA1) setQeTeamA1(data.id);
+          else if (!qeTeamA2) setQeTeamA2(data.id);
+        } else if (qeTargetTeam === 'B') {
+          if (!qeTeamB1) setQeTeamB1(data.id);
+          else if (!qeTeamB2) setQeTeamB2(data.id);
         }
       }
-      await loadAllData();
     } catch {
       showToast('선수 추가 실패', 'error');
     } finally {
@@ -684,12 +692,22 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
   };
 
   const handleQePlayerPillClick = (playerId: string) => {
-    const slots = [qeTeamA1, qeTeamA2, qeTeamB1, qeTeamB2];
-    const setters = [setQeTeamA1, setQeTeamA2, setQeTeamB1, setQeTeamB2];
-    const idx = slots.indexOf(playerId);
-    if (idx !== -1) { setters[idx](''); return; }
-    for (let i = 0; i < 4; i++) {
-      if (!slots[i]) { setters[i](playerId); return; }
+    // If already assigned, clicking removes from that slot
+    const allSlots = [qeTeamA1, qeTeamA2, qeTeamB1, qeTeamB2];
+    const allSetters = [setQeTeamA1, setQeTeamA2, setQeTeamB1, setQeTeamB2];
+    const idx = allSlots.indexOf(playerId);
+    if (idx !== -1) { allSetters[idx](''); return; }
+    // Assign to selected target team
+    if (qeTargetTeam === 'A') {
+      if (!qeTeamA1) { setQeTeamA1(playerId); return; }
+      if (!qeTeamA2) { setQeTeamA2(playerId); return; }
+      showToast('Team A is full (2/2)', 'warning');
+    } else if (qeTargetTeam === 'B') {
+      if (!qeTeamB1) { setQeTeamB1(playerId); return; }
+      if (!qeTeamB2) { setQeTeamB2(playerId); return; }
+      showToast('Team B is full (2/2)', 'warning');
+    } else {
+      showToast('TEAM A 또는 B를 먼저 선택하세요', 'warning');
     }
   };
 
@@ -1285,10 +1303,41 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
                 </button>
               </div>
 
+              {/* Team A / Team B selection — must choose before assigning */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQeTargetTeam(qeTargetTeam === 'A' ? null : 'A')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                    qeTargetTeam === 'A'
+                      ? 'bg-tennis-green/20 border-tennis-green text-tennis-green'
+                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-tennis-green hover:text-tennis-green'
+                  }`}
+                >
+                  {qeTargetTeam === 'A' ? '✓ ' : ''}TEAM A 선택
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQeTargetTeam(qeTargetTeam === 'B' ? null : 'B')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                    qeTargetTeam === 'B'
+                      ? 'bg-orange-500/20 border-orange-500 text-orange-400'
+                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-orange-500 hover:text-orange-400'
+                  }`}
+                >
+                  {qeTargetTeam === 'B' ? '✓ ' : ''}TEAM B 선택
+                </button>
+              </div>
+              {!qeTargetTeam && (
+                <p className="text-[10px] text-slate-500 text-center">팀을 선택한 후 선수를 추가할 수 있습니다</p>
+              )}
+
               {/* Global list pills */}
               {qeShowPlayerPicker && (
                 <div className="bg-slate-900 rounded-lg p-2 max-h-36 overflow-y-auto border border-slate-700">
-                  <p className="text-[10px] text-slate-500 mb-2 px-1">탭하여 배정 · 🟢 A팀 · 🟠 B팀</p>
+                  <p className="text-[10px] text-slate-500 mb-2 px-1">
+                    {qeTargetTeam ? `탭하여 ${qeTargetTeam === 'A' ? 'Team A' : 'Team B'}에 배정 · 🟢 A팀 · 🟠 B팀` : '팀을 먼저 선택하세요'}
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {displayPlayers.map(p => {
                       const isTeamA = [qeTeamA1, qeTeamA2].includes(p.id);
@@ -1317,20 +1366,21 @@ export const AdminPage: React.FC<Props> = ({ setTab, onExitAdmin }) => {
                 </div>
               )}
 
-              {/* Add new player inline */}
+              {/* Add new player inline — disabled until team selected */}
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={qeNewPlayerName}
                   onChange={e => setQeNewPlayerName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQeAddNewPlayer(); } }}
-                  placeholder="새 선수 이름..."
-                  className="flex-1 bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm focus:border-tennis-green outline-none"
+                  placeholder={qeTargetTeam ? `${qeTargetTeam === 'A' ? 'Team A' : 'Team B'} 선수 이름...` : '팀 선택 후 입력'}
+                  disabled={!qeTargetTeam}
+                  className="flex-1 bg-slate-900 text-white p-2 rounded-lg border border-slate-600 text-sm focus:border-tennis-green outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                 />
                 <button
                   type="button"
                   onClick={handleQeAddNewPlayer}
-                  disabled={qeAddingPlayer || !qeNewPlayerName.trim()}
+                  disabled={qeAddingPlayer || !qeNewPlayerName.trim() || !qeTargetTeam}
                   className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 flex items-center gap-1 text-sm"
                 >
                   {qeAddingPlayer ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
