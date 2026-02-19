@@ -37,13 +37,14 @@ export const GEMINI_MODELS = FALLBACK_GEMINI_MODELS;
 
 export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 
-export type GeminiModelId = string;
+// Known IDs provide autocompletion; `string & {}` allows any dynamic ID from the API
+export type GeminiModelId = typeof FALLBACK_GEMINI_MODELS[number]['id'] | (string & {});
 
 // Fetch available models dynamically from the Gemini REST API.
 // Filters out preview, gemma, and non-generateContent models.
 export const fetchAvailableModels = async (apiKey: string): Promise<DynamicGeminiModel[]> => {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
   );
 
   if (!response.ok) {

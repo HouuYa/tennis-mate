@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import {
-  getStoredModel, saveModel, getStoredApiKey, fetchAvailableModels,
+  getStoredModel, saveModel, getStoredApiKey, fetchAvailableModels, DEFAULT_GEMINI_MODEL,
   type GeminiModelId, type DynamicGeminiModel,
 } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
@@ -32,8 +32,8 @@ interface UseTennisChatReturn {
   lastError: LastError | null;
 
   // Actions
-  setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-  setLastError: React.Dispatch<React.SetStateAction<LastError | null>>;
+  setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  setLastError: Dispatch<SetStateAction<LastError | null>>;
   handleModelChange: (newModel: GeminiModelId) => void;
   handleApiKeyUpdated: () => void;
   handleRetry: (retryFn: () => void) => void;
@@ -58,9 +58,16 @@ export function useTennisChat(): UseTennisChatReturn {
     const key = getStoredApiKey();
     if (key) {
       fetchAvailableModels(key)
-        .then(setAvailableModels)
+        .then(models => {
+          setAvailableModels(models);
+          // If the stored model is no longer in the dynamic list, reset to default
+          if (models.length > 0 && !models.some(m => m.id === currentModel)) {
+            handleModelChange(DEFAULT_GEMINI_MODEL);
+          }
+        })
         .catch(() => {}); // silent fallback — ModelSwitcher uses FALLBACK_GEMINI_MODELS
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleModelChange = (newModel: GeminiModelId) => {
@@ -77,7 +84,12 @@ export function useTennisChat(): UseTennisChatReturn {
     const key = getStoredApiKey();
     if (key) {
       fetchAvailableModels(key)
-        .then(setAvailableModels)
+        .then(models => {
+          setAvailableModels(models);
+          if (models.length > 0 && !models.some(m => m.id === currentModel)) {
+            handleModelChange(DEFAULT_GEMINI_MODEL);
+          }
+        })
         .catch(() => {});
     }
   };

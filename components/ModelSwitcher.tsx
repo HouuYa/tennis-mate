@@ -10,15 +10,12 @@ interface ModelSwitcherProps {
   models?: DynamicGeminiModel[]; // Dynamic list from fetchAvailableModels; falls back to FALLBACK_GEMINI_MODELS
 }
 
-const NOW = new Date();
-const NINETY_DAYS_FROM_NOW = new Date(NOW.getTime() + 90 * 24 * 60 * 60 * 1000);
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
 function isNearEOL(model: DynamicGeminiModel): boolean {
-  return (
-    !model.deprecated &&
-    !!model.deprecationDate &&
-    new Date(model.deprecationDate) <= NINETY_DAYS_FROM_NOW
-  );
+  if (model.deprecated || !model.deprecationDate) return false;
+  const ninetyDaysFromNow = new Date(Date.now() + NINETY_DAYS_MS);
+  return new Date(model.deprecationDate) <= ninetyDaysFromNow;
 }
 
 function formatRetirementDate(isoDate: string): string {
