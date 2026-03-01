@@ -51,6 +51,7 @@ interface AppContextType {
   exitMode: () => void;
   saveAllToSheets: () => Promise<void>;
   saveAllToCloud: () => Promise<void>;
+  getPlayerAllTimeMatches: (playerId: string) => Promise<Match[]>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -774,6 +775,14 @@ export const AppProvider = ({ children }: PropsWithChildren<{}>) => {
           addLog('SYSTEM', '⚠️ Failed to save to Supabase. Please check your connection.');
           throw error;
         }
+      },
+      getPlayerAllTimeMatches: async (playerId: string) => {
+        if (mode === 'CLOUD') {
+          const service = dataService as SupabaseDataService;
+          return await service.getPlayerMatches(playerId);
+        }
+        // Not implemented fully for other modes, fallback to current loaded matches
+        return matches;
       }
     }}>
       {children}

@@ -205,6 +205,30 @@
 
 ### 우선순위: HIGH
 
+#### 📈 Advanced Analytics 데이터 소스 선택 (진행 중)
+- [x] Plan 작성 및 TODO 업데이트
+- [x] `SupabaseDataService`에 특정 플레이어의 모든 경기 기록(`All-Time`)을 가져오는 함수 추가
+- [x] `AnalyticsView`에 데이터 소스 선택(Current Session, Recent 100, All Time) 토글 UI 추가
+- [x] 선택된 데이터 소스에 따라 Win Rates, Partner Stats & Rivals 동적으로 분석하여 표시
+- [x] LOCATION옆에도 from global list를 PLAYERS 처럼 supabase DB에서 가져오는 기능 추가 및 UI 수정
+
+### 코드 리뷰 및 향후 업그레이드 계획 (단기/중장기)
+
+**단기 (Short-term):**
+- **기능 중복 최소화:** `StatsView`와 `AnalyticsView`, 그리고 `StatsAnalysisModal`의 UI 진입점과 역할을 명확하게 분리 (수동 분석 vs AI 분석).
+- **데이터 소스 선택 토글:** Advanced Analytics에서 현재 세션(Current Session) 혹은 전체 기간(All-Time, Supabase DB 연동)을 선택하여 분석할 수 있는 옵션 제공.
+- **최적화:** `recalculatePlayerStats` 가 매치 업데이트 시마다 불필요하게 반복 계산되지 않도록 Memoization 도입.
+
+**중기 (Medium-term):**
+- **DB 최적화:** Stats(경기 수, 승률 등)를 매치마다 런타임에 재계산하는 대신, `players` 혹은 별도의 `player_stats` 테이블에 캐싱하여 DB 로드 속도 향상.
+- **차트/시각화 강화:** CSS 기반 Bar 영역 표시 외에 Recharts나 Chart.js 같은 라이브러리를 통해 상세 분석(월별 추이, 승률 그래프 등) 추가.
+
+**장기 (Long-term):**
+- **실시간(Real-time) 동기화:** WebSocket 기반으로 여러 사용자가 같은 세션을 볼 때 매치 생성/완료 시 즉각적으로 통계가 업데이트되도록 아키텍처 개선.
+- **토너먼트 자동화:** 승률 기반으로 자동으로 대진표(Bracket)를 생성하는 기능 구현 (`v3.0.0` 계획과 연계).
+
+### 우선순위: HIGH
+
 #### 📍 한글 주소 지원 (Korean Address Support)
 - [ ] Reverse geocoding API 연동 (한글 주소 반환)
 - [ ] 현재 위치 기반 자동 입력

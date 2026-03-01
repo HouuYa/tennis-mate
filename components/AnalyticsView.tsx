@@ -4,9 +4,42 @@ import { BarChart3, Users, Swords, Trophy } from 'lucide-react';
 import { Player, Match } from '../types';
 
 export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
-    const { players, matches } = useApp();
+    const { players, matches, mode, getPlayerAllTimeMatches, getAllPlayers } = useApp();
     const [myId, setMyId] = useState<string>('');
     const [rivalId, setRivalId] = useState<string>('');
+    const [dataSource, setDataSource] = useState<'SESSION' | 'ALL_TIME'>('SESSION');
+    const [allTimeMatches, setAllTimeMatches] = useState<Match[]>([]);
+    const [allTimePlayers, setAllTimePlayers] = useState<Player[]>([]);
+    const [isLoadingAllTime, setIsLoadingAllTime] = useState(false);
+
+    // Fetch All-Time data when myId and dataSource changes
+    React.useEffect(() => {
+        if (dataSource === 'ALL_TIME' && myId && mode === 'CLOUD') {
+            const fetchData = async () => {
+                setIsLoadingAllTime(true);
+                try {
+                    const [fetchedMatches, fetchedPlayers] = await Promise.all([
+                        getPlayerAllTimeMatches(myId),
+                        getAllPlayers()
+                    ]);
+                    setAllTimeMatches(fetchedMatches);
+                    setAllTimePlayers(fetchedPlayers);
+                } catch (error) {
+                    console.error("Failed to fetch all-time data", error);
+                } finally {
+                    setIsLoadingAllTime(false);
+                }
+            };
+            fetchData();
+        }
+    }, [dataSource, myId, mode, getPlayerAllTimeMatches, getAllPlayers]);
+
+    // Initial load for all players if ALL_TIME is selected but no myId yet
+    React.useEffect(() => {
+        if (dataSource === 'ALL_TIME' && mode === 'CLOUD' && allTimePlayers.length === 0) {
+            getAllPlayers().then(setAllTimePlayers).catch(console.error);
+        }
+    }, [dataSource, mode, getAllPlayers, allTimePlayers.length]);
 
     // Filter relevant matches
     // User requested "Recent 100 matches" as Raw Data basis
@@ -14,15 +47,18 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     // If working with Google Sheets, we might want to ensure we have enough history.
     // For now, we use the loaded `matches` state.
     const recentMatches = useMemo(() => {
-        return matches
+        const sourceMatches = dataSource === 'ALL_TIME' ? allTimeMatches : matches;
+        return sourceMatches
             .filter(m => m.isFinished)
             .sort((a, b) => b.timestamp - a.timestamp)
-            .slice(0, 100);
-    }, [matches]);
+            .slice(0, dataSource === 'ALL_TIME' ? 1000 : 100);
+    }, [matches, allTimeMatches, dataSource]);
 
     const activePlayers = useMemo(() => {
+        const sourcePlayers = dataSource === 'ALL_TIME' && allTimePlayers.length > 0 ? allTimePlayers : players;
+
         // Unique players involved in recent matches + current roster
-        const ids = new Set(players.map(p => p.id));
+        const ids = new Set(sourcePlayers.map(p => p.id));
         recentMatches.forEach(m => {
             ids.add(m.teamA.player1Id);
             ids.add(m.teamA.player2Id);
@@ -30,9 +66,9 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
             ids.add(m.teamB.player2Id);
         });
         // Create lookup
-        const lookup = new Map(players.map(p => [p.id, p]));
+        const lookup = new Map(sourcePlayers.map(p => [p.id, p]));
         return Array.from(ids).map(id => lookup.get(id) || { id, name: 'Unknown', active: false, stats: {} as any }).filter(p => p.id);
-    }, [players, recentMatches]);
+    }, [players, allTimePlayers, recentMatches, dataSource]);
 
     // Derived Stats
     const myStats = useMemo(() => {
@@ -131,29 +167,61 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                 </div>
 
                 <div className="p-4 space-y-6">
-                    {/* Me Selector */}
-                    <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                        <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Analyze stats for</label>
-                        <select
-                            value={myId}
-                            onChange={(e) => setMyId(e.target.value)}
-                            className="w-full bg-slate-900 text-white p-3 rounded-lg border border-slate-700 outline-none focus:border-purple-500"
-                        >
-                            <option value="">Select Yourself</option>
-                            {activePlayers.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </select>
+                    {/* Data Source Toggle & Me Selector */}
+                    <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
+                        {mode === 'CLOUD' && (
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Data Source</label>
+                                <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
+                                    <button
+                                        onClick={() => setDataSource('SESSION')}
+                                        className={`flex-1 text-sm py-2 rounded-md font-semibold transition-colors ${dataSource === 'SESSION' ? 'bg-purple-600/20 text-purple-400' : 'text-slate-400 hover:text-slate-300'}`}
+                                    >
+                                        Current Session
+                                    </button>
+                                    <button
+                                        onClick={() => setDataSource('ALL_TIME')}
+                                        className={`flex-1 text-sm py-2 rounded-md font-semibold transition-colors ${dataSource === 'ALL_TIME' ? 'bg-purple-600/20 text-purple-400' : 'text-slate-400 hover:text-slate-300'}`}
+                                    >
+                                        All Time
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Analyze stats for</label>
+                            <select
+                                value={myId}
+                                onChange={(e) => {
+                                    setMyId(e.target.value);
+                                    setRivalId(''); // Reset rival when changing me
+                                }}
+                                className="w-full bg-slate-900 text-white p-3 rounded-lg border border-slate-700 outline-none focus:border-purple-500"
+                            >
+                                <option value="">Select Yourself</option>
+                                {activePlayers.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    {myId && myStats && (
+                    {isLoadingAllTime && (
+                        <div className="flex flex-col items-center justify-center p-8 text-slate-400">
+                            <span className="mb-2">Loading all-time data...</span>
+                            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    )}
+
+                    {!isLoadingAllTime && myId && myStats && (
                         <>
                             {/* Summary Cards */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center text-center">
                                     <span className="text-slate-400 text-xs uppercase font-bold mb-1">Matches</span>
                                     <span className="text-3xl font-black text-white">{myStats.played}</span>
-                                    <span className="text-[10px] text-slate-500">Last 100 Games</span>
+                                    <span className="text-[10px] text-slate-500">{dataSource === 'ALL_TIME' ? 'All recorded games' : 'Current Session games'}</span>
                                 </div>
                                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center text-center">
                                     <span className="text-slate-400 text-xs uppercase font-bold mb-1">Win Rate</span>

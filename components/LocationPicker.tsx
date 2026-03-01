@@ -24,7 +24,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     const [previousLocations, setPreviousLocations] = useState<string[]>([]);
 
     // Combine fetched history and external suggestions
-    const allSuggestions = Array.from(new Set([...previousLocations, ...suggestions])).slice(0, 10);
+    const allSuggestions = Array.from(new Set([...previousLocations, ...suggestions])).slice(0, 50);
 
     useEffect(() => {
         if (loadHistory) {
@@ -40,7 +40,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 .select('location')
                 .not('location', 'is', null)
                 .order('played_at', { ascending: false })
-                .limit(10);
+                .limit(100);
 
             if (!error && data) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,19 +147,23 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             </div>
 
             {allSuggestions.length > 0 && (
-                <div className="space-y-1">
-                    <p className="text-[10px] text-slate-500">Recent:</p>
-                    <div className="flex flex-wrap gap-1">
+                <div className="mt-2">
+                    <select
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                onChange(e.target.value);
+                            }
+                        }}
+                        value={allSuggestions.includes(value) ? value : ""}
+                        className="w-full bg-slate-800 text-slate-300 p-2 text-sm rounded-lg border border-slate-700 outline-none focus:border-tennis-green transition-colors"
+                    >
+                        <option value="" disabled>Select from global list...</option>
                         {allSuggestions.map((loc, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => onChange(loc)}
-                                className="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-tennis-green rounded border border-slate-700 hover:border-tennis-green transition-colors"
-                            >
+                            <option key={idx} value={loc}>
                                 {loc}
-                            </button>
+                            </option>
                         ))}
-                    </div>
+                    </select>
                 </div>
             )}
         </div>
