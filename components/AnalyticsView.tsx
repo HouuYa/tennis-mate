@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { BarChart3, Users, Swords, Trophy } from 'lucide-react';
+import { BarChart3, Users, Swords, Trophy, Activity } from 'lucide-react';
 import { Player, Match } from '../types';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     const { players, matches, mode, getPlayerAllTimeMatches, getAllPlayers } = useApp();
@@ -124,6 +125,38 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         return { wins, played, partners, rivals };
     }, [myId, recentMatches]);
 
+    const winRateTrendData = useMemo(() => {
+        if (!myId) return [];
+        let cumulativeWins = 0;
+        let cumulativePlayed = 0;
+        // recentMatches is sorted newest to oldest. We want oldest to newest for the trend line.
+        const myMatchesReverse = [...recentMatches]
+            .reverse()
+            .filter(m => {
+                const teamA = [m.teamA.player1Id, m.teamA.player2Id];
+                const teamB = [m.teamB.player1Id, m.teamB.player2Id];
+                return teamA.includes(myId) || teamB.includes(myId);
+            });
+
+        return myMatchesReverse.map((m, i) => {
+            const teamA = [m.teamA.player1Id, m.teamA.player2Id];
+            const teamB = [m.teamB.player1Id, m.teamB.player2Id];
+            const inTeamA = teamA.includes(myId);
+            const inTeamB = teamB.includes(myId);
+            const wonA = m.scoreA > m.scoreB;
+            const wonB = m.scoreB > m.scoreA;
+            const iWon = (inTeamA && wonA) || (inTeamB && wonB);
+
+            cumulativePlayed++;
+            if (iWon) cumulativeWins++;
+
+            return {
+                name: `M${i + 1}`,
+                winRate: Math.round((cumulativeWins / cumulativePlayed) * 100)
+            };
+        });
+    }, [myId, recentMatches]);
+
     const bestPartners = useMemo(() => {
         if (!myStats) return [];
         return Array.from(myStats.partners.entries())
@@ -231,6 +264,36 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                     <span className="text-[10px] text-slate-500">{myStats.wins} Wins</span>
                                 </div>
                             </div>
+
+                            {/* Win Rate Trend */}
+                            {winRateTrendData.length > 2 && (
+                                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                    <h3 className="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
+                                        <Activity size={16} className="text-purple-400" />
+                                        Win Rate Trend
+                                    </h3>
+                                    <div className="h-32 w-full mt-2">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={winRateTrendData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorWinRate" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '12px', borderRadius: '8px' }}
+                                                    itemStyle={{ color: '#a855f7', fontWeight: 'bold' }}
+                                                    formatter={(value: number) => [`${value}%`, 'Win Rate']}
+                                                    labelFormatter={(label) => `Match ${label.replace('M', '')}`}
+                                                />
+                                                <Area type="monotone" dataKey="winRate" stroke="#a855f7" strokeWidth={2} fillOpacity={1} fill="url(#colorWinRate)" />
+                                                <YAxis domain={[0, 100]} hide={true} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Best Partners */}
                             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">

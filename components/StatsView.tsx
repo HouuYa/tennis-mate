@@ -86,6 +86,23 @@ export const StatsView: React.FC = () => {
 
   return (
     <div className="pb-20 space-y-6">
+      {/* Advanced Analytics Entry */}
+      <button
+        onClick={() => setShowAnalytics(true)}
+        className="w-full bg-slate-800 hover:bg-slate-700 hover:border-purple-400 border border-slate-700 p-4 rounded-xl flex items-center justify-between group transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-900/30 p-2 rounded-lg text-purple-400 group-hover:bg-purple-900/50 transition-colors">
+            <PieChart size={24} />
+          </div>
+          <div className="text-left">
+            <h3 className="font-bold text-slate-200 group-hover:text-purple-300">Advanced Analytics</h3>
+            <p className="text-xs text-slate-500">View Win Rates, Partner Stats & Rivals</p>
+          </div>
+        </div>
+        <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
+      </button>
+
       {/* AI Coach Section - Collapsible like Advanced Analytics */}
       {showAICoach && (
         <div className="space-y-3">
@@ -210,22 +227,6 @@ export const StatsView: React.FC = () => {
           </div>
         </div>
       )}
-
-      <button
-        onClick={() => setShowAnalytics(true)}
-        className="w-full bg-slate-800 hover:bg-slate-700 hover:border-purple-400 border border-slate-700 p-4 rounded-xl flex items-center justify-between group transition-all"
-      >
-        <div className="flex items-center gap-3">
-          <div className="bg-purple-900/30 p-2 rounded-lg text-purple-400 group-hover:bg-purple-900/50 transition-colors">
-            <PieChart size={24} />
-          </div>
-          <div className="text-left">
-            <h3 className="font-bold text-slate-200 group-hover:text-purple-300">Advanced Analytics</h3>
-            <p className="text-xs text-slate-500">View Win Rates, Partner Stats & Rivals</p>
-          </div>
-        </div>
-        <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>
-      </button>
 
       {/* Leaderboard Table */}
       <div className="bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-700">
