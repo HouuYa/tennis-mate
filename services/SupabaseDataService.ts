@@ -238,4 +238,33 @@ export class SupabaseDataService implements DataService {
             'Failed to delete match:'
         );
     }
+
+    async getPlayerMatches(playerId: string): Promise<Match[]> {
+        // Validate playerId as a UUID to prevent query injection
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(playerId)) {
+            console.warn('Invalid playerId format (expected UUID):', playerId);
+            return [];
+        }
+
+        const data = await executeSupabaseQuery(
+            supabase.from('matches')
+                .select('*')
+                .or(`team_a->>player1Id.eq.${playerId},team_a->>player2Id.eq.${playerId},team_b->>player1Id.eq.${playerId},team_b->>player2Id.eq.${playerId}`)
+                .order('played_at', { ascending: false }),
+            'Failed to fetch player all-time matches:'
+        );
+
+        return data.map((m: any) => ({
+            id: m.id,
+            timestamp: new Date(m.played_at).getTime(),
+            teamA: { player1Id: m.team_a.player1Id, player2Id: m.team_a.player2Id },
+            teamB: { player1Id: m.team_b.player1Id, player2Id: m.team_b.player2Id },
+            scoreA: m.score_a,
+            scoreB: m.score_b,
+            isFinished: m.is_finished,
+            courtNumber: m.court_number,
+            endTime: m.end_time ? new Date(m.end_time).getTime() : undefined
+        }));
+    }
 }

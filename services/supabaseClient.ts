@@ -7,4 +7,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('Missing Supabase credentials in .env');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+export const supabase = createClient(
+    supabaseUrl || 'https://placeholder.supabase.co',
+    supabaseAnonKey || 'placeholder'
+);

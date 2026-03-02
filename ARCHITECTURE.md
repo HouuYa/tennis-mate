@@ -15,8 +15,8 @@
 │   ├── PlayerList.tsx    # Manage Players & Drag/Drop Reorder
 │   ├── MatchSchedule.tsx # Unified View: History + Current + Future Preview
 │   ├── LiveFeed.tsx      # Chat-style Event Log
-│   ├── StatsView.tsx     # Leaderboard & AI Analysis (+ Head-to-Head)
-│   ├── AnalyticsView.tsx # Advanced Analytics Modal (Win Rates, Partners, Rivals)
+│   ├── StatsView.tsx     # Leaderboard, AI Coach, Advanced Analytics entry (v2.1.0 UI reorganized)
+│   ├── AnalyticsView.tsx # Advanced Analytics Modal: Data source toggle (Session/All-Time), Recharts charts, Win Rates, Partners, Rivals (v2.1.0)
 │   ├── StatsAnalysisModal.tsx # AI Stats Analysis Modal (v1.2.0)
 │   ├── TennisRulesChatModal.tsx # Tennis Rules Chat Modal (v1.2.0)
 │   ├── ModelSwitcher.tsx    # Dynamic Gemini Model Selector (v2.0.0)
@@ -28,7 +28,7 @@
 │   ├── AdminETLPage.tsx  # Tennis Rules PDF ETL management (v1.3.0)
 │   ├── GoogleSheetsSessionManager.tsx # Google Sheets Setup & Connection
 │   ├── GoogleSheetsGuide.tsx # 6-Step Setup Guide Modal with screenshots
-│   ├── LocationPicker.tsx # Geolocation-based location input
+│   ├── LocationPicker.tsx # Supabase-backed location dropdown (v2.1.0 — replaced text input)
 │   └── BottomNav.tsx     # Navigation Bar
 ├── public/
 │   └── guide/            # Setup guide screenshot images
@@ -143,17 +143,23 @@ useTennisChat (hook)
   - `TennisRulesChatModal`: Full-screen modal for tennis rules Q&A chat
 - **Space Efficiency**: Reduces visual clutter in Stats tab when AI features are not in use
 
-**Component Flow:**
+**Component Flow (v2.1.0):**
 ```
 StatsView.tsx
-  ├── AI Coach Button (collapsed)
+  ├── Advanced Analytics Button (최우선, 상단)
   │   ↓ [User clicks]
-  ├── AI Coach Expanded Section
-  │   ├── [No API Key] → GeminiApiKeySettings (compact mode)
-  │   └── [Has API Key] → Two buttons:
-  │       ├── "Analyze Stats" → StatsAnalysisModal
-  │       └── "Ask Question" → TennisRulesChatModal
-  └── Advanced Analytics Button → AnalyticsView
+  │   └── AnalyticsView (full-screen overlay)
+  │       ├── Data Source Toggle: [SESSION] / [ALL_TIME]
+  │       ├── Player Selector Dropdown
+  │       ├── Win Rate Trend (Recharts AreaChart)
+  │       ├── Best Partners Table
+  │       └── Head-to-Head Rival Stats
+  └── AI Coach Button (collapsed)
+      ↓ [User clicks]
+      ├── [No API Key] → GeminiApiKeySettings (compact mode)
+      └── [Has API Key] → Two buttons:
+          ├── "Analyze Stats" → StatsAnalysisModal
+          └── "Ask Question" → TennisRulesChatModal
 ```
 
 **RAG System Architecture:**
@@ -162,6 +168,13 @@ StatsView.tsx
 - **Search Function**: `match_tennis_rules` RPC (cosine similarity)
 - **Multi-Language**: Supports English and Korean tennis rules
 - **Source Attribution**: Displays source documents with similarity scores
+
+**Analytics Data Service (v2.1.0):**
+- `getPlayerAllTimeMatches(playerId)`: DB에서 플레이어 전체 경기 기록 로드 (`SupabaseDataService`)
+  - UUID Injection 방지: `playerId` UUID 정규식 검증 후 쿼리 실행
+  - Session(현재 세션 matches state) vs All-Time(Supabase DB) 토글로 분석 범위 선택
+- `getAllPlayers()`: 전역 플레이어 목록 조회 (조건부 실행 — `allTimePlayers.length === 0` 체크)
+- `getLocations()`: Supabase sessions 테이블에서 최근 location 목록 조회 (LocationPicker용)
 
 ### E. Database Schema (Supabase)
 
