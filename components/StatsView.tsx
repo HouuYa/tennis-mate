@@ -96,8 +96,8 @@ export const StatsView: React.FC = () => {
             <PieChart size={24} />
           </div>
           <div className="text-left">
-            <h3 className="font-bold text-slate-200 group-hover:text-purple-300">Advanced Analytics</h3>
-            <p className="text-xs text-slate-500">View Win Rates, Partner Stats & Rivals</p>
+            <h3 className="font-bold text-slate-200 group-hover:text-purple-300">Player Analytics</h3>
+            <p className="text-xs text-slate-500">개인별 승률, 파트너 궁합 & 라이벌 분석</p>
           </div>
         </div>
         <div className="text-slate-500 group-hover:translate-x-1 transition-transform">→</div>

@@ -24,6 +24,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     React.useEffect(() => {
         if (dataSource === 'ALL_TIME' && myId && mode === 'CLOUD') {
             const fetchData = async () => {
+                console.log(`[Analytics] Starting fetch for player ${myId}`);
                 setIsLoadingAllTime(true);
                 try {
                     const promises: Promise<any>[] = [getPlayerAllTimeMatchesRef.current(myId)];
@@ -32,16 +33,18 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     }
 
                     const [fetchedMatches, fetchedPlayers] = await Promise.all(promises);
+                    console.log(`[Analytics] Fetched ${fetchedMatches?.length || 0} matches`);
 
-                    setAllTimeMatches(fetchedMatches);
+                    setAllTimeMatches(fetchedMatches || []);
                     if (fetchedPlayers) {
                         setAllTimePlayers(fetchedPlayers);
                         allTimePlayersFetchedRef.current = true;
                     }
                 } catch (error) {
-                    console.error("Failed to fetch all-time data", error);
+                    console.error("[Analytics] Failed to fetch all-time data", error);
                 } finally {
                     setIsLoadingAllTime(false);
+                    console.log(`[Analytics] Fetch completed`);
                 }
             };
             fetchData();
@@ -72,11 +75,12 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     }, [matches, allTimeMatches, dataSource]);
 
     const activePlayers = useMemo(() => {
-        const sourcePlayers = dataSource === 'ALL_TIME' && allTimePlayers.length > 0 ? allTimePlayers : players;
+        const sourcePlayers = (dataSource === 'ALL_TIME' && allTimePlayers.length > 0 ? allTimePlayers : players) as Player[];
 
         // Unique players involved in recent matches + current roster
         const ids = new Set(sourcePlayers.map(p => p.id));
         recentMatches.forEach(m => {
+            if (!m.teamA || !m.teamB) return; // Defensive check
             ids.add(m.teamA.player1Id);
             ids.add(m.teamA.player2Id);
             ids.add(m.teamB.player1Id);
@@ -84,8 +88,8 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         });
         // Create lookup
         const lookup = new Map(sourcePlayers.map(p => [p.id, p]));
-        const resolved = Array.from(ids).map((id: string) => lookup.get(id) ?? { id, name: 'Unknown', active: false, stats: {} as any });
-        return resolved.filter((p): p is NonNullable<typeof p> => Boolean(p && p.id));
+        const resolved = Array.from(ids).map((id) => lookup.get(id) ?? { id, name: 'Unknown', active: false, stats: {} as any });
+        return resolved.filter((p): p is Player => Boolean(p && p.id));
     }, [players, allTimePlayers, recentMatches, dataSource]);
 
     // Derived Stats
@@ -98,6 +102,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         const rivals = new Map<string, { wins: number, played: number }>();
 
         recentMatches.forEach(m => {
+            if (!m.teamA || !m.teamB) return; // Defensive check
             const teamA = [m.teamA.player1Id, m.teamA.player2Id];
             const teamB = [m.teamB.player1Id, m.teamB.player2Id];
 
@@ -150,6 +155,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         const myMatchesReverse = [...recentMatches]
             .reverse()
             .filter(m => {
+                if (!m.teamA || !m.teamB) return false;
                 const teamA = [m.teamA.player1Id, m.teamA.player2Id];
                 const teamB = [m.teamB.player1Id, m.teamB.player2Id];
                 return teamA.includes(myId) || teamB.includes(myId);
@@ -206,7 +212,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                 <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md p-4 flex items-center justify-between border-b border-slate-800">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <BarChart3 className="text-purple-400" />
-                        Analytics
+                        Player Analytics
                     </h2>
                     <button
                         onClick={onClose}
@@ -258,9 +264,10 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     </div>
 
                     {isLoadingAllTime && (
-                        <div className="flex flex-col items-center justify-center p-8 text-slate-400">
-                            <span className="mb-2">Loading all-time data...</span>
-                            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="flex flex-col items-center justify-center p-12 text-slate-400 min-h-[400px]">
+                            <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <span className="font-bold">Loading Global Stats...</span>
+                            <span className="text-xs text-slate-500 mt-2 italic">Fetching all matches from Supabase</span>
                         </div>
                     )}
 
