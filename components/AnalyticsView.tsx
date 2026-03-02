@@ -4,6 +4,19 @@ import { BarChart3, Users, Swords, Trophy, Activity } from 'lucide-react';
 import { Player, Match } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
+// Fix for Chrome/Recharts ResizeObserver loop limit exceeded error
+// This prevents the entire React app from crashing or going blank during window/container resizing.
+if (typeof window !== 'undefined') {
+    const originalError = window.console.error;
+    window.console.error = (...args: any[]) => {
+        if (args[0]?.includes?.('ResizeObserver loop limit exceeded') ||
+            args[0]?.includes?.('ResizeObserver loop completed with undelivered notifications')) {
+            return;
+        }
+        originalError.apply(window.console, args);
+    };
+}
+
 export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     const { players, matches, mode, getPlayerAllTimeMatches, getAllPlayers } = useApp();
     const [myId, setMyId] = useState<string>('');
@@ -299,33 +312,35 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                         <Activity size={16} className="text-purple-400" />
                                         Win Rate Trend
                                     </h3>
-                                    <div className="h-32 w-full mt-2">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={winRateTrendData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                                                <defs>
-                                                    <linearGradient id="colorWinRate" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '12px', borderRadius: '8px' }}
-                                                    itemStyle={{ color: '#a855f7', fontWeight: 'bold' }}
-                                                    formatter={(value: number) => [`${value}%`, 'Win Rate']}
-                                                    labelFormatter={(label) => `Match ${label.replace('M', '')}`}
-                                                />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="winRate"
-                                                    stroke="#a855f7"
-                                                    strokeWidth={2}
-                                                    fillOpacity={1}
-                                                    fill="url(#colorWinRate)"
-                                                    isAnimationActive={false}
-                                                />
-                                                <YAxis domain={[0, 100]} hide={true} />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
+                                    <div className="h-32 w-full mt-2 overflow-hidden flex items-center justify-center bg-slate-900/30 rounded-lg">
+                                        <div style={{ width: '100%', height: '128px' }}>
+                                            <ResponsiveContainer width="99%" height="100%">
+                                                <AreaChart data={winRateTrendData.length > 0 ? winRateTrendData : [{ name: '', winRate: 0 }]} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                                    <defs>
+                                                        <linearGradient id="colorWinRate" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                                                            <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '12px', borderRadius: '8px' }}
+                                                        itemStyle={{ color: '#a855f7', fontWeight: 'bold' }}
+                                                        formatter={(value: number) => [`${value}%`, 'Win Rate']}
+                                                        labelFormatter={(label) => `Match ${label.replace('M', '')}`}
+                                                    />
+                                                    <Area
+                                                        type="monotone"
+                                                        dataKey="winRate"
+                                                        stroke="#a855f7"
+                                                        strokeWidth={2}
+                                                        fillOpacity={1}
+                                                        fill="url(#colorWinRate)"
+                                                        isAnimationActive={false}
+                                                    />
+                                                    <YAxis domain={[0, 100]} hide={true} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
                                 </div>
                             )}
