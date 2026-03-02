@@ -13,15 +13,22 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     const [allTimePlayers, setAllTimePlayers] = useState<Player[]>([]);
     const [isLoadingAllTime, setIsLoadingAllTime] = useState(false);
 
+    // Use refs to hold latest function references (they're not useCallback-wrapped in AppContext)
+    const getPlayerAllTimeMatchesRef = React.useRef(getPlayerAllTimeMatches);
+    getPlayerAllTimeMatchesRef.current = getPlayerAllTimeMatches;
+    const getAllPlayersRef = React.useRef(getAllPlayers);
+    getAllPlayersRef.current = getAllPlayers;
+    const allTimePlayersFetchedRef = React.useRef(false);
+
     // Fetch All-Time data when myId and dataSource changes
     React.useEffect(() => {
         if (dataSource === 'ALL_TIME' && myId && mode === 'CLOUD') {
             const fetchData = async () => {
                 setIsLoadingAllTime(true);
                 try {
-                    const promises: Promise<any>[] = [getPlayerAllTimeMatches(myId)];
-                    if (allTimePlayers.length === 0) {
-                        promises.push(getAllPlayers());
+                    const promises: Promise<any>[] = [getPlayerAllTimeMatchesRef.current(myId)];
+                    if (!allTimePlayersFetchedRef.current) {
+                        promises.push(getAllPlayersRef.current());
                     }
 
                     const [fetchedMatches, fetchedPlayers] = await Promise.all(promises);
@@ -29,6 +36,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     setAllTimeMatches(fetchedMatches);
                     if (fetchedPlayers) {
                         setAllTimePlayers(fetchedPlayers);
+                        allTimePlayersFetchedRef.current = true;
                     }
                 } catch (error) {
                     console.error("Failed to fetch all-time data", error);
@@ -38,14 +46,17 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
             };
             fetchData();
         }
-    }, [dataSource, myId, mode, getPlayerAllTimeMatches, getAllPlayers, allTimePlayers.length]);
+    }, [dataSource, myId, mode]);
 
     // Initial load for all players if ALL_TIME is selected but no myId yet
     React.useEffect(() => {
-        if (dataSource === 'ALL_TIME' && mode === 'CLOUD' && allTimePlayers.length === 0) {
-            getAllPlayers().then(setAllTimePlayers).catch(console.error);
+        if (dataSource === 'ALL_TIME' && mode === 'CLOUD' && !allTimePlayersFetchedRef.current) {
+            getAllPlayersRef.current().then(p => {
+                setAllTimePlayers(p);
+                allTimePlayersFetchedRef.current = true;
+            }).catch(console.error);
         }
-    }, [dataSource, mode, getAllPlayers, allTimePlayers.length]);
+    }, [dataSource, mode]);
 
     // Filter relevant matches
     // User requested "Recent 100 matches" as Raw Data basis
