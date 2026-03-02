@@ -240,6 +240,13 @@ export class SupabaseDataService implements DataService {
     }
 
     async getPlayerMatches(playerId: string): Promise<Match[]> {
+        // Validate playerId as a UUID to prevent query injection
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(playerId)) {
+            console.warn('Invalid playerId format (expected UUID):', playerId);
+            return [];
+        }
+
         const data = await executeSupabaseQuery(
             supabase.from('matches')
                 .select('*')

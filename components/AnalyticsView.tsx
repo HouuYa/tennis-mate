@@ -19,12 +19,17 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
             const fetchData = async () => {
                 setIsLoadingAllTime(true);
                 try {
-                    const [fetchedMatches, fetchedPlayers] = await Promise.all([
-                        getPlayerAllTimeMatches(myId),
-                        getAllPlayers()
-                    ]);
+                    const promises: Promise<any>[] = [getPlayerAllTimeMatches(myId)];
+                    if (allTimePlayers.length === 0) {
+                        promises.push(getAllPlayers());
+                    }
+
+                    const [fetchedMatches, fetchedPlayers] = await Promise.all(promises);
+
                     setAllTimeMatches(fetchedMatches);
-                    setAllTimePlayers(fetchedPlayers);
+                    if (fetchedPlayers) {
+                        setAllTimePlayers(fetchedPlayers);
+                    }
                 } catch (error) {
                     console.error("Failed to fetch all-time data", error);
                 } finally {
@@ -33,7 +38,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
             };
             fetchData();
         }
-    }, [dataSource, myId, mode, getPlayerAllTimeMatches, getAllPlayers]);
+    }, [dataSource, myId, mode, getPlayerAllTimeMatches, getAllPlayers, allTimePlayers.length]);
 
     // Initial load for all players if ALL_TIME is selected but no myId yet
     React.useEffect(() => {
@@ -68,7 +73,8 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         });
         // Create lookup
         const lookup = new Map(sourcePlayers.map(p => [p.id, p]));
-        return Array.from(ids).map(id => lookup.get(id) || { id, name: 'Unknown', active: false, stats: {} as any }).filter(p => p.id);
+        const resolved = Array.from(ids).map((id: string) => lookup.get(id) ?? { id, name: 'Unknown', active: false, stats: {} as any });
+        return resolved.filter((p): p is NonNullable<typeof p> => Boolean(p && p.id));
     }, [players, allTimePlayers, recentMatches, dataSource]);
 
     // Derived Stats

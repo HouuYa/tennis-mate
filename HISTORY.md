@@ -6,6 +6,40 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ## 📅 Daily Summaries (Recent)
 
+### 2026-03-02 (v2.1.0 — Advanced Analytics & Security Fixes)
+
+**🎯 Advanced Analytics 기능 강화:**
+- **Data Source 선택 토글** (`AnalyticsView.tsx`):
+  - `SESSION` (현재 세션) / `ALL_TIME` (Supabase 전체 기록) 두 가지 소스를 탭으로 전환 가능
+  - Cloud Mode에서 `getPlayerAllTimeMatches(playerId)` 호출로 DB에서 플레이어 전체 매치 기록 로드
+  - `dataSource`에 따라 Win Rates, Best Partners, Rival Stats 동적 재계산
+- **Recharts 기반 차트 추가** (`AnalyticsView.tsx`):
+  - `recharts` 패키지 재도입 (v2.0.0에서 제거되었다가 기능 추가를 위해 복원)
+  - `AreaChart` (Win Rate Trend) — 최근 매치별 누적 승률 추세 그래프 (보라색 그라데이션)
+  - `ResponsiveContainer`, `XAxis`, `YAxis`, `Tooltip` 포함
+- **UI 동선 개선** (`StatsView.tsx`):
+  - "Advanced Analytics" 버튼을 AI Coach 섹션보다 위로 배치 (최우선 진입점)
+  - 기존 Stats 탭 내 역할 명확화: Advanced Analytics(수동 분석) vs AI Coach(AI 분석) 분리
+
+**📍 LocationPicker 개선** (`LocationPicker.tsx`):
+- Supabase DB에서 location 목록을 가져오는 드롭다운 방식으로 변경 (기존 텍스트 입력 대체)
+- PLAYERS와 동일하게 Global List에서 최근 사용 위치를 자동으로 제공
+- 모바일 UI 레이아웃 문제 수정 (세로 오버플로우 해결)
+
+**🔒 보안 수정 (Gemini Code Assist 리뷰 반영):**
+- **UUID Injection 방지** (`SupabaseDataService.ts`):
+  - `getPlayerMatches(playerId)` 함수에 UUID 정규식 검증 추가 (`/^[0-9a-f]{8}-...-[0-9a-f]{12}$/i`)
+  - 비유효 ID 입력 시 빈 배열 반환 및 경고 로그 출력
+- **데이터 중복 요청 최적화** (`AnalyticsView.tsx`):
+  - `getAllPlayers()`를 `allTimePlayers.length === 0` 조건으로 조건부 호출
+  - `myId` 변경 시마다 불필요한 전체 플레이어 목록 재조회 방지 (성능 개선)
+
+**🐛 버그 수정:**
+- **Supabase 환경변수 미설정 시 앱 크래시** (`supabaseClient.ts`):
+  - `.env`에 `VITE_SUPABASE_URL` 미설정 시 `createClient('', '')` 호출로 화이트스크린 발생 → Placeholder URL 주입으로 수정
+- **TypeScript 타입 오류** (`AnalyticsView.tsx`):
+  - `Array.from(ids)` 결과에서 `p.id` 접근 시 `unknown` 타입 에러 → 명시적 `(id: string)` 타입 어노테이션 + Type Guard 필터로 해결
+
 ### 2026-02-19 (v2.0.0 — Code Cleanup & Codebase Housekeeping)
 - **Version bump**: `package.json` version `1.4.0` → `2.0.0`
 - **Dependency removal**: `recharts` 패키지 제거 (코드베이스에서 미사용 확인)
@@ -188,7 +222,41 @@ This document serves as the master record for releases, daily summaries, and bug
 
 ---
 
-### [1.4.0] - 2026-02-19
+### [2.1.0] - 2026-03-02
+**📊 Advanced Analytics Enhancement & Security Fixes**
+
+**Advanced Analytics 기능 강화:**
+- **Data Source 선택 토글** (`AnalyticsView.tsx`):
+  - `SESSION` (현재 세션) / `ALL_TIME` (Supabase 전체 기록) 두 탭으로 분석 범위 전환
+  - Cloud Mode: `getPlayerAllTimeMatches(playerId)` 호출로 DB에서 플레이어 전체 매치 기록 로드
+  - `dataSource`에 따라 Win Rates, Best Partners, Rival Stats 동적 재계산
+- **Recharts 차트 도입**:
+  - `recharts` 패키지 재도입 (v2.0.0에서 미사용으로 제거 → 기능 추가로 복원)
+  - `AreaChart` (Win Rate Trend, 보라색 그라데이션) — 최근 매치별 누적 승률 추세
+- **UI 동선 개선** (`StatsView.tsx`):
+  - "Advanced Analytics" 버튼을 AI Coach 섹션보다 상단으로 배치 (최우선 진입점)
+  - 수동 분석(Advanced Analytics) vs AI 분석(AI Coach) 역할 명확화
+
+**LocationPicker 개선** (`LocationPicker.tsx`):
+- Supabase DB에서 최근 location 목록을 가져오는 드롭다운 방식으로 변경
+- PLAYERS Global List와 동일한 패턴 적용
+- 모바일 세로 오버플로우 레이아웃 버그 수정
+
+**보안 수정 (Gemini Code Assist 리뷰 반영):**
+- **UUID Injection 방지** (`SupabaseDataService.getPlayerMatches()`):
+  - 정규식 검증: `/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i`
+  - 비유효 ID 입력 시 빈 배열 반환 + warning 로그
+- **중복 API 호출 최적화** (`AnalyticsView.tsx`):
+  - `getAllPlayers()`를 `allTimePlayers.length === 0` 조건으로 조건부 호출
+  - `myId` 변경 시마다 불필요한 전체 플레이어 재조회 방지
+
+**버그 수정:**
+- Supabase 환경변수 미설정 시 화이트스크린 크래시 (`supabaseClient.ts`) — Placeholder URL 주입으로 해결
+- `AnalyticsView.tsx` TypeScript `unknown` 타입 오류 — Type Guard 필터로 해결
+
+---
+
+### [2.0.0] - 2026-02-19
 **🤖 Dynamic Gemini Model Selection & Two-Step API Key UX**
 
 **동적 모델 선택:**

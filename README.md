@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.0-brightgreen)
+![Version](https://img.shields.io/badge/version-2.1.0-brightgreen)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%20Pro-8E75B2?logo=google)
@@ -73,10 +73,11 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
 ### 4. 📊 고급 통계 및 분석
 - **리더보드**: 승률, 포인트, 게임 득실 등 상세 통계
 - **Best Partnerships**: 승률이 높은 파트너 조합 자동 분석
-- **Head-to-Head Analysis** (NEW in v1.0.0!):
-  - 두 선수 간 직접 대결 전적 비교
-  - 승/무/패 통계 및 승률 시각화
-  - 라이벌 관계 분석
+- **Head-to-Head Analysis**: 두 선수 간 직접 대결 전적 비교, 승/무/패 통계 및 승률 시각화
+- **Advanced Analytics** (NEW in v2.1.0!):
+  - 데이터 소스 선택: 현재 세션(Session) / 전체 기록(All-Time, Supabase DB)
+  - Win Rate Trend 차트 (Recharts AreaChart)
+  - Best Partners, Rival Stats 동적 분석
 
 ### 5. 🤖 AI 코치 (Powered by Gemini)
 ![AI 코치 메뉴 위치](./files/ai%20coach%202.png)
@@ -114,12 +115,13 @@ This project serves as a sandbox for experimenting with [the rule-grounded RAG s
 |------|------|
 | **Frontend** | React 19, TypeScript 5.8, Vite 6 |
 | **Styling** | Tailwind CSS, Lucide Icons |
+| **Charts** | Recharts (AreaChart, Win Rate Trend) |
 | **State** | Context API |
 | **Storage** | LocalStorage (Guest) / Google Sheets (BYODB) / Supabase (Cloud) |
 | **Backend** | Google Apps Script (Sheets Mode), Supabase Postgres (Cloud Mode) |
 | **AI** | Google Gemini API (@google/genai), RAG with pgvector |
 | **Vector DB** | Supabase pgvector (Tennis Rules Search) |
-| **Deploy** | GitHub Pages / Vercel (Static Hosting) |
+| **Deploy** | Netlify (with Serverless Functions) |
 
 ---
 
@@ -271,19 +273,26 @@ npm run dev
 - [x] 2단계 API 키 설정 UX (키 입력 → 모델 선택)
 - [x] 채팅 헤더 "키 변경" 버튼
 - [x] ModelSwitcher Deprecated / Near-EOL 배지
-- [x] 코드 정리 (미사용 import, console.log, 중복 타입, recharts 제거)
+- [x] 코드 정리 (미사용 import, console.log, 중복 타입)
+- [x] recharts 제거 (당시 미사용) → v2.1.0에서 기능 추가와 함께 재도입
 
-### 🔜 v2.1.0 (예정)
-- [ ] 다중 코트 지원 (2개 코트 동시 진행)
-- [ ] Tie-break 스코어 지원 (7-6 (4) 형식)
-- [ ] 플레이어 아바타 업로드
-- [ ] 한글 주소 지원
+### ✅ v2.1.0 (완료 - 2026-03-02)
+- [x] Advanced Analytics 데이터 소스 선택 (Session / All-Time Supabase DB)
+- [x] Recharts AreaChart 도입 (Win Rate Trend 차트)
+- [x] LocationPicker Supabase 드롭다운으로 개선 (모바일 UI 수정)
+- [x] StatsView UI 동선 개선 (Advanced Analytics 최우선 배치)
+- [x] 보안 수정 — UUID injection 방지 (`getPlayerMatches`)
+- [x] 성능 최적화 — 중복 `getAllPlayers()` 호출 조건부 처리
+- [x] 버그 수정 — Supabase 환경변수 미설정 시 앱 크래시
 
 ### 🔮 v3.0.0 (장기)
+- [ ] 다중 코트 지원 (2개 코트 동시 진행)
+- [ ] Tie-break 스코어 지원 (7-6 (4) 형식)
 - [ ] 실시간 동기화 (WebSocket)
 - [ ] 팀 대항전 모드
 - [ ] 토너먼트 브라켓 생성
 - [ ] 모바일 앱 (React Native)
+- [ ] 플레이어 아바타 업로드
 
 더 자세한 계획은 [TODO.md](./TODO.md)에서 확인하세요.
 
@@ -319,7 +328,7 @@ MIT License - 자유롭게 사용, 수정, 배포 가능합니다.
 
 <div align="center">
 
-**Tennis Mate v2.0.0**
+**Tennis Mate v2.1.0**
 
 Made with ❤️ & 🎾 by [HouuYa](https://github.com/HouuYa)
 
