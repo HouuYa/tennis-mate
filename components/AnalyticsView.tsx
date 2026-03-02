@@ -33,13 +33,13 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
 
                     const [fetchedMatches, fetchedPlayers] = await Promise.all(promises);
 
-                    setAllTimeMatches(fetchedMatches);
+                    setAllTimeMatches(fetchedMatches || []);
                     if (fetchedPlayers) {
                         setAllTimePlayers(fetchedPlayers);
                         allTimePlayersFetchedRef.current = true;
                     }
                 } catch (error) {
-                    console.error("Failed to fetch all-time data", error);
+                    console.error("[Analytics] Failed to fetch all-time data", error);
                 } finally {
                     setIsLoadingAllTime(false);
                 }
@@ -66,17 +66,18 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     const recentMatches = useMemo(() => {
         const sourceMatches = dataSource === 'ALL_TIME' ? allTimeMatches : matches;
         return sourceMatches
-            .filter(m => m.isFinished)
+            .filter(m => m.isFinished && m.teamA && m.teamB)
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, dataSource === 'ALL_TIME' ? 1000 : 100);
     }, [matches, allTimeMatches, dataSource]);
 
     const activePlayers = useMemo(() => {
-        const sourcePlayers = dataSource === 'ALL_TIME' && allTimePlayers.length > 0 ? allTimePlayers : players;
+        const sourcePlayers = (dataSource === 'ALL_TIME' && allTimePlayers.length > 0 ? allTimePlayers : players) as Player[];
 
         // Unique players involved in recent matches + current roster
         const ids = new Set(sourcePlayers.map(p => p.id));
         recentMatches.forEach(m => {
+            if (!m.teamA || !m.teamB) return; // Defensive check
             ids.add(m.teamA.player1Id);
             ids.add(m.teamA.player2Id);
             ids.add(m.teamB.player1Id);
@@ -84,8 +85,8 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         });
         // Create lookup
         const lookup = new Map(sourcePlayers.map(p => [p.id, p]));
-        const resolved = Array.from(ids).map((id: string) => lookup.get(id) ?? { id, name: 'Unknown', active: false, stats: {} as any });
-        return resolved.filter((p): p is NonNullable<typeof p> => Boolean(p && p.id));
+        const resolved = Array.from(ids).map((id) => lookup.get(id) ?? { id, name: 'Unknown', active: false, stats: {} as any });
+        return resolved.filter((p): p is Player => Boolean(p && p.id));
     }, [players, allTimePlayers, recentMatches, dataSource]);
 
     // Derived Stats
@@ -199,24 +200,24 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     }, [myStats, rivalId]);
 
     return (
-        <div className="fixed inset-0 bg-slate-900 z-50 overflow-y-auto animate-in slide-in-from-right">
-            <div className="max-w-md mx-auto min-h-screen pb-safe relative">
+        <div className="fixed inset-0 bg-slate-900 z-50 flex flex-col animate-in slide-in-from-right">
+            {/* Header - Fixed at top */}
+            <div className="flex-none bg-slate-900 p-4 flex items-center justify-between border-b border-slate-800">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <BarChart3 className="text-purple-400" />
+                    Player Analytics
+                </h2>
+                <button
+                    onClick={onClose}
+                    className="text-slate-400 hover:text-white px-3 py-1 rounded bg-slate-800"
+                >
+                    Close
+                </button>
+            </div>
 
-                {/* Header */}
-                <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md p-4 flex items-center justify-between border-b border-slate-800">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <BarChart3 className="text-purple-400" />
-                        Analytics
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-white px-3 py-1 rounded bg-slate-800"
-                    >
-                        Close
-                    </button>
-                </div>
-
-                <div className="p-4 space-y-6">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto">
+                <div className="max-w-md mx-auto p-4 pb-safe space-y-6">
                     {/* Data Source Toggle & Me Selector */}
                     <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
                         {mode === 'CLOUD' && (
@@ -258,9 +259,18 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     </div>
 
                     {isLoadingAllTime && (
-                        <div className="flex flex-col items-center justify-center p-8 text-slate-400">
-                            <span className="mb-2">Loading all-time data...</span>
-                            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="flex flex-col items-center justify-center p-12 text-slate-400 min-h-[400px]">
+                            <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <span className="font-bold">Loading Global Stats...</span>
+                            <span className="text-xs text-slate-500 mt-2 italic">Fetching all matches from Supabase</span>
+                        </div>
+                    )}
+
+                    {!isLoadingAllTime && !myId && (
+                        <div className="flex flex-col items-center justify-center p-12 text-slate-500 min-h-[400px] text-center">
+                            <Users size={48} className="mb-4 opacity-20" />
+                            <p className="font-medium text-slate-300">분석할 플레이어를 선택해주세요.</p>
+                            <p className="text-sm opacity-60 mt-1">Select a player above to see their stats.</p>
                         </div>
                     )}
 
@@ -304,7 +314,15 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                                     formatter={(value: number) => [`${value}%`, 'Win Rate']}
                                                     labelFormatter={(label) => `Match ${label.replace('M', '')}`}
                                                 />
-                                                <Area type="monotone" dataKey="winRate" stroke="#a855f7" strokeWidth={2} fillOpacity={1} fill="url(#colorWinRate)" />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="winRate"
+                                                    stroke="#a855f7"
+                                                    strokeWidth={2}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorWinRate)"
+                                                    isAnimationActive={false}
+                                                />
                                                 <YAxis domain={[0, 100]} hide={true} />
                                             </AreaChart>
                                         </ResponsiveContainer>
@@ -369,7 +387,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                         <div className="flex flex-col items-center z-10">
                                             <div className="text-[10px] text-slate-500 mb-1">VS</div>
                                             <div className="text-xl font-bold text-white mb-1">
-                                                {Math.round((rivalStats.wins / rivalStats.played) * 100)}%
+                                                {rivalStats.winRate}%
                                             </div>
                                             <div className="text-[10px] text-slate-500">{rivalStats.played} Games</div>
                                         </div>
@@ -380,7 +398,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
 
                                         {/* Background Bar */}
                                         <div className="absolute inset-0 flex opacity-10 pointer-events-none">
-                                            <div className="bg-tennis-green h-full transition-all duration-500" style={{ width: `${(rivalStats.wins / rivalStats.played) * 100}%` }}></div>
+                                            <div className="bg-tennis-green h-full transition-all duration-500" style={{ width: `${rivalStats.winRate}%` }}></div>
                                             <div className="bg-red-400 h-full transition-all duration-500 flex-1"></div>
                                         </div>
                                     </div>
