@@ -24,7 +24,6 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     React.useEffect(() => {
         if (dataSource === 'ALL_TIME' && myId && mode === 'CLOUD') {
             const fetchData = async () => {
-                console.log(`[Analytics] Starting fetch for player ${myId}`);
                 setIsLoadingAllTime(true);
                 try {
                     const promises: Promise<any>[] = [getPlayerAllTimeMatchesRef.current(myId)];
@@ -33,7 +32,6 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     }
 
                     const [fetchedMatches, fetchedPlayers] = await Promise.all(promises);
-                    console.log(`[Analytics] Fetched ${fetchedMatches?.length || 0} matches`);
 
                     setAllTimeMatches(fetchedMatches || []);
                     if (fetchedPlayers) {
@@ -44,7 +42,6 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     console.error("[Analytics] Failed to fetch all-time data", error);
                 } finally {
                     setIsLoadingAllTime(false);
-                    console.log(`[Analytics] Fetch completed`);
                 }
             };
             fetchData();
@@ -69,7 +66,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     const recentMatches = useMemo(() => {
         const sourceMatches = dataSource === 'ALL_TIME' ? allTimeMatches : matches;
         return sourceMatches
-            .filter(m => m.isFinished)
+            .filter(m => m.isFinished && m.teamA && m.teamB)
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, dataSource === 'ALL_TIME' ? 1000 : 100);
     }, [matches, allTimeMatches, dataSource]);
@@ -102,7 +99,6 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         const rivals = new Map<string, { wins: number, played: number }>();
 
         recentMatches.forEach(m => {
-            if (!m.teamA || !m.teamB) return; // Defensive check
             const teamA = [m.teamA.player1Id, m.teamA.player2Id];
             const teamB = [m.teamB.player1Id, m.teamB.player2Id];
 
@@ -155,7 +151,6 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         const myMatchesReverse = [...recentMatches]
             .reverse()
             .filter(m => {
-                if (!m.teamA || !m.teamB) return false;
                 const teamA = [m.teamA.player1Id, m.teamA.player2Id];
                 const teamB = [m.teamB.player1Id, m.teamB.player2Id];
                 return teamA.includes(myId) || teamB.includes(myId);
@@ -268,6 +263,14 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                             <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
                             <span className="font-bold">Loading Global Stats...</span>
                             <span className="text-xs text-slate-500 mt-2 italic">Fetching all matches from Supabase</span>
+                        </div>
+                    )}
+
+                    {!isLoadingAllTime && !myId && (
+                        <div className="flex flex-col items-center justify-center p-12 text-slate-500 min-h-[400px] text-center">
+                            <Users size={48} className="mb-4 opacity-20" />
+                            <p className="font-medium text-slate-300">분석할 플레이어를 선택해주세요.</p>
+                            <p className="text-sm opacity-60 mt-1">Select a player above to see their stats.</p>
                         </div>
                     )}
 

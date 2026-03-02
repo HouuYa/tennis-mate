@@ -153,12 +153,18 @@ export class SupabaseDataService implements DataService {
         // team_a and team_b are JSONB objects: { player1Id, player2Id }
         const matches: Match[] = matchesData.map((m: any) => ({
             id: m.id,
-            timestamp: new Date(m.played_at).getTime(),
-            teamA: { player1Id: m.team_a.player1Id, player2Id: m.team_a.player2Id },
-            teamB: { player1Id: m.team_b.player1Id, player2Id: m.team_b.player2Id },
-            scoreA: m.score_a,
-            scoreB: m.score_b,
-            isFinished: m.is_finished,
+            timestamp: m.played_at ? new Date(m.played_at).getTime() : Date.now(),
+            teamA: m.team_a ? {
+                player1Id: m.team_a.player1Id || '',
+                player2Id: m.team_a.player2Id || ''
+            } : { player1Id: '', player2Id: '' },
+            teamB: m.team_b ? {
+                player1Id: m.team_b.player1Id || '',
+                player2Id: m.team_b.player2Id || ''
+            } : { player1Id: '', player2Id: '' },
+            scoreA: Number(m.score_a) || 0,
+            scoreB: Number(m.score_b) || 0,
+            isFinished: Boolean(m.is_finished),
             courtNumber: m.court_number,
             endTime: m.end_time ? new Date(m.end_time).getTime() : undefined
         }));
