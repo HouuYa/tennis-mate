@@ -87,6 +87,17 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         }
     }, [dataSource, mode]);
 
+    // Lock body scroll while this overlay is open (prevents the HTML page scroll from
+    // pushing the fixed overlay out of the viewport when Stats page content > viewport height)
+    React.useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        };
+    }, []);
+
     // Separate memos for session vs all-time to prevent cross-contamination of dependencies.
     // When in ALL_TIME mode, changes to session `matches` should NOT trigger recalculation.
     const sessionRecentMatches = useMemo(() => {
@@ -337,8 +348,8 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                             <Activity size={16} className="text-purple-400" />
                                             Win Rate Trend
                                         </h3>
-                                        <div className="h-32 w-full mt-2">
-                                            <ResponsiveContainer width="100%" height="100%">
+                                        <div className="h-32 w-full mt-2" style={{ minWidth: 0 }}>
+                                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                                 <AreaChart data={winRateTrendData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                                                     <defs>
                                                         <linearGradient id="colorWinRate" x1="0" y1="0" x2="0" y2="1">
