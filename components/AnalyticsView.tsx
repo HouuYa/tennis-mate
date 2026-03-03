@@ -4,6 +4,22 @@ import { BarChart3, Users, Swords, Trophy, Activity } from 'lucide-react';
 import { Player, Match } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
+// Simple error boundary to prevent chart crashes from blanking the whole page
+class ChartErrorBoundary extends React.Component<
+    { children: React.ReactNode },
+    { hasError: boolean }
+> {
+    state = { hasError: false };
+    static getDerivedStateFromError() { return { hasError: true }; }
+    componentDidCatch(error: Error) { console.error('[Analytics Chart Error]', error); }
+    render() {
+        if (this.state.hasError) {
+            return <div className="text-center text-slate-500 py-4 text-sm">Chart unavailable</div>;
+        }
+        return this.props.children;
+    }
+}
+
 export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     const { players, matches, mode, getPlayerAllTimeMatches, getAllPlayers } = useApp();
     const [myId, setMyId] = useState<string>('');
@@ -20,9 +36,10 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     getAllPlayersRef.current = getAllPlayers;
     const allTimePlayersFetchedRef = React.useRef(false);
 
-    // Fetch All-Time data when myId and dataSource changes
+    // Fetch All-Time data when myId and dataSource changes (with cleanup to prevent stale updates)
     React.useEffect(() => {
         if (dataSource === 'ALL_TIME' && myId && mode === 'CLOUD') {
+            let cancelled = false;
             const fetchData = async () => {
                 setIsLoadingAllTime(true);
                 try {
@@ -33,43 +50,71 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
 
                     const [fetchedMatches, fetchedPlayers] = await Promise.all(promises);
 
+                    if (cancelled) return;
                     setAllTimeMatches(fetchedMatches || []);
                     if (fetchedPlayers) {
                         setAllTimePlayers(fetchedPlayers);
                         allTimePlayersFetchedRef.current = true;
                     }
                 } catch (error) {
+                    if (cancelled) return;
                     console.error("[Analytics] Failed to fetch all-time data", error);
                 } finally {
-                    setIsLoadingAllTime(false);
+                    if (!cancelled) {
+                        setIsLoadingAllTime(false);
+                    }
                 }
             };
             fetchData();
+            return () => { cancelled = true; };
+        } else {
+            // Reset loading flag when switching away from ALL_TIME
+            setIsLoadingAllTime(false);
         }
     }, [dataSource, myId, mode]);
 
     // Initial load for all players if ALL_TIME is selected but no myId yet
     React.useEffect(() => {
         if (dataSource === 'ALL_TIME' && mode === 'CLOUD' && !allTimePlayersFetchedRef.current) {
+            let cancelled = false;
             getAllPlayersRef.current().then(p => {
-                setAllTimePlayers(p);
-                allTimePlayersFetchedRef.current = true;
+                if (!cancelled) {
+                    setAllTimePlayers(p);
+                    allTimePlayersFetchedRef.current = true;
+                }
             }).catch(console.error);
+            return () => { cancelled = true; };
         }
     }, [dataSource, mode]);
 
-    // Filter relevant matches
-    // User requested "Recent 100 matches" as Raw Data basis
-    // Assuming 'matches' in context are the session matches (or loaded history).
-    // If working with Google Sheets, we might want to ensure we have enough history.
-    // For now, we use the loaded `matches` state.
-    const recentMatches = useMemo(() => {
-        const sourceMatches = dataSource === 'ALL_TIME' ? allTimeMatches : matches;
-        return sourceMatches
+    // Lock body scroll while this overlay is open (prevents the HTML page scroll from
+    // pushing the fixed overlay out of the viewport when Stats page content > viewport height)
+    React.useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        };
+    }, []);
+
+    // Separate memos for session vs all-time to prevent cross-contamination of dependencies.
+    // When in ALL_TIME mode, changes to session `matches` should NOT trigger recalculation.
+    const sessionRecentMatches = useMemo(() => {
+        return [...matches]
             .filter(m => m.isFinished && m.teamA && m.teamB)
             .sort((a, b) => b.timestamp - a.timestamp)
-            .slice(0, dataSource === 'ALL_TIME' ? 1000 : 100);
-    }, [matches, allTimeMatches, dataSource]);
+            .slice(0, 100);
+    }, [matches]);
+
+    const allTimeRecentMatches = useMemo(() => {
+        return [...allTimeMatches]
+            .filter(m => m.isFinished && m.teamA && m.teamB)
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 1000);
+    }, [allTimeMatches]);
+
+    const recentMatches = dataSource === 'ALL_TIME' ? allTimeRecentMatches : sessionRecentMatches;
 
     const activePlayers = useMemo(() => {
         const sourcePlayers = (dataSource === 'ALL_TIME' && allTimePlayers.length > 0 ? allTimePlayers : players) as Player[];
@@ -200,7 +245,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     }, [myStats, rivalId]);
 
     return (
-        <div className="fixed inset-0 bg-slate-900 z-50 flex flex-col animate-in slide-in-from-right">
+        <div className="fixed inset-0 bg-slate-900 z-50 flex flex-col">
             {/* Header - Fixed at top */}
             <div className="flex-none bg-slate-900 p-4 flex items-center justify-between border-b border-slate-800">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -215,9 +260,12 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                 </button>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="max-w-md mx-auto p-4 pb-safe space-y-6">
+            {/* Scrollable Content - min-h-0 is critical for flex+overflow to work correctly */}
+            <div
+                className="flex-1 min-h-0 overflow-y-auto"
+                style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+            >
+                <div className="max-w-md mx-auto p-4 pb-24 space-y-6">
                     {/* Data Source Toggle & Me Selector */}
                     <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
                         {mode === 'CLOUD' && (
@@ -259,7 +307,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     </div>
 
                     {isLoadingAllTime && (
-                        <div className="flex flex-col items-center justify-center p-12 text-slate-400 min-h-[400px]">
+                        <div className="flex flex-col items-center justify-center p-12 text-slate-400 min-h-[200px]">
                             <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
                             <span className="font-bold">Loading Global Stats...</span>
                             <span className="text-xs text-slate-500 mt-2 italic">Fetching all matches from Supabase</span>
@@ -267,67 +315,69 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                     )}
 
                     {!isLoadingAllTime && !myId && (
-                        <div className="flex flex-col items-center justify-center p-12 text-slate-500 min-h-[400px] text-center">
+                        <div className="flex flex-col items-center justify-center p-12 text-slate-500 min-h-[200px] text-center">
                             <Users size={48} className="mb-4 opacity-20" />
                             <p className="font-medium text-slate-300">분석할 플레이어를 선택해주세요.</p>
                             <p className="text-sm opacity-60 mt-1">Select a player above to see their stats.</p>
                         </div>
                     )}
 
-                    {!isLoadingAllTime && myId && myStats && (
+                    {!isLoadingAllTime && myId && (
                         <>
                             {/* Summary Cards */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center text-center">
                                     <span className="text-slate-400 text-xs uppercase font-bold mb-1">Matches</span>
-                                    <span className="text-3xl font-black text-white">{myStats.played}</span>
+                                    <span className="text-3xl font-black text-white">{myStats?.played ?? 0}</span>
                                     <span className="text-[10px] text-slate-500">{dataSource === 'ALL_TIME' ? 'All recorded games' : 'Current Session games'}</span>
                                 </div>
                                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center text-center">
                                     <span className="text-slate-400 text-xs uppercase font-bold mb-1">Win Rate</span>
-                                    <span className={`text-3xl font-black ${getWinRateColor(myStats.wins, myStats.played)}`}>
-                                        {myStats.played ? Math.round((myStats.wins / myStats.played) * 100) : 0}%
+                                    <span className={`text-3xl font-black ${getWinRateColor(myStats?.wins ?? 0, myStats?.played ?? 0)}`}>
+                                        {myStats?.played ? Math.round((myStats.wins / myStats.played) * 100) : 0}%
                                     </span>
-                                    <span className="text-[10px] text-slate-500">{myStats.wins} Wins</span>
+                                    <span className="text-[10px] text-slate-500">{myStats?.wins ?? 0} Wins</span>
                                 </div>
                             </div>
 
                             {/* Win Rate Trend */}
                             {winRateTrendData.length > 2 && (
-                                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                                    <h3 className="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
-                                        <Activity size={16} className="text-purple-400" />
-                                        Win Rate Trend
-                                    </h3>
-                                    <div className="h-32 w-full mt-2">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={winRateTrendData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                                                <defs>
-                                                    <linearGradient id="colorWinRate" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '12px', borderRadius: '8px' }}
-                                                    itemStyle={{ color: '#a855f7', fontWeight: 'bold' }}
-                                                    formatter={(value: number) => [`${value}%`, 'Win Rate']}
-                                                    labelFormatter={(label) => `Match ${label.replace('M', '')}`}
-                                                />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="winRate"
-                                                    stroke="#a855f7"
-                                                    strokeWidth={2}
-                                                    fillOpacity={1}
-                                                    fill="url(#colorWinRate)"
-                                                    isAnimationActive={false}
-                                                />
-                                                <YAxis domain={[0, 100]} hide={true} />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
+                                <ChartErrorBoundary key={`${myId}-${dataSource}`}>
+                                    <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                        <h3 className="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
+                                            <Activity size={16} className="text-purple-400" />
+                                            Win Rate Trend
+                                        </h3>
+                                        <div className="h-32 w-full mt-2" style={{ minWidth: 0 }}>
+                                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                                <AreaChart data={winRateTrendData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                                    <defs>
+                                                        <linearGradient id="colorWinRate" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                                                            <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', fontSize: '12px', borderRadius: '8px' }}
+                                                        itemStyle={{ color: '#a855f7', fontWeight: 'bold' }}
+                                                        formatter={(value: number) => [`${value}%`, 'Win Rate']}
+                                                        labelFormatter={(label) => `Match ${String(label).replace('M', '')}`}
+                                                    />
+                                                    <Area
+                                                        type="monotone"
+                                                        dataKey="winRate"
+                                                        stroke="#a855f7"
+                                                        strokeWidth={2}
+                                                        fillOpacity={1}
+                                                        fill="url(#colorWinRate)"
+                                                        isAnimationActive={false}
+                                                    />
+                                                    <YAxis domain={[0, 100]} hide={true} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
-                                </div>
+                                </ChartErrorBoundary>
                             )}
 
                             {/* Best Partners */}
