@@ -101,14 +101,14 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
     // Separate memos for session vs all-time to prevent cross-contamination of dependencies.
     // When in ALL_TIME mode, changes to session `matches` should NOT trigger recalculation.
     const sessionRecentMatches = useMemo(() => {
-        return matches
+        return [...matches]
             .filter(m => m.isFinished && m.teamA && m.teamB)
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, 100);
     }, [matches]);
 
     const allTimeRecentMatches = useMemo(() => {
-        return allTimeMatches
+        return [...allTimeMatches]
             .filter(m => m.isFinished && m.teamA && m.teamB)
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, 1000);
@@ -342,7 +342,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
 
                             {/* Win Rate Trend */}
                             {winRateTrendData.length > 2 && (
-                                <ChartErrorBoundary>
+                                <ChartErrorBoundary key={`${myId}-${dataSource}`}>
                                     <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
                                         <h3 className="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
                                             <Activity size={16} className="text-purple-400" />
