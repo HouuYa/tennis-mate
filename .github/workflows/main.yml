@@ -11,6 +11,13 @@ jobs:
     steps:
       - name: Ping Supabase
         run: |
-          curl -s \
-            "${{ secrets.SUPABASE_URL }}/auth/v1/health" \
-            -o /dev/null -w "Status: %{http_code}\n"
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/version")
+          echo "Status: $response"
+          if [ "$response" = "200" ] || [ "$response" = "404" ]; then
+            echo "Ping successful - project is active"
+          else
+            echo "Unexpected status: $response"
+          fi
