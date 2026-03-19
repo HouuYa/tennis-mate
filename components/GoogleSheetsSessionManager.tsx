@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Play, BookOpen, AlertCircle, Settings, Clock, Loader2, Home, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Play, BookOpen, AlertCircle, Settings, Loader2, Home, AlertTriangle, RefreshCw } from 'lucide-react';
 import { GoogleSheetsGuide } from './GoogleSheetsGuide';
 import { LocationPicker } from './LocationPicker';
 
@@ -168,14 +168,25 @@ export const GoogleSheetsSessionManager = ({ onSessionReady }: Props) => {
                             </div>
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold text-slate-500">Date & Time</label>
-                                <div className="relative">
-                                    <input
-                                        type="datetime-local"
-                                        value={sessionDate}
-                                        onChange={(e) => setSessionDate(e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none font-mono"
-                                    />
-                                    <Clock size={16} className="absolute right-3 top-3.5 text-slate-500 pointer-events-none" />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-500">Date</label>
+                                        <input
+                                            type="date"
+                                            value={sessionDate.split('T')[0] || ''}
+                                            onChange={(e) => setSessionDate(e.target.value + 'T' + (sessionDate.split('T')[1] || '00:00'))}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-500">Time</label>
+                                        <input
+                                            type="time"
+                                            value={sessionDate.split('T')[1] || '00:00'}
+                                            onChange={(e) => setSessionDate((sessionDate.split('T')[0] || '') + 'T' + e.target.value)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
