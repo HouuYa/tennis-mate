@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { Play, Clock, ChevronRight, Loader2, MapPin, Home, AlertTriangle, Shield } from 'lucide-react';
+import { Play, ChevronRight, Loader2, MapPin, Home, AlertTriangle, Shield, Trophy } from 'lucide-react';
 import { LocationPicker } from './LocationPicker';
+import { QuickEntryPanel } from './QuickEntryPanel';
 import { SessionSummary, SessionRecord, SessionLocationRecord } from '../types';
 import { supabase } from '../services/supabaseClient';
 
@@ -24,6 +25,7 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
     const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
 
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [showQuickEntry, setShowQuickEntry] = useState(false);
 
     // Check for saved session on mount
     useEffect(() => {
@@ -165,19 +167,30 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                 </button>
             </div>
 
-            <div className="w-full bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+            <div className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
                 {activeTab === 'NEW' ? (
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase">Date & Time</label>
-                            <div className="relative">
-                                <input
-                                    type="datetime-local"
-                                    value={sessionDate}
-                                    onChange={(e) => setSessionDate(e.target.value)}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none font-mono"
-                                />
-                                <Clock size={16} className="absolute right-3 top-3.5 text-tennis-green pointer-events-none" />
+                            <div className="grid grid-cols-[3fr_2fr] gap-2">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-slate-500">Date</label>
+                                    <input
+                                        type="date"
+                                        value={sessionDate.split('T')[0] || ''}
+                                        onChange={(e) => setSessionDate(e.target.value + 'T' + (sessionDate.split('T')[1] || '00:00'))}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1.5 text-white text-sm text-center focus:border-tennis-green outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-slate-500">Time</label>
+                                    <input
+                                        type="time"
+                                        value={sessionDate.split('T')[1] || '00:00'}
+                                        onChange={(e) => setSessionDate((sessionDate.split('T')[0] || '') + 'T' + e.target.value)}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1.5 text-white text-sm text-center focus:border-tennis-green outline-none"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -196,6 +209,15 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                         >
                             {loading ? <Loader2 className="animate-spin" /> : <Play size={20} />}
                             Start Session
+                        </button>
+
+                        {/* Quick Entry link — admin only */}
+                        <button
+                            onClick={() => setShowQuickEntry(true)}
+                            className="w-full py-3 bg-tennis-green text-slate-900 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#d4e157] active:scale-95 transition-all"
+                        >
+                            <Trophy size={18} />
+                            Quick Entry (Admin)
                         </button>
                     </div>
                 ) : (
@@ -250,6 +272,15 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                     </button>
                 )}
             </div>
+
+            {/* Quick Entry Modal */}
+            {showQuickEntry && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-800">
+                        <QuickEntryPanel onClose={() => setShowQuickEntry(false)} />
+                    </div>
+                </div>
+            )}
 
             {/* Confirmation Dialog */}
             {showConfirmDialog && (
