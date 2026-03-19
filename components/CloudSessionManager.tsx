@@ -172,14 +172,14 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase">Date & Time</label>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-[3fr_2fr] gap-2">
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-slate-500">Date</label>
                                     <input
                                         type="date"
                                         value={sessionDate.split('T')[0] || ''}
                                         onChange={(e) => setSessionDate(e.target.value + 'T' + (sessionDate.split('T')[1] || '00:00'))}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white text-sm focus:border-tennis-green outline-none"
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -188,7 +188,7 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                                         type="time"
                                         value={sessionDate.split('T')[1] || '00:00'}
                                         onChange={(e) => setSessionDate((sessionDate.split('T')[0] || '') + 'T' + e.target.value)}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-tennis-green outline-none"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white text-sm focus:border-tennis-green outline-none"
                                     />
                                 </div>
                             </div>
