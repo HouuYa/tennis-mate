@@ -139,9 +139,10 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         if (!myId) return null;
 
         let wins = 0;
+        let draws = 0;
         let played = 0;
-        const partners = new Map<string, { wins: number, played: number }>();
-        const rivals = new Map<string, { wins: number, played: number }>();
+        const partners = new Map<string, { wins: number, draws: number, played: number }>();
+        const rivals = new Map<string, { wins: number, draws: number, played: number }>();
 
         recentMatches.forEach(m => {
             const teamA = [m.teamA.player1Id, m.teamA.player2Id];
@@ -160,6 +161,7 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
             const iWon = (inTeamA && wonA) || (inTeamB && wonB);
 
             if (iWon) wins++;
+            else if (isDraw) draws++;
 
             // Partner logic
             const myPartnerId = inTeamA
@@ -167,9 +169,10 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                 : teamB.find(id => id !== myId);
 
             if (myPartnerId) {
-                const current = partners.get(myPartnerId) || { wins: 0, played: 0 };
+                const current = partners.get(myPartnerId) || { wins: 0, draws: 0, played: 0 };
                 partners.set(myPartnerId, {
                     wins: current.wins + (iWon ? 1 : 0),
+                    draws: current.draws + (isDraw ? 1 : 0),
                     played: current.played + 1
                 });
             }
@@ -177,15 +180,16 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
             // Rival logic (Opponents)
             const opponents = inTeamA ? teamB : teamA;
             opponents.forEach(oppId => {
-                const current = rivals.get(oppId) || { wins: 0, played: 0 };
+                const current = rivals.get(oppId) || { wins: 0, draws: 0, played: 0 };
                 rivals.set(oppId, {
                     wins: current.wins + (iWon ? 1 : 0),
+                    draws: current.draws + (isDraw ? 1 : 0),
                     played: current.played + 1
                 });
             });
         });
 
-        return { wins, played, partners, rivals };
+        return { wins, draws, played, partners, rivals };
     }, [myId, recentMatches]);
 
     const winRateTrendData = useMemo(() => {
@@ -201,21 +205,26 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                 return teamA.includes(myId) || teamB.includes(myId);
             });
 
+        let cumulativeDraws = 0;
+
         return myMatchesReverse.map((m, i) => {
             const teamA = [m.teamA.player1Id, m.teamA.player2Id];
             const teamB = [m.teamB.player1Id, m.teamB.player2Id];
             const inTeamA = teamA.includes(myId);
             const inTeamB = teamB.includes(myId);
+            const isDraw = m.scoreA === m.scoreB;
             const wonA = m.scoreA > m.scoreB;
             const wonB = m.scoreB > m.scoreA;
             const iWon = (inTeamA && wonA) || (inTeamB && wonB);
 
             cumulativePlayed++;
             if (iWon) cumulativeWins++;
+            else if (isDraw) cumulativeDraws++;
 
+            const effectivePlayed = cumulativePlayed - cumulativeDraws;
             return {
                 name: `M${i + 1}`,
-                winRate: Math.round((cumulativeWins / cumulativePlayed) * 100)
+                winRate: effectivePlayed ? Math.round((cumulativeWins / effectivePlayed) * 100) : 0
             };
         });
     }, [myId, recentMatches]);
@@ -224,23 +233,27 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         if (!myStats) return [];
         return Array.from(myStats.partners.entries())
             .filter(([_, stats]) => stats.played >= 3) // Min 3 matches
-            .map(([id, stats]) => ({
-                id,
-                name: activePlayers.find(p => p.id === id)?.name || id,
-                ...stats,
-                winRate: Math.round((stats.wins / stats.played) * 100)
-            }))
+            .map(([id, stats]) => {
+                const effectivePlayed = stats.played - stats.draws;
+                return {
+                    id,
+                    name: activePlayers.find(p => p.id === id)?.name || id,
+                    ...stats,
+                    winRate: effectivePlayed ? Math.round((stats.wins / effectivePlayed) * 100) : 0
+                };
+            })
             .sort((a, b) => b.winRate - a.winRate)
             .slice(0, 5); // Top 5
     }, [myStats, activePlayers]);
 
     const rivalStats = useMemo(() => {
         if (!myStats || !rivalId) return null;
-        const stats = myStats.rivals.get(rivalId) || { wins: 0, played: 0 };
+        const stats = myStats.rivals.get(rivalId) || { wins: 0, draws: 0, played: 0 };
+        const effectivePlayed = stats.played - stats.draws;
         return {
             ...stats,
-            losses: stats.played - stats.wins,
-            winRate: stats.played ? Math.round((stats.wins / stats.played) * 100) : 0
+            losses: stats.played - stats.wins - stats.draws,
+            winRate: effectivePlayed ? Math.round((stats.wins / effectivePlayed) * 100) : 0
         };
     }, [myStats, rivalId]);
 
@@ -333,10 +346,15 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                 </div>
                                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center text-center">
                                     <span className="text-slate-400 text-xs uppercase font-bold mb-1">Win Rate</span>
-                                    <span className={`text-3xl font-black ${getWinRateColor(myStats?.wins ?? 0, myStats?.played ?? 0)}`}>
-                                        {myStats?.played ? Math.round((myStats.wins / myStats.played) * 100) : 0}%
+                                    <span className={`text-3xl font-black ${getWinRateColor(myStats?.wins ?? 0, (myStats?.played ?? 0) - (myStats?.draws ?? 0))}`}>
+                                        {(() => {
+                                            const effectivePlayed = (myStats?.played ?? 0) - (myStats?.draws ?? 0);
+                                            return effectivePlayed ? Math.round(((myStats?.wins ?? 0) / effectivePlayed) * 100) : 0;
+                                        })()}%
                                     </span>
-                                    <span className="text-[10px] text-slate-500">{myStats?.wins ?? 0} Wins</span>
+                                    <span className="text-[10px] text-slate-500">
+                                        {myStats?.wins ?? 0}W {(myStats?.draws ?? 0) > 0 ? `· ${myStats.draws}D` : ''}
+                                    </span>
                                 </div>
                             </div>
 
@@ -399,7 +417,11 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-sm font-bold text-tennis-green">{partner.winRate}%</div>
-                                                <div className="text-[10px] text-slate-500">{partner.wins}W - {partner.played - partner.wins}L</div>
+                                                <div className="text-[10px] text-slate-500">
+                                                    {partner.wins}W
+                                                    {partner.draws > 0 ? ` · ${partner.draws}D` : ''}
+                                                    {` · ${partner.played - partner.wins - partner.draws}L`}
+                                                </div>
                                             </div>
                                         </div>
                                     )) : (
@@ -434,6 +456,12 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                             <div className="text-xs text-slate-500 uppercase mb-1">Wins</div>
                                             <div className="text-2xl font-black text-tennis-green">{rivalStats.wins}</div>
                                         </div>
+                                        {rivalStats.draws > 0 && (
+                                            <div className="text-center z-10">
+                                                <div className="text-xs text-slate-500 uppercase mb-1">Draw</div>
+                                                <div className="text-2xl font-black text-blue-400">{rivalStats.draws}</div>
+                                            </div>
+                                        )}
                                         <div className="flex flex-col items-center z-10">
                                             <div className="text-[10px] text-slate-500 mb-1">VS</div>
                                             <div className="text-xl font-bold text-white mb-1">
