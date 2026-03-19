@@ -179,7 +179,7 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                                         type="date"
                                         value={sessionDate.split('T')[0] || ''}
                                         onChange={(e) => setSessionDate(e.target.value + 'T' + (sessionDate.split('T')[1] || '00:00'))}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-sm focus:border-tennis-green outline-none"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1.5 text-white text-sm focus:border-tennis-green outline-none"
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -188,7 +188,7 @@ export const CloudSessionManager: React.FC<CloudSessionManagerProps> = ({ onSess
                                         type="time"
                                         value={sessionDate.split('T')[1] || '00:00'}
                                         onChange={(e) => setSessionDate((sessionDate.split('T')[0] || '') + 'T' + e.target.value)}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-sm focus:border-tennis-green outline-none"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1.5 text-white text-sm focus:border-tennis-green outline-none"
                                     />
                                 </div>
                             </div>
