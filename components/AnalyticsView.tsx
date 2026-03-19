@@ -192,6 +192,14 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
         return { wins, draws, played, partners, rivals };
     }, [myId, recentMatches]);
 
+    const myWinRate = useMemo(() => {
+        const effectivePlayed = (myStats?.played ?? 0) - (myStats?.draws ?? 0);
+        return {
+            effectivePlayed,
+            rate: effectivePlayed ? Math.round(((myStats?.wins ?? 0) / effectivePlayed) * 100) : 0
+        };
+    }, [myStats]);
+
     const winRateTrendData = useMemo(() => {
         if (!myId) return [];
         let cumulativeWins = 0;
@@ -346,11 +354,8 @@ export const AnalyticsView = ({ onClose }: { onClose: () => void }) => {
                                 </div>
                                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center text-center">
                                     <span className="text-slate-400 text-xs uppercase font-bold mb-1">Win Rate</span>
-                                    <span className={`text-3xl font-black ${getWinRateColor(myStats?.wins ?? 0, (myStats?.played ?? 0) - (myStats?.draws ?? 0))}`}>
-                                        {(() => {
-                                            const effectivePlayed = (myStats?.played ?? 0) - (myStats?.draws ?? 0);
-                                            return effectivePlayed ? Math.round(((myStats?.wins ?? 0) / effectivePlayed) * 100) : 0;
-                                        })()}%
+                                    <span className={`text-3xl font-black ${getWinRateColor(myStats?.wins ?? 0, myWinRate.effectivePlayed)}`}>
+                                        {myWinRate.rate}%
                                     </span>
                                     <span className="text-[10px] text-slate-500">
                                         {myStats?.wins ?? 0}W {(myStats?.draws ?? 0) > 0 ? `· ${myStats.draws}D` : ''}
