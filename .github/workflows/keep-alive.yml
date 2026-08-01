@@ -1,0 +1,17 @@
+name: Supabase Keep-Alive Cron
+
+on:
+  schedule:
+    # 매 3일마다 00:00 UTC 기준 실행
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # 수동 실행 옵션
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          curl -i -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
